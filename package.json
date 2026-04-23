@@ -1,0 +1,24 @@
+{
+  "name": "barnaby_ts",
+  "version": "1.0.0",
+  "description": "A personal digital assistant ",
+  "license": "MIT",
+  "author": "themauveavenger",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "tsx --env-file=./.env ./src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "@tsconfig/node-ts": "23.6.4",
+    "@tsconfig/node24": "24.0.4",
+    "@types/node": "25.6.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.5"
+  },
+  "dependencies": {
+    "fastify": "5.8.5"
+  }
+}
