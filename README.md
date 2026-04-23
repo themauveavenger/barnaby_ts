@@ -12,10 +12,19 @@ Barnaby's primary method of communication is via Telegram API. If Barnaby sends 
 - sqlite (via better-sqlite3)
 - pi-mono (for the embedded agent sdk)
 
+## Roadmap
+
+| Phase | Feature | Status |
+|-------|---------|--------|
+| 1 | Core Memories API (CRUD + tags + auth) | Done |
+| 2 | Telegram Webhook (POST memories via bot) | Not started |
+| 3 | Google Calendar Integration | Not started |
+| 4 | Daily Briefings & Voice Memos | Not started |
+
 ## Planned Features
 - "memories" for the assistant, stored in a database
   - to be created via api calls
-- google calendar access to remind me of upcoming things 
+- google calendar access to remind me of upcoming things
 - finance access via ynab (mcp server?)
 - communication via telegram
 - daily summaries & briefings (think todo list) sent via telegram
