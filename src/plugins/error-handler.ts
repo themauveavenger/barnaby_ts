@@ -12,12 +12,24 @@ export default fp(async function errorHandlerPlugin(fastify: FastifyInstance) {
   fastify.setErrorHandler((error, request, reply) => {
     request.log.error(error);
 
-    if (error instanceof Error && 'statusCode' in error && error.statusCode === 400) {
-      return reply.code(400).send({
-        statusCode: 400,
-        error: 'Bad Request',
-        message: error.message,
-      });
+    if (error instanceof Error && 'statusCode' in error) {
+      const statusCode = error.statusCode;
+
+      if (statusCode === 400) {
+        return reply.code(400).send({
+          statusCode: 400,
+          error: 'Bad Request',
+          message: error.message,
+        });
+      }
+
+      if (statusCode === 401) {
+        return reply.code(401).send({
+          statusCode: 401,
+          error: 'Unauthorized',
+          message: error.message,
+        });
+      }
     }
 
     if (error instanceof NotFoundError) {
