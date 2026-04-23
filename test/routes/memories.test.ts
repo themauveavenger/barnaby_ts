@@ -258,7 +258,7 @@ describe('Memories API', () => {
       // Verify memory_tags rows are gone (would cause 404 above, but let's be explicit)
       const tagCount = app.db
         .prepare('SELECT COUNT(*) as count FROM memory_tags WHERE memory_id = ?')
-        .get(created.id);
+        .get(created.id) as { count: number };
       expect(tagCount.count).toBe(0);
     });
   });
