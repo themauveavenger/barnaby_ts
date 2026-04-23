@@ -15,12 +15,11 @@
 - The `tsconfig.json` extends `@tsconfig/node24` and `@tsconfig/node-ts`, which enforce:
   - **`verbatimModuleSyntax`**: Use `import type` / `export type` for type-only imports/exports.
   - **`erasableSyntaxOnly`**: Do not use `enum`, `namespace`, or parameter properties in classes.
-  - **`rewriteRelativeImportExtensions`**: Use `.ts` extensions on relative imports (e.g., `import { foo } from './foo.ts'`).
 
 ## Testing
 
 - Prefer end-to-end (e2e) tests over narrow integration tests.
-- Do not use supertest. Use native `fetch` with `vitest` for HTTP assertions.
+- Do not use supertest. Use Fastify's `inject()` with `vitest` for HTTP assertions.
 
 ## Runtime
 
