@@ -6,7 +6,7 @@ import {
   listMemoriesSchema,
   deleteMemorySchema,
 } from './schemas.js';
-import { createMemory, getMemory, listMemories, deleteMemory } from './handlers.js';
+import { createMemory, getMemory, listMemories, deleteMemory, getContext } from './handlers.js';
 
 export default async function memoryRoutes(fastify: FastifyInstance) {
   await fastify.register(basicAuth, {
@@ -23,6 +23,7 @@ export default async function memoryRoutes(fastify: FastifyInstance) {
   fastify.addHook('onRequest', fastify.basicAuth);
 
   fastify.get('/', { schema: listMemoriesSchema }, listMemories);
+  fastify.get('/context', getContext);
   fastify.get('/:id', { schema: getMemorySchema }, getMemory);
   fastify.post('/', { schema: createMemorySchema }, createMemory);
   fastify.delete('/:id', { schema: deleteMemorySchema }, deleteMemory);

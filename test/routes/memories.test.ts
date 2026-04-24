@@ -52,8 +52,9 @@ describe('Memories API', () => {
       expect(body.category).toBe('appointment');
       expect(body.tags).toContain('health');
       expect(body.tags).toContain('reminder');
+      expect(body.permanent).toBe(false);
       expect(body.id).toBeDefined();
-      expect(body.createdAt).toBeDefined();
+      expect(body.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
 
     it('should deduplicate and normalize tags', async () => {
@@ -71,6 +72,24 @@ describe('Memories API', () => {
       expect(response.statusCode).toBe(201);
       const body = response.json();
       expect(body.tags).toEqual(['shop']);
+    });
+
+    it('should create a permanent memory', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: {
+          content: 'I prefer dark mode',
+          category: 'note',
+          permanent: true,
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = response.json();
+      expect(body.permanent).toBe(true);
+      expect(body.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
 
     it('should reject invalid category', async () => {
@@ -124,6 +143,7 @@ describe('Memories API', () => {
       const body = response.json();
       expect(body.id).toBe(created.id);
       expect(body.content).toBe('Find me');
+      expect(body.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
 
     it('should return 404 for non-existent memory', async () => {
@@ -260,6 +280,70 @@ describe('Memories API', () => {
         .prepare('SELECT COUNT(*) as count FROM memory_tags WHERE memory_id = ?')
         .get(created.id) as { count: number };
       expect(tagCount.count).toBe(0);
+    });
+  });
+
+  describe('GET /memories/context', () => {
+    it('should return permanent and recent memories', async () => {
+      // Create permanent memory
+      const permRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: {
+          content: 'Permanent preference',
+          category: 'note',
+          permanent: true,
+        },
+      });
+      const permanent = permRes.json();
+
+      // Create recent memory
+      const recentRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: {
+          content: 'Recent event',
+          category: 'note',
+        },
+      });
+      const recent = recentRes.json();
+
+      // Create old memory (manually backdate)
+      const oldRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: {
+          content: 'Old event',
+          category: 'note',
+        },
+      });
+      const old = oldRes.json();
+      app.db
+        .prepare('UPDATE memories SET created_at = ? WHERE id = ?')
+        .run(Date.now() - 31 * 24 * 60 * 60 * 1000, old.id);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/memories/context',
+        headers: { authorization: authHeader },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.permanent.map((m: { id: string }) => m.id)).toContain(permanent.id);
+      expect(body.recent.map((m: { id: string }) => m.id)).toContain(recent.id);
+      expect(body.recent.map((m: { id: string }) => m.id)).not.toContain(old.id);
+    });
+
+    it('should reject unauthenticated requests', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/memories/context',
+      });
+      expect(response.statusCode).toBe(401);
     });
   });
 });

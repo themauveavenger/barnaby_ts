@@ -9,13 +9,15 @@ export type Memory = {
   content: string;
   category: MemoryCategory;
   tags: string[];
-  createdAt: number;
+  permanent: boolean;
+  createdAt: string; // ISO 8601
 };
 
 export type CreateMemoryBody = {
   content: string;
   category: MemoryCategory;
   tags?: string[];
+  permanent?: boolean;
 };
 
 export type ListMemoriesQuery = {
@@ -30,15 +32,28 @@ export interface MemoryRepository {
   findById(id: string): Memory | null;
   findAll(query: ListMemoriesQuery): { data: Memory[]; total: number };
   delete(id: string): boolean;
+  findForContext(): { permanent: Memory[]; recent: Memory[] };
 }
 
 type MemoryRow = {
   id: string;
   content: string;
   category: MemoryCategory;
+  permanent: number;
   created_at: number;
   tag_names: string | null;
 };
+
+function rowToMemory(row: MemoryRow): Memory {
+  return {
+    id: row.id,
+    content: row.content,
+    category: row.category,
+    tags: row.tag_names ? row.tag_names.split(',') : [],
+    permanent: Boolean(row.permanent),
+    createdAt: new Date(row.created_at).toISOString(),
+  };
+}
 
 export function createMemoryRepository(db: Database): MemoryRepository {
   return {
@@ -47,6 +62,7 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       const createdAt = Date.now();
       const content = data.content.trim();
       const category = data.category.toLowerCase() as MemoryCategory;
+      const permanent = data.permanent ? 1 : 0;
       const tags = [
         ...new Set(
           (data.tags || [])
@@ -56,7 +72,7 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       ];
 
       const insertMemory = db.prepare(
-        'INSERT INTO memories (id, content, category, created_at) VALUES (?, ?, ?, ?)'
+        'INSERT INTO memories (id, content, category, permanent, created_at) VALUES (?, ?, ?, ?, ?)'
       );
       const insertTag = db.prepare(
         'INSERT OR IGNORE INTO tags (name) VALUES (?)'
@@ -66,7 +82,7 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       );
 
       const transaction = db.transaction(() => {
-        insertMemory.run(id, content, category, createdAt);
+        insertMemory.run(id, content, category, permanent, createdAt);
         for (const tag of tags) {
           insertTag.run(tag);
           linkTag.run(id, tag);
@@ -92,13 +108,7 @@ export function createMemoryRepository(db: Database): MemoryRepository {
 
       if (!row) return null;
 
-      return {
-        id: row.id,
-        content: row.content,
-        category: row.category,
-        tags: row.tag_names ? row.tag_names.split(',') : [],
-        createdAt: row.created_at,
-      };
+      return rowToMemory(row);
     },
 
     findAll(query) {
@@ -151,15 +161,44 @@ export function createMemoryRepository(db: Database): MemoryRepository {
 
       const rows = db.prepare(dataSql).all(...params, limit, offset) as MemoryRow[];
 
-      const data = rows.map((row) => ({
-        id: row.id,
-        content: row.content,
-        category: row.category,
-        tags: row.tag_names ? row.tag_names.split(',') : [],
-        createdAt: row.created_at,
-      }));
+      const data = rows.map((row) => rowToMemory(row));
 
       return { data, total };
+    },
+
+    findForContext() {
+      const days = parseInt(process.env.CONTEXT_WINDOW_DAYS || '30', 10);
+      const effectiveDays = Number.isNaN(days) ? 30 : days;
+      const cutoff = Date.now() - effectiveDays * 24 * 60 * 60 * 1000;
+
+      const permanentRows = db
+        .prepare(
+          `SELECT m.*, GROUP_CONCAT(t.name) as tag_names
+           FROM memories m
+           LEFT JOIN memory_tags mt ON m.id = mt.memory_id
+           LEFT JOIN tags t ON mt.tag_id = t.id
+           WHERE m.permanent = 1
+           GROUP BY m.id
+           ORDER BY m.created_at DESC`
+        )
+        .all() as MemoryRow[];
+
+      const recentRows = db
+        .prepare(
+          `SELECT m.*, GROUP_CONCAT(t.name) as tag_names
+           FROM memories m
+           LEFT JOIN memory_tags mt ON m.id = mt.memory_id
+           LEFT JOIN tags t ON mt.tag_id = t.id
+           WHERE m.permanent = 0 AND m.created_at >= ?
+           GROUP BY m.id
+           ORDER BY m.created_at DESC`
+        )
+        .all(cutoff) as MemoryRow[];
+
+      return {
+        permanent: permanentRows.map((row) => rowToMemory(row)),
+        recent: recentRows.map((row) => rowToMemory(row)),
+      };
     },
 
     delete(id) {
