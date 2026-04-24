@@ -29,7 +29,7 @@
     {{#each memories}}
       <li>
         <p>{{content}}</p>
-        <p>Category: {{category}} | Created: {{createdAt}}{{#if permanent}} | Permanent{{/if}}</p>
+        <p>Category: {{category}} | Created: {{formattedDate}}{{#if permanent}} | Permanent{{/if}}</p>
         {{#if tags.length}}
           <p>Tags: {{#each tags}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}</p>
         {{/if}}

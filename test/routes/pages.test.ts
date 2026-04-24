@@ -44,6 +44,18 @@ describe('Memories Page', () => {
     expect(response.payload).toContain('Test memory');
     expect(response.payload).toContain('note');
     expect(response.payload).toContain('test');
+
+    const now = new Date();
+    const weekday = now.toLocaleDateString('en-US', { weekday: 'long' });
+    const month = now.toLocaleDateString('en-US', { month: 'long' });
+    const day = now.getDate();
+    let hours = now.getHours();
+    const ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const formattedDatePrefix = `${weekday} ${month} ${day}`;
+    expect(response.payload).toContain(formattedDatePrefix);
+    expect(response.payload).toContain(ampm);
   });
 
   it('should support pagination', async () => {
@@ -134,6 +146,15 @@ describe('Memories Page', () => {
     expect(response.statusCode).toBe(200);
     expect(response.payload).toContain('Tagged memory');
     expect(response.payload).not.toContain('Untagged memory');
+  });
+
+  it('should reject invalid query parameters', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/?category=invalid',
+      headers: { authorization: authHeader },
+    });
+    expect(response.statusCode).toBe(400);
   });
 
   it('should show empty state when no memories exist', async () => {
