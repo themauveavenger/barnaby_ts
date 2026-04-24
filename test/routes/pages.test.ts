@@ -1,15 +1,15 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { buildTestApp } from '../helper.js';
 
 describe('Memories Page', () => {
   let app: Awaited<ReturnType<typeof buildTestApp>>;
   const authHeader = 'Basic ' + Buffer.from('test:test').toString('base64');
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     app = await buildTestApp();
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     await app.close();
   });
 
@@ -22,7 +22,6 @@ describe('Memories Page', () => {
   });
 
   it('should return HTML with memories', async () => {
-    // Seed a memory
     await app.inject({
       method: 'POST',
       url: '/memories',
@@ -48,7 +47,6 @@ describe('Memories Page', () => {
   });
 
   it('should support pagination', async () => {
-    // Create 25 memories to force pagination
     for (let i = 0; i < 25; i++) {
       await app.inject({
         method: 'POST',
@@ -84,6 +82,16 @@ describe('Memories Page', () => {
       },
     });
 
+    await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: {
+        content: 'Read book',
+        category: 'note',
+      },
+    });
+
     const response = await app.inject({
       method: 'GET',
       url: '/?category=purchase',
@@ -92,10 +100,31 @@ describe('Memories Page', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.payload).toContain('Buy milk');
-    expect(response.payload).not.toContain('Test memory');
+    expect(response.payload).not.toContain('Read book');
   });
 
   it('should filter by tags', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: {
+        content: 'Tagged memory',
+        category: 'note',
+        tags: ['test'],
+      },
+    });
+
+    await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: {
+        content: 'Untagged memory',
+        category: 'note',
+      },
+    });
+
     const response = await app.inject({
       method: 'GET',
       url: '/?tags=test',
@@ -103,6 +132,18 @@ describe('Memories Page', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.payload).toContain('Test memory');
+    expect(response.payload).toContain('Tagged memory');
+    expect(response.payload).not.toContain('Untagged memory');
+  });
+
+  it('should show empty state when no memories exist', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/',
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain('No memories found');
   });
 });
