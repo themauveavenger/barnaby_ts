@@ -1,0 +1,57 @@
+<h1>Memories</h1>
+
+<form method="get" action="/">
+  <label>
+    Category:
+    <select name="category">
+      <option value="">All</option>
+      <option value="appointment" {{#if filters.categoryAppointment}}selected{{/if}}>Appointment</option>
+      <option value="note" {{#if filters.categoryNote}}selected{{/if}}>Note</option>
+      <option value="todo" {{#if filters.categoryTodo}}selected{{/if}}>Todo</option>
+      <option value="purchase" {{#if filters.categoryPurchase}}selected{{/if}}>Purchase</option>
+    </select>
+  </label>
+
+  <label>
+    Tags:
+    <input type="text" name="tags" value="{{filters.tags}}" placeholder="comma-separated">
+  </label>
+
+  <button type="submit">Filter</button>
+</form>
+
+{{#if error}}
+  <p style="color: red;">{{error}}</p>
+{{/if}}
+
+{{#if memories.length}}
+  <ul>
+    {{#each memories}}
+      <li>
+        <p>{{content}}</p>
+        <p>Category: {{category}} | Created: {{createdAt}}{{#if permanent}} | Permanent{{/if}}</p>
+        {{#if tags.length}}
+          <p>Tags: {{#each tags}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}</p>
+        {{/if}}
+      </li>
+    {{/each}}
+  </ul>
+
+  <nav>
+    {{#if pagination.hasPrevious}}
+      <a href="{{pagination.previousUrl}}">Previous</a>
+    {{else}}
+      <span>Previous</span>
+    {{/if}}
+
+    <span>Page {{pagination.page}} of {{pagination.totalPages}}</span>
+
+    {{#if pagination.hasNext}}
+      <a href="{{pagination.nextUrl}}">Next</a>
+    {{else}}
+      <span>Next</span>
+    {{/if}}
+  </nav>
+{{else}}
+  <p>No memories found.</p>
+{{/if}}
