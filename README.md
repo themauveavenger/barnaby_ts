@@ -14,12 +14,12 @@ Barnaby's primary method of communication is via Telegram API. If Barnaby sends 
 
 ## Roadmap
 
-| Phase | Feature | Status |
-|-------|---------|--------|
-| 1 | Core Memories API (CRUD + tags + auth) | Done |
-| 2 | Voice Memos + Web page for memories | Not started |
-| 3 | LLM Integration | Not started |
-| 4+ | Daily Briefings, Telegram, YNAB + MCP, Home Assistant | Not started |
+| Phase | Feature                                               | Status      |
+|-------|-------------------------------------------------------|-------------|
+| 1     | Core Memories API (CRUD + tags + auth)                | Done        |
+| 2     | Voice Memos + Web page for memories                   | Not started |
+| 3     | LLM Integration                                       | Not started |
+| 4+    | Daily Briefings, Telegram, YNAB + MCP, Home Assistant | Not started |
 
 ## Planned Features
 - "memories" for the assistant, stored in a database
