@@ -1,7 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { buildTestApp } from '../helper.js';
+import { createAgentSession } from '@mariozechner/pi-coding-agent';
 
 // Mock the pi SDK packages so tests don't need real API keys
+const mockSession = {
+  subscribe: vi.fn(),
+  prompt: vi.fn(async () => {}),
+  getLastAssistantText: vi.fn(() => 'Hello from mock LLM'),
+  dispose: vi.fn(),
+};
+
 vi.mock('@mariozechner/pi-coding-agent', async () => {
   return {
     AuthStorage: {
@@ -11,11 +19,7 @@ vi.mock('@mariozechner/pi-coding-agent', async () => {
       create: vi.fn(() => ({})),
     },
     createAgentSession: vi.fn(async () => ({
-      session: {
-        subscribe: vi.fn(),
-        prompt: vi.fn(async () => {}),
-        getLastAssistantText: vi.fn(() => 'Hello from mock LLM'),
-      },
+      session: mockSession,
     })),
     SessionManager: {
       inMemory: vi.fn(() => ({})),
@@ -97,5 +101,32 @@ describe('Chat API', () => {
     expect(body).toHaveProperty('response');
     expect(typeof body.response).toBe('string');
     expect(body.response).toBe('Hello from mock LLM');
+  });
+
+  it('should create an ephemeral session with no tools', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/chat',
+      headers: { authorization: authHeader },
+      payload: { message: 'hello' },
+    });
+
+    expect(createAgentSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        noTools: 'all',
+        sessionManager: expect.anything(),
+      })
+    );
+  });
+
+  it('should dispose the session after use', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/chat',
+      headers: { authorization: authHeader },
+      payload: { message: 'hello' },
+    });
+
+    expect(mockSession.dispose).toHaveBeenCalled();
   });
 });

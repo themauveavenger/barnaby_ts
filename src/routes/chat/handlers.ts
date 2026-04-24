@@ -1,6 +1,5 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { createAgentSession, SessionManager } from '@mariozechner/pi-coding-agent';
-import { getModel } from '@mariozechner/pi-ai';
 
 export type ChatBody = {
   message: string;
@@ -10,9 +9,7 @@ export async function chatHandler(
   request: FastifyRequest<{ Body: ChatBody }>,
   reply: FastifyReply
 ) {
-  const { authStorage, modelRegistry } = request.server.agent;
-
-  const model = getModel('opencode-go', 'kimi-k2.5');
+  const { authStorage, modelRegistry, model } = request.server.agent;
 
   const { session } = await createAgentSession({
     model,
@@ -22,8 +19,11 @@ export async function chatHandler(
     noTools: 'all',
   });
 
-  await session.prompt(request.body.message);
-
-  const responseText = session.getLastAssistantText() ?? '';
-  return { response: responseText };
+  try {
+    await session.prompt(request.body.message);
+    const responseText = session.getLastAssistantText() ?? '';
+    return { response: responseText };
+  } finally {
+    session.dispose();
+  }
 }
