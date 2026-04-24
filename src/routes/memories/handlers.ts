@@ -43,3 +43,8 @@ export async function deleteMemory(
   }
   reply.code(204);
 }
+
+export async function getContext(request: FastifyRequest) {
+  const context = request.server.memoryRepository.findForContext();
+  return context;
+}
