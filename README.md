@@ -18,8 +18,34 @@ Barnaby's primary method of communication is via Telegram API. If Barnaby sends 
 |-------|-------------------------------------------------------|-------------|
 | 1     | Core Memories API (CRUD + tags + auth)                | Done        |
 | 2     | Voice Memos + Web page for memories                   | Done        |
-| 3     | LLM Integration                                       | Not started |
+| 3.1   | LLM Chat endpoint (basic send/receive via pi-mono)    | Done        |
+| 3.2   | LLM with memory context                               | Not started |
+| 3.3   | Multi-turn session persistence                        | Not started |
+| 3.4   | Streaming chat responses                              | Not started |
 | 4+    | Daily Briefings, Telegram, YNAB + MCP, Home Assistant | Not started |
+
+## LLM Integration
+
+Barnaby uses the `@mariozechner/pi-coding-agent` SDK (pi-mono) with the OpenCode Go provider. The `POST /chat` endpoint accepts a JSON body `{ "message": string }` and returns `{ "response": string }`.
+
+### Environment Variables
+- `OPENCODE_API_KEY` — your OpenCode Go API key (get from [opencode.ai](https://opencode.ai/auth))
+- `BASIC_AUTH_USERNAME` / `BASIC_AUTH_PASSWORD` — same auth as the rest of the API
+
+### Example
+```bash
+curl -X POST http://localhost:3000/chat \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic $(echo -n 'user:pass' | base64)" \
+  -d '{"message": "Say hello in one word"}'
+```
+
+Response: `{"response":"Hello"}`
+
+### Notes
+- Each request creates a fresh ephemeral in-memory session with no tool access.
+- Local context files (e.g., `AGENTS.md`) are intentionally suppressed so the LLM only sees the user's message.
+- Multi-turn conversations and memory-aware context are planned for Phase 3.2+.
 
 ## Planned Features
 - "memories" for the assistant, stored in a database
