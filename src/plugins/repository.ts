@@ -168,7 +168,8 @@ export function createMemoryRepository(db: Database): MemoryRepository {
 
     findForContext() {
       const days = parseInt(process.env.CONTEXT_WINDOW_DAYS || '30', 10);
-      const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+      const effectiveDays = Number.isNaN(days) ? 30 : days;
+      const cutoff = Date.now() - effectiveDays * 24 * 60 * 60 * 1000;
 
       const permanentRows = db
         .prepare(

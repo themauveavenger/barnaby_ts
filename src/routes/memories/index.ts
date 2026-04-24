@@ -23,8 +23,8 @@ export default async function memoryRoutes(fastify: FastifyInstance) {
   fastify.addHook('onRequest', fastify.basicAuth);
 
   fastify.get('/', { schema: listMemoriesSchema }, listMemories);
-  fastify.get('/:id', { schema: getMemorySchema }, getMemory);
   fastify.get('/context', getContext);
+  fastify.get('/:id', { schema: getMemorySchema }, getMemory);
   fastify.post('/', { schema: createMemorySchema }, createMemory);
   fastify.delete('/:id', { schema: deleteMemorySchema }, deleteMemory);
 }

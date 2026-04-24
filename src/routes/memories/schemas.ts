@@ -9,6 +9,7 @@ export const createMemorySchema = {
         type: 'string',
         enum: ['appointment', 'note', 'todo', 'purchase'],
       },
+      permanent: { type: 'boolean', default: false },
       tags: {
         type: 'array',
         items: { type: 'string', minLength: 1 },
