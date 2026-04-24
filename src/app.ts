@@ -17,7 +17,7 @@ export async function buildApp() {
 
   await app.register(view, {
     engine: { handlebars },
-    root: new URL('../templates', import.meta.url).pathname,
+    root: new URL('./templates', import.meta.url).pathname,
     layout: 'layout.hbs',
     viewExt: 'hbs',
     propertyName: 'view',
