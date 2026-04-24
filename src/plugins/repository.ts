@@ -161,13 +161,43 @@ export function createMemoryRepository(db: Database): MemoryRepository {
 
       const rows = db.prepare(dataSql).all(...params, limit, offset) as MemoryRow[];
 
-      const data = rows.map(rowToMemory);
+      const data = rows.map((row) => rowToMemory(row));
 
       return { data, total };
     },
 
     findForContext() {
-      return { permanent: [], recent: [] };
+      const days = parseInt(process.env.CONTEXT_WINDOW_DAYS || '30', 10);
+      const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+
+      const permanentRows = db
+        .prepare(
+          `SELECT m.*, GROUP_CONCAT(t.name) as tag_names
+           FROM memories m
+           LEFT JOIN memory_tags mt ON m.id = mt.memory_id
+           LEFT JOIN tags t ON mt.tag_id = t.id
+           WHERE m.permanent = 1
+           GROUP BY m.id
+           ORDER BY m.created_at DESC`
+        )
+        .all() as MemoryRow[];
+
+      const recentRows = db
+        .prepare(
+          `SELECT m.*, GROUP_CONCAT(t.name) as tag_names
+           FROM memories m
+           LEFT JOIN memory_tags mt ON m.id = mt.memory_id
+           LEFT JOIN tags t ON mt.tag_id = t.id
+           WHERE m.permanent = 0 AND m.created_at >= ?
+           GROUP BY m.id
+           ORDER BY m.created_at DESC`
+        )
+        .all(cutoff) as MemoryRow[];
+
+      return {
+        permanent: permanentRows.map((row) => rowToMemory(row)),
+        recent: recentRows.map((row) => rowToMemory(row)),
+      };
     },
 
     delete(id) {
