@@ -52,8 +52,9 @@ describe('Memories API', () => {
       expect(body.category).toBe('appointment');
       expect(body.tags).toContain('health');
       expect(body.tags).toContain('reminder');
+      expect(body.permanent).toBe(false);
       expect(body.id).toBeDefined();
-      expect(body.createdAt).toBeDefined();
+      expect(body.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
 
     it('should deduplicate and normalize tags', async () => {
@@ -71,6 +72,24 @@ describe('Memories API', () => {
       expect(response.statusCode).toBe(201);
       const body = response.json();
       expect(body.tags).toEqual(['shop']);
+    });
+
+    it('should create a permanent memory', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: {
+          content: 'I prefer dark mode',
+          category: 'note',
+          permanent: true,
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = response.json();
+      expect(body.permanent).toBe(true);
+      expect(body.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
 
     it('should reject invalid category', async () => {
@@ -124,6 +143,7 @@ describe('Memories API', () => {
       const body = response.json();
       expect(body.id).toBe(created.id);
       expect(body.content).toBe('Find me');
+      expect(body.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     });
 
     it('should return 404 for non-existent memory', async () => {
