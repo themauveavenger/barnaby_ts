@@ -1,5 +1,7 @@
 import Fastify from 'fastify';
 import basicAuth from '@fastify/basic-auth';
+import helmet from "@fastify/helmet";
+import fStatic from "@fastify/static";
 import view from '@fastify/view';
 import handlebars from 'handlebars';
 import errorHandlerPlugin from './plugins/error-handler.js';
@@ -10,6 +12,12 @@ import pageRoutes from './routes/pages/index.js';
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
+
+  await app.register(helmet);
+  await app.register(fStatic, {
+    root: new URL("../public", import.meta.url).pathname,
+    prefix: "/"
+  });
 
   await app.register(errorHandlerPlugin);
   await app.register(databasePlugin);
