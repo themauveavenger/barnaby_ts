@@ -9,13 +9,15 @@ export type Memory = {
   content: string;
   category: MemoryCategory;
   tags: string[];
-  createdAt: number;
+  permanent: boolean;
+  createdAt: string; // ISO 8601
 };
 
 export type CreateMemoryBody = {
   content: string;
   category: MemoryCategory;
   tags?: string[];
+  permanent?: boolean;
 };
 
 export type ListMemoriesQuery = {
@@ -30,15 +32,28 @@ export interface MemoryRepository {
   findById(id: string): Memory | null;
   findAll(query: ListMemoriesQuery): { data: Memory[]; total: number };
   delete(id: string): boolean;
+  findForContext(): { permanent: Memory[]; recent: Memory[] };
 }
 
 type MemoryRow = {
   id: string;
   content: string;
   category: MemoryCategory;
+  permanent: number;
   created_at: number;
   tag_names: string | null;
 };
+
+function rowToMemory(row: MemoryRow): Memory {
+  return {
+    id: row.id,
+    content: row.content,
+    category: row.category,
+    tags: row.tag_names ? row.tag_names.split(',') : [],
+    permanent: Boolean(row.permanent),
+    createdAt: new Date(row.created_at).toISOString(),
+  };
+}
 
 export function createMemoryRepository(db: Database): MemoryRepository {
   return {
@@ -92,13 +107,7 @@ export function createMemoryRepository(db: Database): MemoryRepository {
 
       if (!row) return null;
 
-      return {
-        id: row.id,
-        content: row.content,
-        category: row.category,
-        tags: row.tag_names ? row.tag_names.split(',') : [],
-        createdAt: row.created_at,
-      };
+      return rowToMemory(row);
     },
 
     findAll(query) {
@@ -151,15 +160,13 @@ export function createMemoryRepository(db: Database): MemoryRepository {
 
       const rows = db.prepare(dataSql).all(...params, limit, offset) as MemoryRow[];
 
-      const data = rows.map((row) => ({
-        id: row.id,
-        content: row.content,
-        category: row.category,
-        tags: row.tag_names ? row.tag_names.split(',') : [],
-        createdAt: row.created_at,
-      }));
+      const data = rows.map(rowToMemory);
 
       return { data, total };
+    },
+
+    findForContext() {
+      return { permanent: [], recent: [] };
     },
 
     delete(id) {
