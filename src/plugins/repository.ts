@@ -120,7 +120,6 @@ export function createMemoryRepository(db: Database): MemoryRepository {
         params.push(query.category.toLowerCase());
       }
 
-      let tagFilterClause = '';
       if (query.tags) {
         const tagList = query.tags
           .split(',')
@@ -128,12 +127,12 @@ export function createMemoryRepository(db: Database): MemoryRepository {
           .filter(Boolean);
         if (tagList.length > 0) {
           const placeholders = tagList.map(() => '?').join(',');
-          tagFilterClause = `AND m.id IN (
+          conditions.push(`m.id IN (
             SELECT mt.memory_id
             FROM memory_tags mt
             JOIN tags t ON mt.tag_id = t.id
             WHERE t.name IN (${placeholders})
-          )`;
+          )`);
           params.push(...tagList);
         }
       }
@@ -142,7 +141,7 @@ export function createMemoryRepository(db: Database): MemoryRepository {
         ? `WHERE ${conditions.join(' AND ')}`
         : '';
 
-      const countSql = `SELECT COUNT(*) as total FROM memories m ${whereClause} ${tagFilterClause}`;
+      const countSql = `SELECT COUNT(*) as total FROM memories m ${whereClause}`;
       const countRow = db.prepare(countSql).get(...params) as { total: number };
       const total = countRow.total;
 
@@ -154,7 +153,7 @@ export function createMemoryRepository(db: Database): MemoryRepository {
                        FROM memories m
                        LEFT JOIN memory_tags mt ON m.id = mt.memory_id
                        LEFT JOIN tags t ON mt.tag_id = t.id
-                       ${whereClause} ${tagFilterClause}
+                       ${whereClause}
                        GROUP BY m.id
                        ORDER BY m.created_at DESC
                        LIMIT ? OFFSET ?`;
