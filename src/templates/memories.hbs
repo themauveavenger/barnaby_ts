@@ -25,17 +25,36 @@
 {{/if}}
 
 {{#if memories.length}}
-  <ul>
+  <dl>
     {{#each memories}}
-      <li>
-        <p>{{content}}</p>
-        <p>Category: {{category}} | Created: {{formattedDate}}{{#if permanent}} | Permanent{{/if}}</p>
-        {{#if tags.length}}
-          <p>Tags: {{#each tags}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}</p>
+      <dt>Content</dt>
+      <dd>{{content}}</dd>
+
+      <dt>Category</dt>
+      <dd>{{category}}</dd>
+
+      <dt>Create Date</dt>
+      <dd>{{formattedDate}}</dd>
+
+      <dt>Permanent?</dt>
+      <dd>
+        {{#if permanent}}
+          Yes
+        {{else}}
+          No
         {{/if}}
-      </li>
+      </dd>
+
+      <dt>Tags</dt>
+      {{#if tags.length}}
+        {{#each tags}}
+          <dd>{{this}}</dd>
+        {{/each}}
+      {{else}}
+        <dd>No Tags</dd>
+      {{/if}}
     {{/each}}
-  </ul>
+  </dl>
 
   <nav>
     {{#if pagination.hasPrevious}}
