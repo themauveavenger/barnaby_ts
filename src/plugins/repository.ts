@@ -62,6 +62,7 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       const createdAt = Date.now();
       const content = data.content.trim();
       const category = data.category.toLowerCase() as MemoryCategory;
+      const permanent = data.permanent ? 1 : 0;
       const tags = [
         ...new Set(
           (data.tags || [])
@@ -71,7 +72,7 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       ];
 
       const insertMemory = db.prepare(
-        'INSERT INTO memories (id, content, category, created_at) VALUES (?, ?, ?, ?)'
+        'INSERT INTO memories (id, content, category, permanent, created_at) VALUES (?, ?, ?, ?, ?)'
       );
       const insertTag = db.prepare(
         'INSERT OR IGNORE INTO tags (name) VALUES (?)'
@@ -81,7 +82,7 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       );
 
       const transaction = db.transaction(() => {
-        insertMemory.run(id, content, category, createdAt);
+        insertMemory.run(id, content, category, permanent, createdAt);
         for (const tag of tags) {
           insertTag.run(tag);
           linkTag.run(id, tag);
