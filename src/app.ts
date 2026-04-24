@@ -1,5 +1,7 @@
 import Fastify from 'fastify';
 import basicAuth from '@fastify/basic-auth';
+import view from '@fastify/view';
+import handlebars from 'handlebars';
 import errorHandlerPlugin from './plugins/error-handler.js';
 import databasePlugin from './plugins/database.js';
 import repositoryPlugin from './plugins/repository.js';
@@ -12,6 +14,14 @@ export async function buildApp() {
   await app.register(errorHandlerPlugin);
   await app.register(databasePlugin);
   await app.register(repositoryPlugin);
+
+  await app.register(view, {
+    engine: { handlebars },
+    root: new URL('../templates', import.meta.url).pathname,
+    layout: 'layout.hbs',
+    viewExt: 'hbs',
+    propertyName: 'view',
+  });
 
   await app.register(basicAuth, {
     validate: async (username, password) => {
