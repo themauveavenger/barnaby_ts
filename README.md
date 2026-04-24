@@ -17,7 +17,7 @@ Barnaby's primary method of communication is via Telegram API. If Barnaby sends 
 | Phase | Feature                                               | Status      |
 |-------|-------------------------------------------------------|-------------|
 | 1     | Core Memories API (CRUD + tags + auth)                | Done        |
-| 2     | Voice Memos + Web page for memories                   | Not started |
+| 2     | Voice Memos + Web page for memories                   | Done        |
 | 3     | LLM Integration                                       | Not started |
 | 4+    | Daily Briefings, Telegram, YNAB + MCP, Home Assistant | Not started |
 
@@ -33,9 +33,51 @@ Barnaby's primary method of communication is via Telegram API. If Barnaby sends 
   - creating & editing transactions
 - integration with home assistant
 
-## How does Barnaby acquire new memories? 
+## How does Barnaby acquire new memories?
 
-I will use iOS shortcuts to transcribe voice to text. The text will then be an input to a remote SSH script that runs on the same server where Barnaby is hosted. The SSH script will call the POST /memories route to insert a new memory into the database.
+I use iOS Shortcuts to transcribe voice to text and POST directly to Barnaby's `/memories` endpoint. This requires the [Actions](https://sindresorhus.com/actions) app by Sindre Sorhus, which provides an extended "Get Contents of URL" action that supports custom headers (like Basic Auth) and JSON bodies.
+
+No SSH script needed — the shortcut makes the HTTP POST directly from the device.
+
+## iOS Shortcuts Notes
+
+### Prerequisites
+
+- Install the [Actions](https://sindresorhus.com/actions) app by Sindre Sorhus (provides the "Get Contents of URL (Extended)" action).
+- Set `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` in your `.env` file.
+
+### Shortcut 1: Build Memory Payload
+
+This shortcut records audio, transcribes it, and builds the JSON payload.
+
+1. **Record Audio** — captures a voice memo.
+2. **Transcribe Audio** — converts speech to text (built-in iOS action).
+3. **Dictionary** — builds the request body:
+   - `content` → output of Transcribe Audio (magic variable)
+   - `category` → `note`
+   - `permanent` → `false`
+   - `tags` → leave empty (omitted)
+
+### Shortcut 2: New Memory
+
+This shortcut calls "Build Memory Payload" and sends it to Barnaby.
+
+1. **Run Shortcut** → choose "Build Memory Payload"
+   - This returns the dictionary built above.
+2. **Get Contents of URL (Extended)** (from Actions app):
+   - **Method**: `POST`
+   - **URL**: `https://your-barnaby-server/memories`
+   - **Headers** (tap "+" to add each):
+     - `Authorization` → `Basic <base64(username:password)>`
+     - `Content-Type` → `application/json`
+   - **Request Body**: `JSON`
+   - **JSON Body**: output from Step 1 (the dictionary — Shortcuts auto-serializes it)
+
+### Tips
+
+- **Rename magic variables** for clarity: tap any blue variable bubble, choose "Rename". Good names: `MemoryPayload`, `TranscribedText`, `AuthHeader`.
+- **Base64 encoding**: if you want to build the auth header dynamically, use the built-in `Base64 Encode` action on a `Text` containing `username:password`.
+- **Category shortcuts**: you can create multiple "Build Memory Payload" variants (or pass category as input) for different memory types like `appointment`, `todo`, or `purchase`.
 
 ## Memories
 
