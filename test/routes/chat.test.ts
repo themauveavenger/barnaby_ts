@@ -10,6 +10,10 @@ const mockSession = {
   dispose: vi.fn(),
 };
 
+const mockResourceLoader = {
+  reload: vi.fn(async () => {}),
+};
+
 vi.mock('@mariozechner/pi-coding-agent', async () => {
   return {
     AuthStorage: {
@@ -18,6 +22,9 @@ vi.mock('@mariozechner/pi-coding-agent', async () => {
     ModelRegistry: {
       create: vi.fn(() => ({})),
     },
+    DefaultResourceLoader: vi.fn(function DefaultResourceLoader() {
+      return mockResourceLoader;
+    }),
     createAgentSession: vi.fn(async () => ({
       session: mockSession,
     })),

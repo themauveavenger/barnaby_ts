@@ -9,12 +9,13 @@ export async function chatHandler(
   request: FastifyRequest<{ Body: ChatBody }>,
   reply: FastifyReply
 ) {
-  const { authStorage, modelRegistry, model } = request.server.agent;
+  const { authStorage, modelRegistry, model, resourceLoader } = request.server.agent;
 
   const { session } = await createAgentSession({
     model,
     authStorage,
     modelRegistry,
+    resourceLoader,
     sessionManager: SessionManager.inMemory(),
     noTools: 'all',
   });
