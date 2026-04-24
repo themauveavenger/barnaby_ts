@@ -282,4 +282,68 @@ describe('Memories API', () => {
       expect(tagCount.count).toBe(0);
     });
   });
+
+  describe('GET /memories/context', () => {
+    it('should return permanent and recent memories', async () => {
+      // Create permanent memory
+      const permRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: {
+          content: 'Permanent preference',
+          category: 'note',
+          permanent: true,
+        },
+      });
+      const permanent = permRes.json();
+
+      // Create recent memory
+      const recentRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: {
+          content: 'Recent event',
+          category: 'note',
+        },
+      });
+      const recent = recentRes.json();
+
+      // Create old memory (manually backdate)
+      const oldRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: {
+          content: 'Old event',
+          category: 'note',
+        },
+      });
+      const old = oldRes.json();
+      app.db
+        .prepare('UPDATE memories SET created_at = ? WHERE id = ?')
+        .run(Date.now() - 31 * 24 * 60 * 60 * 1000, old.id);
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/memories/context',
+        headers: { authorization: authHeader },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.permanent.map((m: { id: string }) => m.id)).toContain(permanent.id);
+      expect(body.recent.map((m: { id: string }) => m.id)).toContain(recent.id);
+      expect(body.recent.map((m: { id: string }) => m.id)).not.toContain(old.id);
+    });
+
+    it('should reject unauthenticated requests', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/memories/context',
+      });
+      expect(response.statusCode).toBe(401);
+    });
+  });
 });
