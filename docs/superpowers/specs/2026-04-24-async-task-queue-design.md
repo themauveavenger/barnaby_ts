@@ -160,6 +160,53 @@ The agent will eventually need access to external services (YNAB, Google Calenda
 
 ---
 
+## Maybe — LLM as Parser / Router
+
+An alternative to giving the agent direct tool access: use the agent strictly as a **natural language parser and classifier**, then let Barnaby's deterministic code execute the action.
+
+### How it works
+
+1. User sends: `"I spent $220 at Target on books and groceries"`
+2. Agent parses this into structured JSON:
+   ```json
+   {
+     "intent": "create_transaction",
+     "service": "ynab",
+     "payload": {
+       "amount": 220.00,
+       "payee": "Target",
+       "category": "Split: Books, Groceries",
+       "account": "Checking"
+     }
+   }
+   ```
+3. Barnaby's code receives the JSON, validates it against a schema, and calls the YNAB API directly.
+4. The agent never touches YNAB. It only understands language.
+
+### Why this might be better
+
+- **Safety** — The agent can't accidentally delete budgets or create bad transactions. It only outputs text.
+- **Testability** — The parsing logic is prompt + schema. The execution logic is regular TypeScript with typed APIs.
+- **Reversibility** — If the parser gets it wrong, Barnaby can reject the JSON and ask the user for clarification *before* any external state changes.
+- **Composability** — The same parser could classify intents into "create_memory", "create_calendar_event", "create_transaction", etc., and Barnaby routes each to the right subsystem.
+
+### Why it might be worse
+
+- **More code** — Every integration needs both a parser prompt and an executor implementation.
+- **Less flexible** — The agent can't adapt to new operations without code changes. A tool-calling agent could theoretically learn new APIs on the fly.
+- **Two-phase complexity** — Parse then execute adds latency and another failure mode.
+
+### When to use which
+
+| Pattern | Best for |
+|---------|----------|
+| **LLM as Parser** | Structured, well-defined operations (budget entries, calendar events, memory creation) |
+| **LLM as Actor** | Open-ended research, multi-step reasoning, creative tasks |
+
+Maybe the async task queue supports both: some task types use the parser router, others give the agent full tool access. The task payload could specify a `mode: 'parser' | 'agent'`.
+
+---
+
 ## Out of Scope
 
 - Real-time streaming to the client (Phase 3.4 covers this for `/chat`, not tasks)
