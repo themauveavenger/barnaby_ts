@@ -4,6 +4,9 @@
 
 set -euo pipefail
 
+# loads .env file
+set -o allexport; source .env; set +o allexport
+
 if [ -z "${GOOGLE_CLIENT_ID:-}" ] || [ -z "${GOOGLE_CLIENT_SECRET:-}" ] || [ -z "${GOOGLE_REFRESH_TOKEN:-}" ]; then
   echo "Error: Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN"
   exit 1
