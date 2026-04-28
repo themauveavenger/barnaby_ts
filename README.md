@@ -105,6 +105,69 @@ This shortcut calls "Build Memory Payload" and sends it to Barnaby.
 - **Base64 encoding**: if you want to build the auth header dynamically, use the built-in `Base64 Encode` action on a `Text` containing `username:password`.
 - **Category shortcuts**: you can create multiple "Build Memory Payload" variants (or pass category as input) for different memory types like `appointment`, `todo`, or `purchase`.
 
+## Deployment (Raspberry Pi)
+
+Barnaby can be deployed to a Raspberry Pi on your home network, served behind nginx at `barnaby.pi.local`.
+
+### Prerequisites
+
+- Raspberry Pi running nginx and Pi-hole
+- Node.js managed by [`mise`](https://mise.jdx.dev/)
+- SSH access as `joshjosh`
+
+### Initial Setup (One-Time on the Pi)
+
+1. Clone the repo:
+   ```bash
+   git clone <repo-url> ~/barnaby_ts
+   ```
+
+2. Run the setup script:
+   ```bash
+   ~/barnaby_ts/scripts/setup-pi.sh
+   ```
+
+3. Create the environment file at `~/.config/barnaby/.env`:
+   ```
+   PORT=3001
+   DATABASE_PATH=/home/joshjosh/.local/share/barnaby/barnaby.db
+   BASIC_AUTH_USERNAME=your_username
+   BASIC_AUTH_PASSWORD=your_password
+   CONTEXT_WINDOW_DAYS=30
+   OPENCODE_API_KEY=your_key
+   ```
+
+4. Copy the nginx config and enable it:
+   ```bash
+   sudo cp ~/barnaby_ts/scripts/nginx/barnaby.pi.local /etc/nginx/sites-available/
+   sudo ln -s /etc/nginx/sites-available/barnaby.pi.local /etc/nginx/sites-enabled/
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+
+5. Start the service:
+   ```bash
+   systemctl --user start barnaby
+   ```
+
+### Deploying Updates
+
+From your dev machine, run:
+```bash
+./scripts/deploy.sh
+```
+
+This SSHs into the Pi, pulls the latest code, installs dependencies via `mise`, and restarts the service.
+
+### Database Safety
+
+The SQLite database lives at `~/.local/share/barnaby/barnaby.db` — outside the git repo. The deploy script never touches this directory, so your data is safe across redeploys.
+
+### Architecture Notes
+
+- Barnaby binds to `127.0.0.1:3001` internally to avoid conflicting with Pi-hole on port 80
+- nginx reverse-proxies `barnaby.pi.local` → `127.0.0.1:3001`
+- The systemd user service auto-restarts on failure
+
 ## Memories
 
 These can be anything I decide Barnaby needs to remember for me. Anything from "I have an appointment at 12:00pm" to "This movie was neat!". Memories will be timestamped and categorized. I'm planning to have a couple of buttons mapped to shortcuts that will set the category of a memory.
