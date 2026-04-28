@@ -14,7 +14,7 @@ export type AgentServices = {
 export default fp(async function agentPlugin(fastify: FastifyInstance) {
   const authStorage = AuthStorage.create();
   const modelRegistry = ModelRegistry.create(authStorage);
-  const model = getModel('opencode-go', 'kimi-k2.5');
+  const model = getModel('opencode-go', 'minimax-m2.7');
 
   const resourceLoader = new DefaultResourceLoader({
     cwd: process.cwd(),
@@ -24,6 +24,10 @@ export default fp(async function agentPlugin(fastify: FastifyInstance) {
     noSkills: true,
     noPromptTemplates: true,
     noThemes: true,
+    systemPrompt:
+      'You are a helpful assistant for casual conversation and general questions. ' +
+      'Answer clearly, concisely, and in plain language. ' +
+      'Do not write or explain code unless the user explicitly asks for it.',
   });
   await resourceLoader.reload();
 

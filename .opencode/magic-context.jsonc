@@ -1,11 +1,20 @@
 {
   "$schema": "https://raw.githubusercontent.com/cortexkit/opencode-magic-context/master/assets/magic-context.schema.json",
   "enabled": true,
-
+  "memory": {
+    "enabled": false
+  },
   // Which model the historian uses for background compression,
   // Prefer providers that charge by request instead of tokens
   "historian": {
-    "model": "github-copilot/gpt-5.4",
+    "model": "opencode-go/glm-5",
+    "fallback_models": ["opencode-go/kimi-k2.6"]
+  },
+  "dreamer": {
+    "model": "opencode-go/kimi-k2.6",
     "fallback_models": ["opencode-go/glm-5"]
+  },
+  "sidekick": {
+    "model": "opencode-go/minimax-m2.7"
   }
 }
