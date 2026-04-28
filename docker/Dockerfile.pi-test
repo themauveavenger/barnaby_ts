@@ -1,0 +1,67 @@
+FROM jrei/systemd-debian:12
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    openssh-server \
+    git \
+    curl \
+    sudo \
+    netcat-traditional \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create joshjosh user
+RUN useradd -m -s /bin/bash joshjosh && \
+    echo "joshjosh:joshjosh" | chpasswd && \
+    usermod -aG sudo joshjosh
+
+# Enable lingering for user services without active login
+RUN loginctl enable-linger joshjosh || true
+
+# Install mise as joshjosh
+USER joshjosh
+RUN curl https://mise.run | sh
+ENV PATH="/home/joshjosh/.local/bin:${PATH}"
+
+# Install Node.js LTS via mise
+RUN mise use -g node@lts
+
+# Set up barnaby repo (without .git — see .dockerignore)
+COPY --chown=joshjosh:joshjosh . /home/joshjosh/barnaby_ts/
+
+# Initialize a local git repo with a bare remote so `git pull` works
+RUN cd /home/joshjosh/barnaby_ts && \
+    git init && \
+    git add . && \
+    git commit -m "initial commit" && \
+    git branch -M main && \
+    git init --bare /home/joshjosh/barnaby-remote.git && \
+    git remote add origin /home/joshjosh/barnaby-remote.git && \
+    git push -u origin main
+
+# Create env file
+RUN mkdir -p /home/joshjosh/.config/barnaby && \
+    cat > /home/joshjosh/.config/barnaby/.env <<EOF
+PORT=3001
+DATABASE_PATH=/home/joshjosh/.local/share/barnaby/barnaby.db
+BASIC_AUTH_USERNAME=test
+BASIC_AUTH_PASSWORD=test
+CONTEXT_WINDOW_DAYS=30
+EOF
+
+# Create data dir
+RUN mkdir -p /home/joshjosh/.local/share/barnaby
+
+# Copy systemd service file
+RUN mkdir -p /home/joshjosh/.config/systemd/user && \
+    cp /home/joshjosh/barnaby_ts/scripts/systemd/barnaby.service /home/joshjosh/.config/systemd/user/barnaby.service
+
+USER root
+
+# Enable sshd
+RUN systemctl enable ssh
+
+# Allow password auth for test environment
+RUN sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
+    sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+EXPOSE 22

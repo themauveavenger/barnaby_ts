@@ -1,0 +1,15 @@
+services:
+  pi-test:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.pi-test
+    container_name: barnaby-pi-test
+    privileged: true
+    tmpfs:
+      - /tmp
+      - /run
+      - /run/lock
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    ports:
+      - "2222:22"

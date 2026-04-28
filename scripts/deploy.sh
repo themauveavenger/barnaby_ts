@@ -3,11 +3,12 @@ set -euo pipefail
 
 PI_HOST="${PI_HOST:-pi.local}"
 PI_USER="${PI_USER:-joshjosh}"
+PI_PORT="${PI_PORT:-22}"
 APP_DIR="/home/${PI_USER}/barnaby_ts"
 
-echo "Deploying to ${PI_USER}@${PI_HOST}..."
+echo "Deploying to ${PI_USER}@${PI_HOST}:${PI_PORT}..."
 
-ssh "${PI_USER}@${PI_HOST}" bash -s <<'REMOTE'
+ssh -p "${PI_PORT}" "${PI_USER}@${PI_HOST}" bash -s <<'REMOTE'
   set -euo pipefail
   APP_DIR="${HOME}/barnaby_ts"
 
