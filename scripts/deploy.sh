@@ -16,6 +16,9 @@ ssh -p "${PI_PORT}" "${PI_USER}@${PI_HOST}" bash -s <<'REMOTE'
   cd "${APP_DIR}"
   git pull
 
+  echo "--> Trusting mise config..."
+  mise trust
+
   echo "--> Installing dependencies..."
   mise x -- npm ci
 

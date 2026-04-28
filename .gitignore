@@ -83,6 +83,10 @@ web_modules/
 # Worktrees
 .worktrees/
 
+# Docker test artifacts
+docker/.test-key
+docker/.test-key.pub
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

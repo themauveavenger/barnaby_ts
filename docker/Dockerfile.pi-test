@@ -29,7 +29,9 @@ RUN mise use -g node@lts
 COPY --chown=joshjosh:joshjosh . /home/joshjosh/barnaby_ts/
 
 # Initialize a local git repo with a bare remote so `git pull` works
-RUN cd /home/joshjosh/barnaby_ts && \
+RUN git config --global user.email "test@barnaby.local" && \
+    git config --global user.name "Test User" && \
+    cd /home/joshjosh/barnaby_ts && \
     git init && \
     git add . && \
     git commit -m "initial commit" && \

@@ -5,3 +5,5 @@ node_modules
 .opencode
 docs/superpowers
 *.db
+docker/.test-key
+docker/.test-key.pub
