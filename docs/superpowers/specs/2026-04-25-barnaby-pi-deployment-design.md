@@ -7,6 +7,7 @@ Deploy the Barnaby Fastify application to a Raspberry Pi on the home network, ac
 - Raspberry Pi hostname or mDNS entry resolves to `pi.local`.
 - Pi already runs `nginx` and `pihole`.
 - SSH access is available as user `joshjosh`.
+- Node.js on the Pi is managed by [`mise`](https://mise.jdx.dev/).
 - No SSL/TLS required (plain HTTP on local network).
 - Database must survive redeploys without risk of deletion or overwrite.
 
@@ -43,7 +44,7 @@ Run from the dev machine. It:
 1. SSHs into `joshjosh@pi.local`.
 2. Navigates to `~/barnaby_ts`.
 3. Runs `git pull`.
-4. Runs `npm ci` (or `npm install`) using `package-lock.json`.
+4. Runs `mise x -- npm ci` to install dependencies using the correct Node version.
 5. Restarts the `barnaby` systemd user service via `systemctl --user restart barnaby`.
 
 The script exits immediately if any step fails (`set -e`).
@@ -68,7 +69,7 @@ This is **not** done by the deploy script on every run.
 
 Runs Barnaby as the `joshjosh` user:
 
-- `ExecStart=npx tsx --env-file=${HOME}/.config/barnaby/.env ${HOME}/barnaby_ts/src/index.ts`
+- `ExecStart=mise x -- npx tsx --env-file=${HOME}/.config/barnaby/.env ${HOME}/barnaby_ts/src/index.ts`
 - `Restart=on-failure`
 - `RestartSec=5`
 - `WorkingDirectory=%h/barnaby_ts`
@@ -122,7 +123,7 @@ The SQLite database is stored at a fixed path outside the git clone directory. T
 
 These are performed once manually (or via a separate `scripts/setup-pi.sh` script), not on every deploy:
 
-1. Ensure `node` and `npm` are installed on the Pi.
+1. Ensure `mise` is installed and Node.js is configured via `mise`.
 2. Clone the repo to `~/barnaby_ts`.
 3. Create `~/.config/barnaby/` and `~/.local/share/barnaby/`.
 4. Write the `.env` file to `~/.config/barnaby/.env` with the correct `DATABASE_PATH`.
