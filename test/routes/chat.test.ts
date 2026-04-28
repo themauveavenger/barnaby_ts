@@ -110,6 +110,19 @@ describe('Chat API', () => {
     expect(body.response).toBe('Hello from mock LLM');
   });
 
+  it('should include the current date in the prompt', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/chat',
+      headers: { authorization: authHeader },
+      payload: { message: 'hello' },
+    });
+
+    expect(mockSession.prompt).toHaveBeenCalledWith(
+      expect.stringContaining('Today is')
+    );
+  });
+
   it('should create an ephemeral session with no tools', async () => {
     await app.inject({
       method: 'POST',

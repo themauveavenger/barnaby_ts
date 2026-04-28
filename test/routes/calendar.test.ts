@@ -102,6 +102,9 @@ describe('Calendar API', () => {
     });
 
     expect(mockSession.prompt).toHaveBeenCalledWith(
+      expect.stringContaining('Today is')
+    );
+    expect(mockSession.prompt).toHaveBeenCalledWith(
       expect.stringContaining('Available calendars:')
     );
     expect(mockSession.prompt).toHaveBeenCalledWith(

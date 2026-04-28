@@ -21,7 +21,14 @@ export async function chatHandler(
   });
 
   try {
-    await session.prompt(request.body.message);
+    const today = new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    const prompt = [`Today is ${today}.`, '', request.body.message].join('\n');
+    await session.prompt(prompt);
     const responseText = session.getLastAssistantText() ?? '';
     return { response: responseText };
   } finally {

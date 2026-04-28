@@ -33,7 +33,14 @@ export async function calendarHandler(
   });
 
   try {
+    const today = new Date().toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
     const prompt = [
+      `Today is ${today}.`,
       'You have access to Google Calendar tools.',
       `Available calendars:\n${calendarContext}`,
       'Use ISO 8601 format for all dates and times.',
