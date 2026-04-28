@@ -7,10 +7,13 @@ import handlebars from 'handlebars';
 import errorHandlerPlugin from './plugins/error-handler.js';
 import databasePlugin from './plugins/database.js';
 import repositoryPlugin from './plugins/repository.js';
+import googleAuthPlugin from './plugins/google-auth.js';
+import calendarClientPlugin from './plugins/calendar-client.js';
 import agentPlugin from './plugins/agent.js';
 import memoryRoutes from './routes/memories/index.js';
 import pageRoutes from './routes/pages/index.js';
 import chatRoutes from './routes/chat/index.js';
+import calendarRoutes from './routes/calendar/index.js';
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
@@ -24,6 +27,8 @@ export async function buildApp() {
   await app.register(errorHandlerPlugin);
   await app.register(databasePlugin);
   await app.register(repositoryPlugin);
+  await app.register(googleAuthPlugin);
+  await app.register(calendarClientPlugin);
   await app.register(agentPlugin);
 
   await app.register(view, {
@@ -50,6 +55,7 @@ export async function buildApp() {
   await app.register(memoryRoutes, { prefix: '/memories' });
   await app.register(pageRoutes);
   await app.register(chatRoutes, { prefix: '/chat' });
+  await app.register(calendarRoutes, { prefix: '/calendar' });
 
   return app;
 }
