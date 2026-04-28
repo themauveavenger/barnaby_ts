@@ -22,15 +22,27 @@ Barnaby's primary method of communication is via Telegram API. If Barnaby sends 
 | 3.2   | LLM with memory context                               | Not started |
 | 3.3   | Multi-turn session persistence                        | Not started |
 | 3.4   | Streaming chat responses                              | Not started |
-| 4+    | Daily Briefings, Telegram, YNAB + MCP, Home Assistant | Not started |
+| 4     | Google Calendar integration (read/create/edit)        | Done        |
+| 5+    | Daily Briefings, Telegram, YNAB + MCP, Home Assistant | Not started |
 
 ## LLM Integration
 
 Barnaby uses the `@mariozechner/pi-coding-agent` SDK (pi-mono) with the OpenCode Go provider. The `POST /chat` endpoint accepts a JSON body `{ "message": string }` and returns `{ "response": string }`.
 
 ### Environment Variables
-- `OPENCODE_API_KEY` — your OpenCode Go API key (get from [opencode.ai](https://opencode.ai/auth))
-- `BASIC_AUTH_USERNAME` / `BASIC_AUTH_PASSWORD` — same auth as the rest of the API
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OPENCODE_API_KEY` | Yes | OpenCode Go API key (get from [opencode.ai](https://opencode.ai/auth)) |
+| `BASIC_AUTH_USERNAME` | Yes | HTTP Basic Auth username |
+| `BASIC_AUTH_PASSWORD` | Yes | HTTP Basic Auth password |
+| `GOOGLE_CLIENT_ID` | Yes | Google OAuth 2.0 client ID (for Calendar API) |
+| `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth 2.0 client secret |
+| `GOOGLE_REFRESH_TOKEN` | Yes | Refresh token from one-time OAuth flow |
+| `CALENDAR_LIST` | No | JSON array of `{ id, name }` calendars available to the agent. Defaults to `[{"id":"primary","name":"Primary"}]` |
+| `DATABASE_PATH` | No | SQLite database file path. Defaults to `:memory:` |
+| `CONTEXT_WINDOW_DAYS` | No | How many days of recent memories to include in context. Defaults to `30` |
+| `PORT` | No | Server port. Defaults to `3000` |
 
 ### Example
 ```bash
@@ -41,6 +53,45 @@ curl -X POST http://localhost:3000/chat \
 ```
 
 Response: `{"response":"Hello"}`
+
+## Google Calendar Integration
+
+Barnaby can read, create, and edit events on your Google Calendars via natural language through the `POST /calendar/events` endpoint.
+
+### Setup
+
+1. Create OAuth 2.0 credentials in the [Google Cloud Console](https://console.cloud.google.com/) and enable the **Google Calendar API**.
+2. Run the one-time auth script:
+   ```bash
+   GOOGLE_CLIENT_ID=xxx GOOGLE_CLIENT_SECRET=yyy npx tsx scripts/get-google-refresh-token.ts
+   ```
+3. Add the printed refresh token to your `.env`.
+4. (Optional) List your available calendars to get exact IDs:
+   ```bash
+   source .env && ./scripts/list-calendars.sh
+   ```
+5. Set `CALENDAR_LIST` in your `.env` as a JSON array so the agent knows which calendars it can use:
+   ```
+   CALENDAR_LIST=[{"id":"primary","name":"Primary"},{"id":"family@group.calendar.google.com","name":"Family"}]
+   ```
+
+### Endpoint
+
+`POST /calendar/events` — accepts `{ "message": string }` natural language instruction.
+
+```bash
+curl -X POST http://localhost:3000/calendar/events \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Basic $(echo -n 'user:pass' | base64)" \
+  -d '{"message": "create an event on the family calendar for May 15 at 7pm"}'
+```
+
+Response: `{"result":"Created event 'Dinner' on the family calendar for May 15, 2026 at 7:00 PM."}`
+
+### Security Notes
+- The agent is given three tools: `calendar_list`, `calendar_create`, and `calendar_edit`.
+- **There is no delete tool.** The agent cannot delete calendar events.
+- The chat endpoint (`POST /chat`) still runs with `noTools: 'all'` and cannot access calendars.
 
 ### Notes
 - Each request creates a fresh ephemeral in-memory session with no tool access.
@@ -135,6 +186,10 @@ Barnaby can be deployed to a Raspberry Pi on your home network, served behind ng
    BASIC_AUTH_PASSWORD=your_password
    CONTEXT_WINDOW_DAYS=30
    OPENCODE_API_KEY=your_key
+   GOOGLE_CLIENT_ID=your_google_client_id
+   GOOGLE_CLIENT_SECRET=your_google_client_secret
+   GOOGLE_REFRESH_TOKEN=your_google_refresh_token
+   CALENDAR_LIST=[{"id":"primary","name":"Primary"}]
    ```
 
 4. Copy the nginx config and enable it:
