@@ -9,7 +9,7 @@ import databasePlugin from './plugins/database.js';
 import repositoryPlugin from './plugins/repository.js';
 import googleAuthPlugin from './plugins/google-auth.js';
 import calendarClientPlugin from './plugins/calendar-client.js';
-import agentPlugin from './plugins/agent.js';
+import agentPlugin from './plugins/agent/index.js';
 import memoryRoutes from './routes/memories/index.js';
 import pageRoutes from './routes/pages/index.js';
 import chatRoutes from './routes/chat/index.js';
