@@ -3,14 +3,34 @@ import type { FastifyInstance } from "fastify";
 import { Type } from "typebox";
 import type { CalendarEvent } from "../../calendar-client.js";
 
+export function formatEventLine(event: CalendarEvent): string {
+  return `- ${event.id} | ${event.start?.dateTime} - ${event.end?.dateTime} | ${event.summary} | ${event.description}`;
+}
+
 /**
  * Transforms the array of calendar event objects into an array of strings
  * that is easier for an LLM to understand.
  */
-function formatEvents(events: CalendarEvent[]): string[] {
-  return events.map((event) => {
-    return `- ${event.id} | ${event.start?.dateTime} - ${event.end?.dateTime} | ${event.summary} | ${event.description}`;
-  });
+export function formatEvents(events: CalendarEvent[]): string[] {
+  return events.map(formatEventLine);
+}
+
+export function formatCreateResponse(calendarId: string, event: CalendarEvent): string {
+  const lines = [
+    `Created event "${event.summary}" on Google Calendar ${calendarId}.`,
+    "",
+    formatEventLine(event),
+  ];
+  return lines.join("\n");
+}
+
+export function formatEditResponse(calendarId: string, eventId: string, event: CalendarEvent): string {
+  const lines = [
+    `Updated event ${eventId} on Google Calendar ${calendarId}.`,
+    "",
+    formatEventLine(event),
+  ];
+  return lines.join("\n");
 }
 
 export default function createCalendarExtension(fastify: FastifyInstance): ExtensionFactory {
@@ -58,7 +78,7 @@ export default function createCalendarExtension(fastify: FastifyInstance): Exten
           description: params.description,
         });
         return {
-          content: [{ type: "text" as const, text: JSON.stringify(event) }],
+          content: [{ type: "text" as const, text: formatCreateResponse(params.calendarId, event) }],
           details: {},
         };
       },
@@ -85,7 +105,7 @@ export default function createCalendarExtension(fastify: FastifyInstance): Exten
 
         const event = await fastify.calendarClient.updateEvent(params.calendarId, params.eventId, updates);
         return {
-          content: [{ type: "text" as const, text: JSON.stringify(event) }],
+          content: [{ type: "text" as const, text: formatEditResponse(params.calendarId, params.eventId, event) }],
           details: {},
         };
       },
