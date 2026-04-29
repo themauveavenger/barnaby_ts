@@ -9,7 +9,8 @@
   "scripts": {
     "start": "tsx --env-file=./.env ./src/index.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@tsconfig/node-ts": "23.6.4",

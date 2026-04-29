@@ -5,6 +5,7 @@ import type { ExtensionAPI } from '@mariozechner/pi-coding-agent';
 import { getModel } from '@mariozechner/pi-ai';
 import type { Model } from '@mariozechner/pi-ai';
 import { Type } from 'typebox';
+import type { CalendarEvent } from "./calendar-client.js";
 
 export type AgentServices = {
   authStorage: AuthStorage;
@@ -12,6 +13,16 @@ export type AgentServices = {
   model: Model<any>;
   resourceLoader: DefaultResourceLoader;
 };
+
+/**
+ * Transforms the array of calendar event objects into an array of strings
+ * that is easier for an LLM to understand.
+ */
+function formatEvents(events: CalendarEvent[]): string[] {
+  return events.map((event) => {
+    return `- ${event.id} | ${event.start?.dateTime} - ${event.end?.dateTime} | ${event.summary} | ${event.description}`;
+  });
+}
 
 export default fp(async function agentPlugin(fastify: FastifyInstance) {
   const authStorage = AuthStorage.create();
@@ -30,8 +41,14 @@ export default fp(async function agentPlugin(fastify: FastifyInstance) {
       }),
       async execute(_toolCallId, params) {
         const events = await fastify.calendarClient.listEvents(params.calendarId, params.start, params.end);
+        const lines: string[] = [
+          `Returned ${events.length} events from the Google Calendar ${params.calendarId} between ${params.start} and ${params.end}.`,
+          "",
+          `Events`,
+          ...formatEvents(events)
+        ];
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify(events) }],
+          content: [{ type: 'text' as const, text: lines.join("\n") }],
           details: {},
         };
       },

@@ -1,14 +1,8 @@
 import fp from 'fastify-plugin';
 import type { FastifyInstance } from 'fastify';
-import { google } from 'googleapis';
+import { type calendar_v3, google } from 'googleapis';
 
-export type CalendarEvent = {
-  id: string;
-  summary: string;
-  start: { dateTime?: string; date?: string };
-  end: { dateTime?: string; date?: string };
-  description?: string;
-};
+export type CalendarEvent = Pick<calendar_v3.Schema$Event, "id" | "summary" | "start" | "end" | "description">;
 
 export type CalendarClient = {
   listEvents(calendarId: string, timeMin: string, timeMax: string): Promise<CalendarEvent[]>;
@@ -21,7 +15,7 @@ export default fp(async function calendarClientPlugin(fastify: FastifyInstance) 
   const calendar = google.calendar({ version: 'v3', auth });
 
   const client: CalendarClient = {
-    async listEvents(calendarId, timeMin, timeMax) {
+    async listEvents(calendarId, timeMin, timeMax): Promise<CalendarEvent[]> {
       const res = await calendar.events.list({
         calendarId,
         timeMin,
@@ -29,7 +23,7 @@ export default fp(async function calendarClientPlugin(fastify: FastifyInstance) 
         singleEvents: true,
         orderBy: 'startTime',
       });
-      return (res.data.items || []) as CalendarEvent[];
+      return res.data.items || [];
     },
 
     async createEvent(calendarId, event) {
