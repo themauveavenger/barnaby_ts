@@ -9,6 +9,7 @@ import databasePlugin from './plugins/database.js';
 import repositoryPlugin from './plugins/repository.js';
 import googleAuthPlugin from './plugins/google-auth.js';
 import calendarClientPlugin from './plugins/calendar-client.js';
+import ynabClientPlugin from './plugins/ynab-client.js';
 import agentPlugin from './plugins/agent/index.js';
 import memoryRoutes from './routes/memories/index.js';
 import pageRoutes from './routes/pages/index.js';
@@ -29,6 +30,7 @@ export async function buildApp() {
   await app.register(repositoryPlugin);
   await app.register(googleAuthPlugin);
   await app.register(calendarClientPlugin);
+  await app.register(ynabClientPlugin);
   await app.register(agentPlugin);
 
   await app.register(view, {

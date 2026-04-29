@@ -3,6 +3,7 @@ import type { MemoryRepository } from '../plugins/repository.js';
 import type { AgentServices } from '../plugins/agent/index.js';
 import type { OAuth2Client } from 'google-auth-library';
 import type { CalendarClient } from '../plugins/calendar-client.js';
+import type { YnabClient } from '../plugins/ynab-client.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -11,5 +12,6 @@ declare module 'fastify' {
     agent: AgentServices;
     googleAuth: { oauth2Client: OAuth2Client };
     calendarClient: CalendarClient;
+    ynabClient: YnabClient;
   }
 }

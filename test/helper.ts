@@ -7,6 +7,7 @@ export async function buildTestApp() {
   process.env.GOOGLE_CLIENT_ID = 'test-client-id';
   process.env.GOOGLE_CLIENT_SECRET = 'test-client-secret';
   process.env.GOOGLE_REFRESH_TOKEN = 'test-refresh-token';
+  process.env.YNAB_ACCESS_TOKEN = 'test-ynab-token';
 
   const app = await buildApp();
   return app;
