@@ -17,6 +17,15 @@ import {
   validateAndResolveSplits,
 } from "./ynab-utils.js";
 
+const FLAG_REASON_TEMPLATES: Record<string, string> = {
+  amount_anomaly: "Amount outside expected range",
+  new_payee: "No payee history available",
+  category_ambiguous: "No clear category match",
+  possible_duplicate: "Possible duplicate transaction",
+  partial_match: "Partial match to pre-entry",
+  manual_review: "Needs manual review",
+};
+
 export function formatTransactionLine(t: ynab.TransactionDetail): string {
   const amount = formatMilliunits(t.amount);
   const payee = t.payee_name ?? "(none)";
@@ -139,6 +148,67 @@ export function formatSplitTransactionResponse(
     lines.push(`- ${split.category}: ${split.amount}`);
   }
   return lines.join("\n");
+}
+
+export function formatApproveTransactionResponse(
+  transactionId: string,
+  date: string,
+  amount: string,
+  payee: string,
+  category: string | null,
+  cleared: string
+): string {
+  const categoryText = category ?? "(none)";
+  const clearedText = cleared === "uncleared" ? "no" : "yes";
+  return `Approved transaction ${transactionId}.\n- Date: ${date} | Amount: ${amount} | Payee: ${payee} | Category: ${categoryText} | Cleared: ${clearedText}`;
+}
+
+export function formatAlreadyApprovedResponse(
+  transactionId: string,
+  date: string,
+  amount: string,
+  payee: string,
+  category: string | null,
+  cleared: string
+): string {
+  const categoryText = category ?? "(none)";
+  const clearedText = cleared === "uncleared" ? "no" : "yes";
+  return `Transaction ${transactionId} was already approved. No changes needed.\n- Date: ${date} | Amount: ${amount} | Payee: ${payee} | Category: ${categoryText} | Cleared: ${clearedText}`;
+}
+
+export function formatDeleteTransactionResponse(
+  transactionId: string,
+  date: string,
+  amount: string,
+  payee: string,
+  category: string | null,
+  memo: string | null
+): string {
+  const categoryText = category ?? "(none)";
+  const memoText = memo ? ` | Memo: ${memo}` : "";
+  return `Deleted transaction ${transactionId}.\n- Date: ${date} | Amount: ${amount} | Payee: ${payee} | Category: ${categoryText}${memoText}`;
+}
+
+export function formatFlagTransactionResponse(
+  transactionId: string,
+  flagColor: string | null,
+  memo: string | null
+): string {
+  const memoText = memo ? `\n- Memo: ${memo}` : "";
+  if (!flagColor) {
+    return `Cleared flag from transaction ${transactionId}.${memoText}`;
+  }
+  return `Flagged transaction ${transactionId} with ${flagColor} flag.${memoText}`;
+}
+
+export function formatAlreadyFlaggedResponse(
+  transactionId: string,
+  flagColor: string | null
+): string {
+  if (!flagColor) {
+    return `Transaction ${transactionId} already has no flag. No changes needed.`;
+  }
+  return `Transaction ${transactionId} already has the ${flagColor} flag. No changes needed.`;
 }
 
 export default function createYnabExtension(fastify: FastifyInstance): ExtensionFactory {
@@ -606,6 +676,396 @@ export default function createYnabExtension(fastify: FastifyInstance): Extension
               {
                 type: "text" as const,
                 text: `Error: Failed to split transaction in YNAB.\n${message}`,
+              },
+            ],
+            details: {},
+          };
+        }
+      },
+    });
+
+    pi.registerTool({
+      name: "ynab_approve_transaction",
+      label: "Approve YNAB Transaction",
+      description:
+        "Approves a transaction in YNAB and optionally updates its category, memo, or cleared status.",
+      parameters: Type.Object({
+        budgetId: Type.String({ description: "The UUID of the YNAB budget" }),
+        transactionId: Type.String({ description: "The ID of the transaction to approve" }),
+        category: Type.Optional(
+          Type.String({ description: "Category name to assign. Ignored if the transaction is already a split." })
+        ),
+        memo: Type.Optional(Type.String({ description: "Memo/note to set on the transaction" })),
+        cleared: Type.Optional(
+          Type.Boolean({
+            description: "If true, marks as cleared. If false, marks as uncleared. Omit to leave unchanged.",
+          })
+        ),
+      }),
+      async execute(_toolCallId, params) {
+        try {
+          const ynabAPI = fastify.ynabClient.api;
+
+          let existingTransaction: ynab.TransactionDetail;
+          try {
+            const response = await ynabAPI.transactions.getTransactionById(
+              params.budgetId,
+              params.transactionId
+            );
+            existingTransaction = response.data.transaction;
+          } catch (error) {
+            if (isYnabNotFoundError(error)) {
+              return {
+                content: [
+                  {
+                    type: "text" as const,
+                    text: `Error: Transaction "${params.transactionId}" not found in budget.`,
+                  },
+                ],
+                details: {},
+              };
+            }
+            throw error;
+          }
+
+          const wasAlreadyApproved = existingTransaction.approved;
+
+          if (
+            params.category &&
+            existingTransaction.subtransactions &&
+            existingTransaction.subtransactions.length > 0
+          ) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: `Error: Cannot assign category to transaction ${params.transactionId}.\nThis is a split transaction. Categories belong to subtransactions.`,
+                },
+              ],
+              details: {},
+            };
+          }
+
+          let categoryId: string | undefined = undefined;
+          if (params.category) {
+            const resolvedCategoryId = await resolveCategoryId(
+              ynabAPI,
+              params.budgetId,
+              params.category
+            );
+            if (!resolvedCategoryId) {
+              return {
+                content: [
+                  {
+                    type: "text" as const,
+                    text: `Error: Category "${params.category}" not found. Verify the exact name as it appears in YNAB.`,
+                  },
+                ],
+                details: {},
+              };
+            }
+            categoryId = resolvedCategoryId;
+          }
+
+          const payload: ynab.SaveTransactionWithIdOrImportId = {
+            id: params.transactionId,
+            approved: true,
+          };
+
+          if (categoryId !== undefined) {
+            payload.category_id = categoryId;
+          }
+          if (params.memo !== undefined) {
+            payload.memo = params.memo;
+          }
+          if (params.cleared !== undefined) {
+            payload.cleared = params.cleared ? "cleared" : "uncleared";
+          }
+
+          const categoryChanged =
+            params.category !== undefined && categoryId !== existingTransaction.category_id;
+          const memoChanged =
+            params.memo !== undefined && params.memo !== (existingTransaction.memo ?? "");
+          const clearedChanged =
+            params.cleared !== undefined &&
+            (params.cleared ? "cleared" : "uncleared") !== existingTransaction.cleared;
+          const hasMeaningfulChanges = categoryChanged || memoChanged || clearedChanged;
+
+          if (wasAlreadyApproved && !hasMeaningfulChanges) {
+            const text = formatAlreadyApprovedResponse(
+              params.transactionId,
+              existingTransaction.date,
+              formatMilliunits(existingTransaction.amount),
+              existingTransaction.payee_name ?? "(none)",
+              existingTransaction.category_name ?? null,
+              existingTransaction.cleared
+            );
+            return {
+              content: [{ type: "text" as const, text }],
+              details: {},
+            };
+          }
+
+          await ynabAPI.transactions.updateTransactions(params.budgetId, {
+            transactions: [payload],
+          });
+
+          const finalResponse = await ynabAPI.transactions.getTransactionById(
+            params.budgetId,
+            params.transactionId
+          );
+          const finalTransaction = finalResponse.data.transaction;
+
+          const text = formatApproveTransactionResponse(
+            params.transactionId,
+            finalTransaction.date,
+            formatMilliunits(finalTransaction.amount),
+            finalTransaction.payee_name ?? "(none)",
+            finalTransaction.category_name ?? null,
+            finalTransaction.cleared
+          );
+          return {
+            content: [{ type: "text" as const, text }],
+            details: {},
+          };
+        } catch (error) {
+          const message = isYnabNotFoundError(error)
+            ? `Budget "${params.budgetId}" not found. Verify the budget ID.`
+            : getYnabErrorMessage(error);
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Error: Failed to approve transaction in YNAB.\n${message}`,
+              },
+            ],
+            details: {},
+          };
+        }
+      },
+    });
+
+    pi.registerTool({
+      name: "ynab_delete_transaction",
+      label: "Delete YNAB Transaction",
+      description: "Deletes a transaction from a YNAB budget.",
+      parameters: Type.Object({
+        budgetId: Type.String({ description: "The UUID of the YNAB budget" }),
+        transactionId: Type.String({ description: "The ID of the transaction to delete" }),
+      }),
+      async execute(_toolCallId, params) {
+        try {
+          const ynabAPI = fastify.ynabClient.api;
+
+          let existingTransaction: ynab.TransactionDetail;
+          try {
+            const response = await ynabAPI.transactions.getTransactionById(
+              params.budgetId,
+              params.transactionId
+            );
+            existingTransaction = response.data.transaction;
+          } catch (error) {
+            if (isYnabNotFoundError(error)) {
+              return {
+                content: [
+                  {
+                    type: "text" as const,
+                    text: `Transaction ${params.transactionId} was already deleted or did not exist.`,
+                  },
+                ],
+                details: {},
+              };
+            }
+            throw error;
+          }
+
+          const { date, amount, payee_name, category_name, memo } = existingTransaction;
+
+          await ynabAPI.transactions.deleteTransaction(params.budgetId, params.transactionId);
+
+          const text = formatDeleteTransactionResponse(
+            params.transactionId,
+            date,
+            formatMilliunits(amount),
+            payee_name ?? "(none)",
+            category_name ?? null,
+            memo ?? null
+          );
+          return {
+            content: [{ type: "text" as const, text }],
+            details: {},
+          };
+        } catch (error) {
+          const message = isYnabNotFoundError(error)
+            ? `Budget "${params.budgetId}" not found or transaction "${params.transactionId}" does not exist. Verify the IDs.`
+            : getYnabErrorMessage(error);
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Error: Failed to delete transaction from YNAB.\n${message}`,
+              },
+            ],
+            details: {},
+          };
+        }
+      },
+    });
+
+    pi.registerTool({
+      name: "ynab_flag_transaction",
+      label: "Flag YNAB Transaction",
+      description:
+        "Sets or clears a flag color on a YNAB transaction. Optionally prepends a reason template to the memo.",
+      parameters: Type.Object({
+        budgetId: Type.String({ description: "The UUID of the YNAB budget" }),
+        transactionId: Type.String({ description: "The ID of the transaction to flag" }),
+        flagColor: Type.Optional(
+          Type.Union(
+            [
+              Type.Literal("red"),
+              Type.Literal("orange"),
+              Type.Literal("yellow"),
+              Type.Literal("green"),
+              Type.Literal("blue"),
+              Type.Literal("purple"),
+            ],
+            { description: "Flag color to set. Required unless clearFlag is true." }
+          )
+        ),
+        clearFlag: Type.Optional(
+          Type.Boolean({ description: "When true, removes the flag color. Mutually exclusive with flagColor." })
+        ),
+        reason: Type.Optional(
+          Type.Enum(
+            {
+              amount_anomaly: "amount_anomaly",
+              new_payee: "new_payee",
+              category_ambiguous: "category_ambiguous",
+              possible_duplicate: "possible_duplicate",
+              partial_match: "partial_match",
+              manual_review: "manual_review",
+            },
+            { description: "Reason for flagging. Prepends a template to the memo." }
+          )
+        ),
+      }),
+      async execute(_toolCallId, params) {
+        if (!params.flagColor && !params.clearFlag) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: "Error: Invalid flag input. Must provide either flagColor or clearFlag=true.",
+              },
+            ],
+            details: {},
+          };
+        }
+        if (params.flagColor && params.clearFlag) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: "Error: Invalid flag input. Must provide either flagColor or clearFlag=true, but not both.",
+              },
+            ],
+            details: {},
+          };
+        }
+
+        try {
+          const ynabAPI = fastify.ynabClient.api;
+
+          let existingTransaction: ynab.TransactionDetail;
+          try {
+            const response = await ynabAPI.transactions.getTransactionById(
+              params.budgetId,
+              params.transactionId
+            );
+            existingTransaction = response.data.transaction;
+          } catch (error) {
+            if (isYnabNotFoundError(error)) {
+              return {
+                content: [
+                  {
+                    type: "text" as const,
+                    text: `Error: Transaction "${params.transactionId}" not found in budget.`,
+                  },
+                ],
+                details: {},
+              };
+            }
+            throw error;
+          }
+
+          const targetFlagColor: ynab.TransactionFlagColor = params.clearFlag
+            ? ""
+            : params.flagColor!;
+
+          let newMemo: string | undefined = undefined;
+          if (params.reason) {
+            const template = FLAG_REASON_TEMPLATES[params.reason];
+            const existingMemo = existingTransaction.memo ?? "";
+            if (!existingMemo.startsWith(template)) {
+              newMemo = existingMemo ? `${template} | ${existingMemo}` : template;
+            }
+          }
+
+          const memoAlreadyMatches =
+            newMemo === undefined || newMemo === (existingTransaction.memo ?? "");
+          const flagAlreadyMatches =
+            existingTransaction.flag_color === targetFlagColor ||
+            (targetFlagColor === "" && !existingTransaction.flag_color);
+
+          if (memoAlreadyMatches && flagAlreadyMatches) {
+            const text = formatAlreadyFlaggedResponse(
+              params.transactionId,
+              targetFlagColor || null
+            );
+            return {
+              content: [{ type: "text" as const, text }],
+              details: {},
+            };
+          }
+
+          const payload: ynab.SaveTransactionWithIdOrImportId = {
+            id: params.transactionId,
+            flag_color: targetFlagColor,
+          };
+
+          if (newMemo !== undefined) {
+            payload.memo = newMemo;
+          }
+
+          await ynabAPI.transactions.updateTransactions(params.budgetId, {
+            transactions: [payload],
+          });
+
+          const finalResponse = await ynabAPI.transactions.getTransactionById(
+            params.budgetId,
+            params.transactionId
+          );
+          const finalTransaction = finalResponse.data.transaction;
+
+          const text = formatFlagTransactionResponse(
+            params.transactionId,
+            finalTransaction.flag_color || null,
+            finalTransaction.memo ?? null
+          );
+          return {
+            content: [{ type: "text" as const, text }],
+            details: {},
+          };
+        } catch (error) {
+          const message = isYnabNotFoundError(error)
+            ? `Budget "${params.budgetId}" not found. Verify the budget ID.`
+            : getYnabErrorMessage(error);
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `Error: Failed to flag transaction in YNAB.\n${message}`,
               },
             ],
             details: {},
