@@ -167,4 +167,42 @@ describe('Memories Page', () => {
     expect(response.statusCode).toBe(200);
     expect(response.payload).toContain('No memories found');
   });
+
+  it('should create a memory from form submission and redirect to root', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/',
+      headers: {
+        authorization: authHeader,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      payload: 'content=Form+memory&category=note&tags=test%2C+tag',
+    });
+
+    expect(response.statusCode).toBe(302);
+    expect(response.headers.location).toBe('/');
+
+    const getResponse = await app.inject({
+      method: 'GET',
+      url: '/',
+      headers: { authorization: authHeader },
+    });
+    expect(getResponse.payload).toContain('Form memory');
+  });
+
+  it('should re-render page with error on invalid form submission', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/',
+      headers: {
+        authorization: authHeader,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      payload: 'content=&category=note&tags=test',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toContain('text/html');
+    expect(response.payload).toContain('Add Memory');
+  });
 });
