@@ -11,6 +11,7 @@ Barnaby's primary method of communication is via Telegram API. If Barnaby sends 
 - fastify
 - sqlite (via better-sqlite3)
 - pi-mono (for the embedded agent sdk)
+- PicoCSS for basic styling on the memories page
 
 ## Roadmap
 
