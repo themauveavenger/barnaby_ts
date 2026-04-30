@@ -21,12 +21,60 @@ function formatDate(isoString: string): string {
   return `${weekday} ${month} ${day}${year} ${hours}:${minutes}${ampm}`;
 }
 
-async function buildViewModel(
+type MemoryFormData = {
+  content?: unknown;
+  category?: unknown;
+  permanent?: unknown;
+  tags?: unknown;
+};
+
+type MemoriesViewModel = {
+  memories: Array<{
+    id: string;
+    content: string;
+    category: string;
+    tags: string[];
+    permanent: boolean;
+    createdAt: string;
+    formattedDate: string;
+  }>;
+  filters: {
+    category: string;
+    categoryAppointment: boolean;
+    categoryNote: boolean;
+    categoryTodo: boolean;
+    categoryPurchase: boolean;
+    tags: string;
+  };
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasPrevious: boolean;
+    hasNext: boolean;
+    previousUrl: string;
+    nextUrl: string;
+  };
+  error?: string;
+  form?: {
+    content?: unknown;
+    category?: unknown;
+    permanent?: boolean;
+    tags?: unknown;
+    categoryAppointment: boolean;
+    categoryNote: boolean;
+    categoryTodo: boolean;
+    categoryPurchase: boolean;
+  };
+};
+
+function buildViewModel(
   fastify: FastifyInstance,
   query: ListMemoriesQuery,
   error?: string,
-  form?: Record<string, unknown>
-) {
+  form?: MemoryFormData
+): MemoriesViewModel {
   const page = Math.max(1, query.page || 1);
   const limit = Math.min(100, Math.max(1, query.limit || 20));
 
@@ -80,8 +128,8 @@ async function buildViewModel(
       ? {
           content: form.content,
           category: form.category,
-          permanent: form.permanent,
-          tags: form.tags,
+          permanent: form.permanent === true,
+          tags: Array.isArray(form.tags) ? form.tags.join(', ') : form.tags,
           categoryAppointment: form.category === 'appointment',
           categoryNote: form.category === 'note',
           categoryTodo: form.category === 'todo',
@@ -92,25 +140,8 @@ async function buildViewModel(
 }
 
 export default async function pageRoutes(fastify: FastifyInstance) {
-  fastify.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, async function (_request: FastifyRequest, payload: string): Promise<Record<string, string | string[]>> {
-    const parsed = new URLSearchParams(payload);
-    const result: Record<string, string | string[]> = {};
-    for (const [key, value] of parsed) {
-      if (result[key] !== undefined) {
-        if (Array.isArray(result[key])) {
-          result[key].push(value);
-        } else {
-          result[key] = [result[key], value];
-        }
-      } else {
-        result[key] = value;
-      }
-    }
-    return result;
-  });
-
   fastify.get('/', { schema: listMemoriesSchema }, async (request: FastifyRequest<{ Querystring: ListMemoriesQuery }>, reply: FastifyReply) => {
-    const viewModel = await buildViewModel(fastify, request.query);
+    const viewModel = buildViewModel(fastify, request.query);
     return reply.view('memories', viewModel);
   });
 
@@ -118,12 +149,12 @@ export default async function pageRoutes(fastify: FastifyInstance) {
     schema: createMemorySchema,
     attachValidation: true,
     preValidation: async (request, reply) => {
-      const body = request.body as Record<string, unknown>;
+      const body = request.body as MemoryFormData;
       if (typeof body.permanent === 'string') {
         body.permanent = body.permanent === 'on';
       }
       if (typeof body.tags === 'string') {
-        body.tags = (body.tags as string)
+        body.tags = body.tags
           .split(',')
           .map((t) => t.trim())
           .filter(Boolean);
@@ -131,8 +162,8 @@ export default async function pageRoutes(fastify: FastifyInstance) {
     },
   }, async (request: FastifyRequest<{ Body: CreateMemoryBody }>, reply: FastifyReply) => {
     if (request.validationError) {
-      const body = request.body as Record<string, unknown>;
-      const viewModel = await buildViewModel(
+      const body = request.body as MemoryFormData;
+      const viewModel = buildViewModel(
         fastify,
         {},
         request.validationError.message,

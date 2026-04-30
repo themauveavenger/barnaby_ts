@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { type FastifyRequest } from 'fastify';
 import basicAuth from '@fastify/basic-auth';
 import helmet from "@fastify/helmet";
 import fStatic from "@fastify/static";
@@ -53,6 +53,23 @@ export async function buildApp() {
   });
 
   app.addHook('onRequest', app.basicAuth);
+
+  app.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, async function (_request: FastifyRequest, payload: string): Promise<Record<string, string | string[]>> {
+    const parsed = new URLSearchParams(payload);
+    const result: Record<string, string | string[]> = {};
+    for (const [key, value] of parsed) {
+      if (result[key] !== undefined) {
+        if (Array.isArray(result[key])) {
+          result[key].push(value);
+        } else {
+          result[key] = [result[key], value];
+        }
+      } else {
+        result[key] = value;
+      }
+    }
+    return result;
+  });
 
   await app.register(memoryRoutes, { prefix: '/memories' });
   await app.register(pageRoutes);
