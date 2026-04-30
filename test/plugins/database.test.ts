@@ -32,6 +32,26 @@ describe('database plugin', () => {
     expect(permanent!.dflt_value).toBe('0');
   });
 
+  it('should pre-populate default tags on startup', () => {
+    const rows = app.db.prepare('SELECT name FROM tags ORDER BY name').all() as Array<{ name: string }>;
+    const names = rows.map((r) => r.name);
+
+    expect(names).toContain('core');
+    expect(names).toContain('identity');
+    expect(names).toContain('family');
+    expect(names).toContain('friend');
+    expect(names).toContain('home');
+    expect(names).toContain('preference');
+    expect(names).toContain('food');
+    expect(names).toContain('health');
+    expect(names).toContain('holiday');
+    expect(names).toContain('date');
+    expect(names).toContain('work');
+    expect(names).toContain('finance');
+    expect(names).toContain('travel');
+    expect(names).toContain('tech');
+  });
+
   it('should migrate old schema by adding permanent column', async () => {
     const tmpDb = path.join(os.tmpdir(), `barnaby-test-${Date.now()}.db`);
 
