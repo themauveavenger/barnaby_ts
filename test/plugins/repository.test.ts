@@ -154,4 +154,41 @@ describe('repository plugin', () => {
     expect(withPermanent.map((m: Memory) => m.id)).not.toContain(nonPermanent.id);
     expect(withoutPermanent.map((m: Memory) => m.id)).toContain(nonPermanent.id);
   });
+
+  it('should return empty array for empty tags array', () => {
+    const results = app.memoryRepository.findByTags([]);
+    expect(results).toEqual([]);
+  });
+
+  it('should order findByTags results by created_at DESC', () => {
+    const older = app.memoryRepository.create({
+      content: 'Older memory',
+      category: 'note',
+      tags: ['chronology'],
+    });
+
+    // Small delay to ensure different created_at
+    const start = Date.now();
+    while (Date.now() - start < 10) { /* busy wait */ }
+
+    const newer = app.memoryRepository.create({
+      content: 'Newer memory',
+      category: 'note',
+      tags: ['chronology'],
+    });
+
+    const results = app.memoryRepository.findByTags(['chronology']);
+    expect(results.map((m: Memory) => m.id)).toEqual([newer.id, older.id]);
+  });
+
+  it('should handle case-insensitive and duplicate tags in findByTags', () => {
+    const memory = app.memoryRepository.create({
+      content: 'Case test',
+      category: 'note',
+      tags: ['case'],
+    });
+
+    const results = app.memoryRepository.findByTags(['CASE', 'case', 'Case']);
+    expect(results.map((m: Memory) => m.id)).toContain(memory.id);
+  });
 });

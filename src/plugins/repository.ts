@@ -202,9 +202,16 @@ export function createMemoryRepository(db: Database): MemoryRepository {
     },
 
     findByTags(tags, options = {}) {
-      if (tags.length === 0) return [];
+      const normalizedTags = [
+        ...new Set(
+          tags
+            .map((t) => t.toLowerCase().trim())
+            .filter(Boolean)
+        ),
+      ];
+      if (normalizedTags.length === 0) return [];
 
-      const placeholders = tags.map(() => '?').join(',');
+      const placeholders = normalizedTags.map(() => '?').join(',');
       const permanentFilter = options.permanentOnly ? 'AND m.permanent = 1' : '';
 
       const sql = `
@@ -219,7 +226,7 @@ export function createMemoryRepository(db: Database): MemoryRepository {
         ORDER BY m.created_at DESC
       `;
 
-      const params = [...tags, tags.length];
+      const params = [...normalizedTags, normalizedTags.length];
       const rows = db.prepare(sql).all(...params) as MemoryRow[];
 
       return rows.map((row) => rowToMemory(row));
