@@ -92,13 +92,13 @@ async function buildViewModel(
 }
 
 export default async function pageRoutes(fastify: FastifyInstance) {
-  fastify.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, async function (_request: FastifyRequest, payload: string) {
+  fastify.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, async function (_request: FastifyRequest, payload: string): Promise<Record<string, string | string[]>> {
     const parsed = new URLSearchParams(payload);
-    const result: Record<string, unknown> = {};
+    const result: Record<string, string | string[]> = {};
     for (const [key, value] of parsed) {
       if (result[key] !== undefined) {
         if (Array.isArray(result[key])) {
-          (result[key] as unknown[]).push(value);
+          result[key].push(value);
         } else {
           result[key] = [result[key], value];
         }
