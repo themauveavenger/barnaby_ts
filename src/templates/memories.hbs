@@ -2,6 +2,38 @@
 
 <p>Browse Barnaby's stored memories.</p>
 
+<h4>Add Memory</h4>
+
+<form method="post" action="/">
+  <label>
+    Content:
+    <textarea name="content" required maxlength="2000">{{form.content}}</textarea>
+  </label>
+
+  <label>
+    Category:
+    <select name="category" required>
+      <option value="">-- Select --</option>
+      <option value="appointment" {{#if form.categoryAppointment}}selected{{/if}}>Appointment</option>
+      <option value="note" {{#if form.categoryNote}}selected{{/if}}>Note</option>
+      <option value="todo" {{#if form.categoryTodo}}selected{{/if}}>Todo</option>
+      <option value="purchase" {{#if form.categoryPurchase}}selected{{/if}}>Purchase</option>
+    </select>
+  </label>
+
+  <label>
+    <input type="checkbox" name="permanent" value="on" {{#if form.permanent}}checked{{/if}}>
+    Permanent
+  </label>
+
+  <label>
+    Tags:
+    <input type="text" name="tags" value="{{form.tags}}" placeholder="comma-separated">
+  </label>
+
+  <button type="submit">Add Memory</button>
+</form>
+
 <form method="get" action="/">
   <label>
     Category:
