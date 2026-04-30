@@ -1,4 +1,4 @@
-import * as ynab from "ynab";
+import type * as ynab from "ynab";
 import currency from "currency.js";
 import { subMonths, differenceInDays, parseISO } from "date-fns";
 import { median, std, mean, sum, min, max } from "mathjs";
