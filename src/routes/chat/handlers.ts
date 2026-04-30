@@ -27,7 +27,21 @@ export async function chatHandler(
       month: 'long',
       day: 'numeric',
     });
-    const prompt = [`Today is ${today}.`, '', request.body.message].join('\n');
+
+    const coreMemories = request.server.memoryRepository.findByTags(['core'], { permanentOnly: true });
+
+    const coreContext = coreMemories.length > 0
+      ? ['Core memories about the user:', ...coreMemories.map((m) => `- ${m.content}`)].join('\n')
+      : '';
+
+    const prompt = [
+      `Today is ${today}.`,
+      '',
+      coreContext,
+      '',
+      request.body.message,
+    ].filter(Boolean).join('\n');
+
     await session.prompt(prompt);
     const responseText = session.getLastAssistantText() ?? '';
     return { response: responseText };
