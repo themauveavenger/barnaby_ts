@@ -4,7 +4,7 @@ import { AuthStorage, ModelRegistry, DefaultResourceLoader } from "@mariozechner
 import { getModel } from "@mariozechner/pi-ai";
 import type { Model } from "@mariozechner/pi-ai";
 import createCalendarExtension from "./extensions/google-calendar.js";
-import createYnabExtension from "./extensions/ynab.js";
+import createYnabExtension from "./extensions/ynab/index.js";
 
 export type AgentServices = {
   authStorage: AuthStorage;
