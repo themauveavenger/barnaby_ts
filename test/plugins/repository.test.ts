@@ -191,4 +191,18 @@ describe('repository plugin', () => {
     const results = app.memoryRepository.findByTags(['CASE', 'case', 'Case']);
     expect(results.map((m: Memory) => m.id)).toContain(memory.id);
   });
+
+  it('should return complete tag arrays from findByTags', () => {
+    const memory = app.memoryRepository.create({
+      content: 'I am vegetarian',
+      category: 'note',
+      permanent: true,
+      tags: ['core', 'food'],
+    });
+
+    const results = app.memoryRepository.findByTags(['core'], { permanentOnly: true });
+    const found = results.find((m: Memory) => m.id === memory.id);
+    expect(found).toBeDefined();
+    expect(found!.tags).toEqual(expect.arrayContaining(['core', 'food']));
+  });
 });

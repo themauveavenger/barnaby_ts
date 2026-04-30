@@ -215,14 +215,22 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       const permanentFilter = options.permanentOnly ? 'AND m.permanent = 1' : '';
 
       const sql = `
+        WITH matching AS (
+          SELECT m.id
+          FROM memories m
+          JOIN memory_tags mt ON m.id = mt.memory_id
+          JOIN tags t ON mt.tag_id = t.id
+          WHERE t.name IN (${placeholders})
+            ${permanentFilter}
+          GROUP BY m.id
+          HAVING COUNT(DISTINCT t.name) = ?
+        )
         SELECT m.*, GROUP_CONCAT(t.name) as tag_names
         FROM memories m
-        JOIN memory_tags mt ON m.id = mt.memory_id
-        JOIN tags t ON mt.tag_id = t.id
-        WHERE t.name IN (${placeholders})
-          ${permanentFilter}
+        JOIN matching mm ON m.id = mm.id
+        LEFT JOIN memory_tags mt ON m.id = mt.memory_id
+        LEFT JOIN tags t ON mt.tag_id = t.id
         GROUP BY m.id
-        HAVING COUNT(DISTINCT t.name) = ?
         ORDER BY m.created_at DESC
       `;
 
