@@ -7,11 +7,6 @@
     }
   },
   "plugin": [
-    "superpowers@git+https://github.com/obra/superpowers.git",
-    "@cortexkit/opencode-magic-context"
-  ],
-  "compaction": {
-    "auto": false,
-    "prune": false
-  }
+    "superpowers@git+https://github.com/obra/superpowers.git"
+  ]
 }

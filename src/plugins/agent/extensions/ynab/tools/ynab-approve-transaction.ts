@@ -2,13 +2,8 @@ import type { FastifyInstance } from "fastify";
 import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import type * as ynab from "ynab";
-import {
-  formatMilliunits,
-  getYnabErrorMessage,
-  isYnabNotFoundError,
-  resolveCategoryId,
-} from "../utils.js";
-import { formatApproveTransactionResponse, formatAlreadyApprovedResponse } from "../formatters.js";
+import { formatMilliunits, getYnabErrorMessage, isYnabNotFoundError, resolveCategoryId, } from "../utils.js";
+import { formatAlreadyApprovedResponse, formatApproveTransactionResponse } from "../formatters.js";
 
 const paramsSchema = Type.Object({
   budgetId: Type.String({ description: "The UUID of the YNAB budget" }),
@@ -24,7 +19,7 @@ const paramsSchema = Type.Object({
   ),
 });
 
-export default function createTool(fastify: FastifyInstance): ToolDefinition<typeof paramsSchema> {
+export default function createTool({ ynabClient: { api: ynabAPI } }: FastifyInstance): ToolDefinition<typeof paramsSchema> {
   return {
     name: "ynab_approve_transaction",
     label: "Approve YNAB Transaction",
@@ -33,8 +28,6 @@ export default function createTool(fastify: FastifyInstance): ToolDefinition<typ
     parameters: paramsSchema,
     async execute(_toolCallId, params) {
       try {
-        const ynabAPI = fastify.ynabClient.api;
-
         let existingTransaction: ynab.TransactionDetail;
         try {
           const response = await ynabAPI.transactions.getTransactionById(
