@@ -33,6 +33,7 @@ export interface MemoryRepository {
   findAll(query: ListMemoriesQuery): { data: Memory[]; total: number };
   delete(id: string): boolean;
   findForContext(): { permanent: Memory[]; recent: Memory[] };
+  findByTags(tags: string[], options?: { permanentOnly?: boolean }): Memory[];
 }
 
 type MemoryRow = {
@@ -198,6 +199,30 @@ export function createMemoryRepository(db: Database): MemoryRepository {
         permanent: permanentRows.map((row) => rowToMemory(row)),
         recent: recentRows.map((row) => rowToMemory(row)),
       };
+    },
+
+    findByTags(tags, options = {}) {
+      if (tags.length === 0) return [];
+
+      const placeholders = tags.map(() => '?').join(',');
+      const permanentFilter = options.permanentOnly ? 'AND m.permanent = 1' : '';
+
+      const sql = `
+        SELECT m.*, GROUP_CONCAT(t.name) as tag_names
+        FROM memories m
+        JOIN memory_tags mt ON m.id = mt.memory_id
+        JOIN tags t ON mt.tag_id = t.id
+        WHERE t.name IN (${placeholders})
+          ${permanentFilter}
+        GROUP BY m.id
+        HAVING COUNT(DISTINCT t.name) = ?
+        ORDER BY m.created_at DESC
+      `;
+
+      const params = [...tags, tags.length];
+      const rows = db.prepare(sql).all(...params) as MemoryRow[];
+
+      return rows.map((row) => rowToMemory(row));
     },
 
     delete(id) {
