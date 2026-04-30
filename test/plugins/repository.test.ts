@@ -106,4 +106,103 @@ describe('repository plugin', () => {
     expect(context.recent.map((m: Memory) => m.id)).not.toContain(old.id);
     expect(context.permanent.map((m: Memory) => m.id)).not.toContain(recent.id);
   });
+
+  it('should find memories by tags with AND logic', () => {
+    const coreFamily = app.memoryRepository.create({
+      content: 'My partner is Alex',
+      category: 'note',
+      permanent: true,
+      tags: ['core', 'family'],
+    });
+
+    const coreFood = app.memoryRepository.create({
+      content: 'I am vegetarian',
+      category: 'note',
+      permanent: true,
+      tags: ['core', 'food'],
+    });
+
+    const nonCore = app.memoryRepository.create({
+      content: 'Just a regular note',
+      category: 'note',
+      tags: ['work'],
+    });
+
+    const results = app.memoryRepository.findByTags(['core', 'family'], { permanentOnly: true });
+
+    expect(results.map((m: Memory) => m.id)).toContain(coreFamily.id);
+    expect(results.map((m: Memory) => m.id)).not.toContain(coreFood.id);
+    expect(results.map((m: Memory) => m.id)).not.toContain(nonCore.id);
+  });
+
+  it('should return empty array when no memories match tags', () => {
+    const results = app.memoryRepository.findByTags(['nonexistent'], { permanentOnly: true });
+    expect(results).toEqual([]);
+  });
+
+  it('should findByTags without permanentOnly filter', () => {
+    const nonPermanent = app.memoryRepository.create({
+      content: 'Temporary core memory',
+      category: 'note',
+      permanent: false,
+      tags: ['core'],
+    });
+
+    const withPermanent = app.memoryRepository.findByTags(['core'], { permanentOnly: true });
+    const withoutPermanent = app.memoryRepository.findByTags(['core']);
+
+    expect(withPermanent.map((m: Memory) => m.id)).not.toContain(nonPermanent.id);
+    expect(withoutPermanent.map((m: Memory) => m.id)).toContain(nonPermanent.id);
+  });
+
+  it('should return empty array for empty tags array', () => {
+    const results = app.memoryRepository.findByTags([]);
+    expect(results).toEqual([]);
+  });
+
+  it('should order findByTags results by created_at DESC', () => {
+    const older = app.memoryRepository.create({
+      content: 'Older memory',
+      category: 'note',
+      tags: ['chronology'],
+    });
+
+    // Small delay to ensure different created_at
+    const start = Date.now();
+    while (Date.now() - start < 10) { /* busy wait */ }
+
+    const newer = app.memoryRepository.create({
+      content: 'Newer memory',
+      category: 'note',
+      tags: ['chronology'],
+    });
+
+    const results = app.memoryRepository.findByTags(['chronology']);
+    expect(results.map((m: Memory) => m.id)).toEqual([newer.id, older.id]);
+  });
+
+  it('should handle case-insensitive and duplicate tags in findByTags', () => {
+    const memory = app.memoryRepository.create({
+      content: 'Case test',
+      category: 'note',
+      tags: ['case'],
+    });
+
+    const results = app.memoryRepository.findByTags(['CASE', 'case', 'Case']);
+    expect(results.map((m: Memory) => m.id)).toContain(memory.id);
+  });
+
+  it('should return complete tag arrays from findByTags', () => {
+    const memory = app.memoryRepository.create({
+      content: 'I am vegetarian',
+      category: 'note',
+      permanent: true,
+      tags: ['core', 'food'],
+    });
+
+    const results = app.memoryRepository.findByTags(['core'], { permanentOnly: true });
+    const found = results.find((m: Memory) => m.id === memory.id);
+    expect(found).toBeDefined();
+    expect(found!.tags).toEqual(expect.arrayContaining(['core', 'food']));
+  });
 });

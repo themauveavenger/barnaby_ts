@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 import { buildTestApp } from '../helper.js';
 import { createAgentSession } from '@mariozechner/pi-coding-agent';
 
 // Mock the pi SDK packages so tests don't need real API keys
 const mockSession = {
   subscribe: vi.fn(),
-  prompt: vi.fn(async () => {}),
+  prompt: vi.fn(async (_prompt: string) => {}),
   getLastAssistantText: vi.fn(() => 'Hello from mock LLM'),
   dispose: vi.fn(),
 };
@@ -49,6 +49,11 @@ describe('Chat API', () => {
 
   beforeAll(async () => {
     app = await buildTestApp();
+  });
+
+  beforeEach(() => {
+    app.db.exec('DELETE FROM memories');
+    mockSession.prompt.mockClear();
   });
 
   afterAll(async () => {
@@ -148,5 +153,59 @@ describe('Chat API', () => {
     });
 
     expect(mockSession.dispose).toHaveBeenCalled();
+  });
+
+  it('should include core memories in the prompt when they exist', async () => {
+    // Create a core memory
+    app.memoryRepository.create({
+      content: 'The user is vegetarian',
+      category: 'note',
+      permanent: true,
+      tags: ['core', 'food'],
+    });
+
+    await app.inject({
+      method: 'POST',
+      url: '/chat',
+      headers: { authorization: authHeader },
+      payload: { message: 'What should I eat?' },
+    });
+
+    const prompt = mockSession.prompt.mock.calls.at(-1)![0];
+    expect(prompt).toContain('Core memories about the user:');
+    expect(prompt).toContain('- The user is vegetarian');
+  });
+
+  it('should omit core memory section when no core memories exist', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/chat',
+      headers: { authorization: authHeader },
+      payload: { message: 'hello' },
+    });
+
+    const prompt = mockSession.prompt.mock.calls.at(-1)![0];
+    expect(prompt).not.toContain('Core memories about the user:');
+  });
+
+  it('should place the user message after core memories', async () => {
+    app.memoryRepository.create({
+      content: 'The user is vegetarian',
+      category: 'note',
+      permanent: true,
+      tags: ['core', 'food'],
+    });
+
+    await app.inject({
+      method: 'POST',
+      url: '/chat',
+      headers: { authorization: authHeader },
+      payload: { message: 'What should I eat?' },
+    });
+
+    const prompt = mockSession.prompt.mock.calls.at(-1)![0];
+    const coreIndex = prompt.indexOf('Core memories about the user:');
+    const messageIndex = prompt.indexOf('What should I eat?');
+    expect(coreIndex).toBeLessThan(messageIndex);
   });
 });

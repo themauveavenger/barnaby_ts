@@ -44,6 +44,25 @@ export default fp(async function databasePlugin(fastify: FastifyInstance) {
     db.exec('ALTER TABLE memories ADD COLUMN permanent INTEGER NOT NULL DEFAULT 0');
   }
 
+  // Pre-populate default tags
+  db.exec(`
+    INSERT OR IGNORE INTO tags (name) VALUES
+      ('core'),
+      ('identity'),
+      ('family'),
+      ('friend'),
+      ('home'),
+      ('preference'),
+      ('food'),
+      ('health'),
+      ('holiday'),
+      ('date'),
+      ('work'),
+      ('finance'),
+      ('travel'),
+      ('tech');
+  `);
+
   fastify.decorate('db', db);
 
   fastify.addHook('onClose', async () => {

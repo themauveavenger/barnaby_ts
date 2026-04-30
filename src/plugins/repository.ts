@@ -33,6 +33,7 @@ export interface MemoryRepository {
   findAll(query: ListMemoriesQuery): { data: Memory[]; total: number };
   delete(id: string): boolean;
   findForContext(): { permanent: Memory[]; recent: Memory[] };
+  findByTags(tags: string[], options?: { permanentOnly?: boolean }): Memory[];
 }
 
 type MemoryRow = {
@@ -198,6 +199,45 @@ export function createMemoryRepository(db: Database): MemoryRepository {
         permanent: permanentRows.map((row) => rowToMemory(row)),
         recent: recentRows.map((row) => rowToMemory(row)),
       };
+    },
+
+    findByTags(tags, options = {}) {
+      const normalizedTags = [
+        ...new Set(
+          tags
+            .map((t) => t.toLowerCase().trim())
+            .filter(Boolean)
+        ),
+      ];
+      if (normalizedTags.length === 0) return [];
+
+      const placeholders = normalizedTags.map(() => '?').join(',');
+      const permanentFilter = options.permanentOnly ? 'AND m.permanent = 1' : '';
+
+      const sql = `
+        WITH matching AS (
+          SELECT m.id
+          FROM memories m
+          JOIN memory_tags mt ON m.id = mt.memory_id
+          JOIN tags t ON mt.tag_id = t.id
+          WHERE t.name IN (${placeholders})
+            ${permanentFilter}
+          GROUP BY m.id
+          HAVING COUNT(DISTINCT t.name) = ?
+        )
+        SELECT m.*, GROUP_CONCAT(t.name) as tag_names
+        FROM memories m
+        JOIN matching mm ON m.id = mm.id
+        LEFT JOIN memory_tags mt ON m.id = mt.memory_id
+        LEFT JOIN tags t ON mt.tag_id = t.id
+        GROUP BY m.id
+        ORDER BY m.created_at DESC
+      `;
+
+      const params = [...normalizedTags, normalizedTags.length];
+      const rows = db.prepare(sql).all(...params) as MemoryRow[];
+
+      return rows.map((row) => rowToMemory(row));
     },
 
     delete(id) {
