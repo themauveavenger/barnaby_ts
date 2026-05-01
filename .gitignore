@@ -137,4 +137,5 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-*.db
+# keep database stuff from being checked in
+*.db*

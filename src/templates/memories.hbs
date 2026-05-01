@@ -1,55 +1,53 @@
 <h3>Memories</h3>
 
-<p>Browse Barnaby's stored memories.</p>
+<p>Create & browse Barnaby's memories.</p>
 
 <h4>Add Memory</h4>
 
 <form method="post" action="/">
-  <label>
-    Content:
-    <textarea name="content" required maxlength="2000">{{form.content}}</textarea>
-  </label>
+  <label for="content=input">Content:</label>
+  <textarea id="content=input" name="content" required maxlength="2000">{{form.content}}</textarea>
 
-  <label>
-    Category:
-    <select name="category" required>
-      <option value="">-- Select --</option>
-      <option value="appointment" {{#if form.categoryAppointment}}selected{{/if}}>Appointment</option>
-      <option value="note" {{#if form.categoryNote}}selected{{/if}}>Note</option>
-      <option value="todo" {{#if form.categoryTodo}}selected{{/if}}>Todo</option>
-      <option value="purchase" {{#if form.categoryPurchase}}selected{{/if}}>Purchase</option>
-    </select>
-  </label>
 
-  <label>
-    <input type="checkbox" name="permanent" value="on" {{#if form.permanent}}checked{{/if}}>
-    Permanent
-  </label>
+  <label for="category-input">Category:</label>
+  <select id="category-input" name="category" required>
+    <option value="">-- Select --</option>
+    <option value="appointment" {{#if form.categoryAppointment}}selected{{/if}}>Appointment</option>
+    <option value="note" {{#if form.categoryNote}}selected{{/if}}>Note</option>
+    <option value="todo" {{#if form.categoryTodo}}selected{{/if}}>Todo</option>
+    <option value="purchase" {{#if form.categoryPurchase}}selected{{/if}}>Purchase</option>
+  </select>
 
-  <label>
-    Tags:
-    <input type="text" name="tags" value="{{form.tags}}" placeholder="comma-separated">
-  </label>
+  <div>
+    <label for="permanent">Permanent</label>
+    <input id="permanent" type="checkbox" name="permanent" value="on" {{#if form.permanent}}checked{{/if}}>
+  </div>
+
+  <div>
+    <label for="tags-input">Tags:</label>
+    <input id="tags-input" type="text" name="tags" value="{{form.tags}}" placeholder="comma-separated">
+  </div>
 
   <button type="submit">Add Memory</button>
 </form>
 
-<form method="get" action="/">
-  <label>
-    Category:
-    <select name="category">
-      <option value="">All</option>
-      <option value="appointment" {{#if filters.categoryAppointment}}selected{{/if}}>Appointment</option>
-      <option value="note" {{#if filters.categoryNote}}selected{{/if}}>Note</option>
-      <option value="todo" {{#if filters.categoryTodo}}selected{{/if}}>Todo</option>
-      <option value="purchase" {{#if filters.categoryPurchase}}selected{{/if}}>Purchase</option>
-    </select>
-  </label>
+<hr/>
 
-  <label>
-    Tags:
-    <input type="text" name="tags" value="{{filters.tags}}" placeholder="comma-separated">
-  </label>
+<h3>Search</h3>
+
+<form method="get" action="/">
+  <label for="category">Category:</label>
+  <select id="category" name="category">
+    <option value="">All</option>
+    <option value="appointment" {{#if filters.categoryAppointment}}selected{{/if}}>Appointment</option>
+    <option value="note" {{#if filters.categoryNote}}selected{{/if}}>Note</option>
+    <option value="todo" {{#if filters.categoryTodo}}selected{{/if}}>Todo</option>
+    <option value="purchase" {{#if filters.categoryPurchase}}selected{{/if}}>Purchase</option>
+  </select>
+
+
+  <label for="tags">Tags:</label>
+  <input id="tags" type="text" name="tags" value="{{filters.tags}}" placeholder="comma-separated">
 
   <button type="submit">Filter</button>
 </form>
@@ -59,36 +57,38 @@
 {{/if}}
 
 {{#if memories.length}}
-  <dl>
-    {{#each memories}}
-      <dt>Content</dt>
-      <dd>{{content}}</dd>
+  <div>
+    <dl>
+      {{#each memories}}
+        <dt>Content</dt>
+        <dd>{{content}}</dd>
 
-      <dt>Category</dt>
-      <dd>{{category}}</dd>
+        <dt>Category</dt>
+        <dd>{{category}}</dd>
 
-      <dt>Create Date</dt>
-      <dd>{{formattedDate}}</dd>
+        <dt>Create Date</dt>
+        <dd>{{formattedDate}}</dd>
 
-      <dt>Permanent?</dt>
-      <dd>
-        {{#if permanent}}
-          Yes
+        <dt>Permanent?</dt>
+        <dd>
+          {{#if permanent}}
+            Yes
+          {{else}}
+            No
+          {{/if}}
+        </dd>
+
+        <dt>Tags</dt>
+        {{#if tags.length}}
+          {{#each tags}}
+            <dd>{{this}}</dd>
+          {{/each}}
         {{else}}
-          No
+          <dd>No Tags</dd>
         {{/if}}
-      </dd>
-
-      <dt>Tags</dt>
-      {{#if tags.length}}
-        {{#each tags}}
-          <dd>{{this}}</dd>
-        {{/each}}
-      {{else}}
-        <dd>No Tags</dd>
-      {{/if}}
-    {{/each}}
-  </dl>
+      {{/each}}
+    </dl>
+  </div>
 
   <nav>
     {{#if pagination.hasPrevious}}
