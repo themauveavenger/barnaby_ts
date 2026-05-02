@@ -57,38 +57,38 @@
 {{/if}}
 
 {{#if memories.length}}
-  <div>
-    <dl>
-      {{#each memories}}
-        <dt>Content</dt>
-        <dd>{{content}}</dd>
-
-        <dt>Category</dt>
-        <dd>{{category}}</dd>
-
-        <dt>Create Date</dt>
-        <dd>{{formattedDate}}</dd>
-
-        <dt>Permanent?</dt>
-        <dd>
-          {{#if permanent}}
-            Yes
-          {{else}}
-            No
-          {{/if}}
-        </dd>
-
-        <dt>Tags</dt>
+  <table>
+    <thead>
+    <tr>Content</tr>
+    <tr>Category</tr>
+    <tr>Create Date</tr>
+    <tr>Permanent?</tr>
+    <tr>Tags</tr>
+    </thead>
+    <tbody>
+    {{#each memories}}
+      <tr>{{content}}</tr>
+      <tr>{{category}}</tr>
+      <tr>{{formattedDate}}</tr>
+      <tr>
+        {{#if permanent}}
+          Yes
+        {{else}}
+          No
+        {{/if}}
+      </tr>
+      <tr>
         {{#if tags.length}}
           {{#each tags}}
-            <dd>{{this}}</dd>
+            {{this}}
           {{/each}}
         {{else}}
-          <dd>No Tags</dd>
+          No Tags
         {{/if}}
-      {{/each}}
-    </dl>
-  </div>
+      </tr>
+    {{/each}}
+    </tbody>
+  </table>
 
   <nav>
     {{#if pagination.hasPrevious}}
