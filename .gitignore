@@ -141,3 +141,6 @@ dist
 *.db*
 
 .idea
+
+# omo stuff
+.sisyphus/

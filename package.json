@@ -24,8 +24,10 @@
   "dependencies": {
     "@fastify/basic-auth": "6.2.0",
     "@fastify/helmet": "13.0.2",
+    "@fastify/schedule": "6.0.0",
     "@fastify/static": "9.1.3",
     "@fastify/view": "11.0.0",
+    "@grammyjs/auto-retry": "2.0.2",
     "@mariozechner/pi-ai": "0.70.6",
     "@mariozechner/pi-coding-agent": "0.70.6",
     "better-sqlite3": "12.9.0",
@@ -35,6 +37,7 @@
     "fastify-plugin": "5.0.0",
     "google-auth-library": "10.6.2",
     "googleapis": "171.4.0",
+    "grammy": "1.42.0",
     "handlebars": "4.7.9",
     "mathjs": "15.2.0",
     "typebox": "1.1.34",
