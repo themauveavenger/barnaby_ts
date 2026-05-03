@@ -13,8 +13,8 @@ vi.mock('grammy', () => {
     constructor(token: string) {
     this.token = token;
     this.api = { sendMessage: vi.fn(), config: { use: vi.fn() } } as any;
-      (this as any).start = vi.fn();
-      (this as any).stop = vi.fn();
+      (this as any).start = vi.fn().mockResolvedValue(undefined);
+      (this as any).stop = vi.fn().mockResolvedValue(undefined);
       (this as any).command = vi.fn((name: string, handler: Function) => {
         (this as any)._commands = (this as any)._commands || new Map<string, Function>();
         (this as any)._commands.set(name, handler);

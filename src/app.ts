@@ -10,7 +10,10 @@ import repositoryPlugin from './plugins/repository.js';
 import googleAuthPlugin from './plugins/google-auth.js';
 import calendarClientPlugin from './plugins/calendar-client.js';
 import ynabClientPlugin from './plugins/ynab-client.js';
+import telegramClientPlugin from './plugins/telegram-client.js';
+import schedulerPlugin from './plugins/scheduler.js';
 import agentPlugin from './plugins/agent/index.js';
+import { registerBriefingJob } from './services/briefing.js';
 import memoryRoutes from './routes/memories/index.js';
 import pageRoutes from './routes/pages/index.js';
 import chatRoutes from './routes/chat/index.js';
@@ -31,7 +34,13 @@ export async function buildApp() {
   await app.register(googleAuthPlugin);
   await app.register(calendarClientPlugin);
   await app.register(ynabClientPlugin);
+  await app.register(telegramClientPlugin);
   await app.register(agentPlugin);
+  await app.register(schedulerPlugin);
+
+  app.addHook('onReady', () => {
+    registerBriefingJob(app);
+  });
 
   await app.register(view, {
     engine: { handlebars },

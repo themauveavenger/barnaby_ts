@@ -31,11 +31,17 @@ export default fp(async function telegramClientPlugin(fastify: FastifyInstance) 
   // Bot lifecycle
   fastify.addHook('onReady', () => {
     // Do not await; start is long-running and should run in background
-    bot.start();
+    bot.start().catch((err) => {
+      fastify.log.error(err, 'Telegram bot failed to start');
+    });
   });
 
   fastify.addHook('onClose', async () => {
-    bot.stop();
+    try {
+      await bot.stop();
+    } catch (err) {
+      fastify.log.error(err, 'Telegram bot failed to stop');
+    }
   });
 
   const client: TelegramClient = {

@@ -5,6 +5,7 @@ import { getModel } from "@mariozechner/pi-ai";
 import type { Model } from "@mariozechner/pi-ai";
 import createCalendarExtension from "./extensions/google-calendar.js";
 import createYnabExtension from "./extensions/ynab/index.js";
+import createTelegramExtension from "./extensions/telegram.js";
 
 export type AgentServices = {
   authStorage: AuthStorage;
@@ -26,7 +27,7 @@ export default fp(async function agentPlugin(fastify: FastifyInstance) {
     noSkills: true,
     noPromptTemplates: true,
     noThemes: true,
-    extensionFactories: [createCalendarExtension(fastify), createYnabExtension(fastify)],
+    extensionFactories: [createCalendarExtension(fastify), createYnabExtension(fastify), createTelegramExtension(fastify)],
     systemPrompt:
       "You are a helpful assistant for casual conversation and general questions. " +
       "Answer clearly, concisely, and in plain language. " +
