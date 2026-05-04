@@ -10,7 +10,7 @@ export class NotFoundError extends Error {
 
 export default fp(async function errorHandlerPlugin(fastify: FastifyInstance) {
   fastify.setErrorHandler((error, request, reply) => {
-    request.log.error(error);
+    request.log.error({ err: error }, 'Request error');
 
     if (error instanceof Error && 'statusCode' in error) {
       const statusCode = error.statusCode;

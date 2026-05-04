@@ -1,4 +1,5 @@
-import Fastify, { type FastifyRequest } from 'fastify';
+import Fastify, { type FastifyRequest, type FastifyLoggerOptions } from 'fastify';
+import type { LoggerOptions as PinoLoggerOptions } from 'pino';
 import basicAuth from '@fastify/basic-auth';
 import helmet from "@fastify/helmet";
 import fStatic from "@fastify/static";
@@ -19,8 +20,29 @@ import pageRoutes from './routes/pages/index.js';
 import chatRoutes from './routes/chat/index.js';
 import calendarRoutes from './routes/calendar/index.js';
 
+type LoggerConfig = FastifyLoggerOptions & PinoLoggerOptions;
+
+function getLoggerConfig(): LoggerConfig {
+  return {
+    level: 'info',
+    redact: {
+      paths: ['err.stack'],
+      remove: true,
+    },
+    serializers: {
+      req: (request) => ({
+        method: request.method,
+        url: request.url,
+        path: request.routeOptions.url,
+        query: request.query,
+        ip: request.ip,
+      }),
+    },
+  };
+}
+
 export async function buildApp() {
-  const app = Fastify({ logger: true });
+  const app = Fastify({ logger: getLoggerConfig() });
 
   await app.register(helmet);
   await app.register(fStatic, {
@@ -62,6 +84,14 @@ export async function buildApp() {
   });
 
   app.addHook('onRequest', app.basicAuth);
+
+  app.addHook('preParsing', async (request) => {
+    request.log = request.log.child({
+      path: request.routeOptions.url ?? request.url,
+      query: request.query,
+      ip: request.ip,
+    });
+  });
 
   app.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, async function (_request: FastifyRequest, payload: string): Promise<Record<string, string | string[]>> {
     const parsed = new URLSearchParams(payload);
