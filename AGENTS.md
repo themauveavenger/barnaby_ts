@@ -27,3 +27,4 @@
 ## Runtime
 
 - Start the dev server with `tsx --env-file=./.env ./src/index.ts`. The `.env` file is gitignored.
+- Node.js 24 is the current LTS release (codename Krypton). The `mise.toml` uses `node = 'lts'` which resolves to Node 24.

@@ -51,6 +51,7 @@ Barnaby uses the `@mariozechner/pi-coding-agent` SDK (pi-mono) with the OpenCode
 | `BRIEFING_TIMEOUT_MS` | No | Timeout for manual briefing generation in milliseconds. Defaults to `60000` |
 | `DATABASE_PATH` | No | SQLite database file path. Defaults to `:memory:` |
 | `CONTEXT_WINDOW_DAYS` | No | How many days of recent memories to include in context. Defaults to `30` |
+| `HOST` | No | Server bind address. Defaults to `127.0.0.1` |
 | `PORT` | No | Server port. Defaults to `3000` |
 
 ### Example
@@ -274,7 +275,7 @@ The SQLite database lives at `~/.local/share/barnaby/barnaby.db` — outside the
 
 ### Architecture Notes
 
-- Barnaby binds to `127.0.0.1:3001` internally to avoid conflicting with Pi-hole on port 80
+- Barnaby binds to `127.0.0.1:3001` by default (via `HOST` env var), avoiding conflicts with Pi-hole on port 80 and exposure to the LAN
 - nginx reverse-proxies `barnaby.pi.local` → `127.0.0.1:3001`
 - The systemd user service auto-restarts on failure
 

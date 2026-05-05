@@ -4,7 +4,8 @@ async function main() {
   const app = await buildApp();
 
   const port = parseInt(process.env.PORT || '3000', 10);
-  await app.listen({ port, host: '0.0.0.0' });
+  const host = process.env.HOST || '127.0.0.1';
+  await app.listen({ port, host });
 
   const shutdown = async (signal: string) => {
     app.log.info(`Received ${signal}, shutting down gracefully`);

@@ -1,3 +1,4 @@
 [tools]
-node = 'lts'
+node = '24'
 bun = 'latest'
+python = '3'

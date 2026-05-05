@@ -9,6 +9,7 @@ ExecStart=%h/.local/bin/mise x -- npx tsx --env-file=%h/.config/barnaby/.env %h/
 Restart=on-failure
 RestartSec=5
 Environment="NODE_ENV=production"
+Environment="HOST=127.0.0.1"
 
 [Install]
 WantedBy=default.target
