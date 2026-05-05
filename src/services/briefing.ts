@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { createAgentSession, SessionManager } from '@mariozechner/pi-coding-agent';
 import { AsyncTask, CronJob } from 'toad-scheduler';
+import { TZDate, tzName } from '@date-fns/tz';
+import { format } from 'date-fns';
 import type { Memory } from "../plugins/repository.js";
 
 export type BriefingService = {
@@ -51,14 +53,11 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
         }
 
         try {
+          const timezone = fastify.timezone;
+          const tzNow = TZDate.tz(timezone);
           const now = new Date();
-          const today = now.toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          });
-          const timeOfDay = getTimeOfDay(now.getHours());
+          const today = format(tzNow, 'EEEE, MMMM d, yyyy');
+          const timeOfDay = getTimeOfDay(tzNow.getHours());
 
           const previousBriefing = fastify.briefingRepository.findLatest();
           const previousContext = previousBriefing
@@ -78,19 +77,22 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
 
           const memoryContext = [coreContext, recentContext].filter(Boolean).join('\n\n');
 
-          const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-          const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-          const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-          const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 8);
+          const yesterdayStart = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate() - 1, timezone);
+          const yesterdayEnd = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate(), timezone);
+          const todayStart = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate(), timezone);
+          const todayEnd = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate() + 1, timezone);
+          const weekStart = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate() + 1, timezone);
+          const weekEnd = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate() + 8, timezone);
+
+          const tzAbbr = tzName(timezone, now, 'short');
+          const tzLong = tzName(timezone, now, 'longGeneric');
 
           const calendarContext = fastify.calendarIds.length > 0
             ? `Available calendars:\n${fastify.calendarIds.map((id) => `- ${id}`).join('\n')}`
             : '';
 
           const prompt = [
-            `Today is ${today}. It is currently ${timeOfDay}.`,
+            `Today is ${today}. It is currently ${timeOfDay}. All times are in ${tzLong} (${timezone}, ${tzAbbr}).`,
             '',
             memoryContext,
             '',

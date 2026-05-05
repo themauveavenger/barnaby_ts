@@ -1,4 +1,6 @@
 ### manual briefing
+# @timeout 120s
+# @connection-timeout 120s
 POST http://localhost:3000/briefing
 Accept: application/json
 Authorization: Basic am9zaDpzb21ldGhpbmdlbHNl

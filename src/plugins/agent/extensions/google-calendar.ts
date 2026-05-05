@@ -1,34 +1,39 @@
 import type { ExtensionAPI, ExtensionFactory } from "@mariozechner/pi-coding-agent";
 import type { FastifyInstance } from "fastify";
 import { Type } from "typebox";
+import { format } from "date-fns";
+import { tz, TZDate, tzName } from "@date-fns/tz";
 import type { CalendarEvent } from "../../calendar-client.js";
 
-export function formatEventLine(event: CalendarEvent): string {
-  return `- ${event.id} | ${event.start?.dateTime} - ${event.end?.dateTime} | ${event.summary} | ${event.description}`;
+export function formatEventLine(event: CalendarEvent, timezone: string): string {
+  const startTime = event.start?.dateTime ?? undefined;
+  const endTime = event.end?.dateTime ?? undefined;
+  const fmt = (iso: string | undefined) => {
+    if (!iso) return "no time";
+    const tzAbbr = tzName(timezone, new Date(iso), "short");
+    return format(new TZDate(iso, timezone), "h:mm a", { in: tz(timezone) }) + " " + tzAbbr;
+  };
+  return `- ${event.id} | ${fmt(startTime)} - ${fmt(endTime)} | ${event.summary} | ${event.description ?? ""}`;
 }
 
-/**
- * Transforms the array of calendar event objects into an array of strings
- * that is easier for an LLM to understand.
- */
-export function formatEvents(events: CalendarEvent[]): string[] {
-  return events.map(formatEventLine);
+export function formatEvents(events: CalendarEvent[], timezone: string): string[] {
+  return events.map((event) => formatEventLine(event, timezone));
 }
 
-export function formatCreateResponse(calendarId: string, event: CalendarEvent): string {
+export function formatCreateResponse(calendarId: string, event: CalendarEvent, timezone: string): string {
   const lines = [
     `Created event "${event.summary}" on Google Calendar ${calendarId}.`,
     "",
-    formatEventLine(event),
+    formatEventLine(event, timezone),
   ];
   return lines.join("\n");
 }
 
-export function formatEditResponse(calendarId: string, eventId: string, event: CalendarEvent): string {
+export function formatEditResponse(calendarId: string, eventId: string, event: CalendarEvent, timezone: string): string {
   const lines = [
     `Updated event ${eventId} on Google Calendar ${calendarId}.`,
     "",
-    formatEventLine(event),
+    formatEventLine(event, timezone),
   ];
   return lines.join("\n");
 }
@@ -51,7 +56,7 @@ export default function createCalendarExtension(fastify: FastifyInstance): Exten
             `Returned ${events.length} events from the Google Calendar ${params.calendarId} between ${params.start} and ${params.end}.`,
             "",
             `Events`,
-            ...formatEvents(events),
+            ...formatEvents(events, fastify.timezone),
           ];
           return {
             content: [{ type: "text" as const, text: lines.join("\n") }],
@@ -93,7 +98,7 @@ export default function createCalendarExtension(fastify: FastifyInstance): Exten
             description: params.description,
           });
           return {
-            content: [{ type: "text" as const, text: formatCreateResponse(params.calendarId, event) }],
+            content: [{ type: "text" as const, text: formatCreateResponse(params.calendarId, event, fastify.timezone) }],
             details: {},
           };
         } catch (error) {
@@ -134,7 +139,7 @@ export default function createCalendarExtension(fastify: FastifyInstance): Exten
 
           const event = await fastify.calendarClient.updateEvent(params.calendarId, params.eventId, updates);
           return {
-            content: [{ type: "text" as const, text: formatEditResponse(params.calendarId, params.eventId, event) }],
+            content: [{ type: "text" as const, text: formatEditResponse(params.calendarId, params.eventId, event, fastify.timezone) }],
             details: {},
           };
         } catch (error) {

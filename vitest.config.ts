@@ -4,5 +4,6 @@ export default defineConfig({
   test: {
     pool: 'forks',
     environment: 'node',
+    silent: true
   },
 });

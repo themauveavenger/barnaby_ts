@@ -55,6 +55,7 @@ export async function buildApp() {
   const app = Fastify({ logger: getLoggerConfig() });
 
   app.decorate('calendarIds', getCalendarIds());
+  app.decorate('timezone', process.env.TIMEZONE || 'America/New_York');
 
   await app.register(helmet);
   await app.register(fStatic, {

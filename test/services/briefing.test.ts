@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import { TZDate } from '@date-fns/tz';
+import { format } from 'date-fns';
+import { tzName } from '@date-fns/tz';
 import { createBriefingService, registerBriefingJob } from '../../src/services/briefing.js';
 
 vi.mock('@mariozechner/pi-coding-agent', () => ({
@@ -36,6 +39,7 @@ function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyIns
       resourceLoader: {},
     },
     calendarIds: ['test@example.com', 'family@group.calendar.google.com'],
+    timezone: 'America/New_York',
     telegramClient: {
       sendMessage: vi.fn().mockResolvedValue(undefined),
     },
@@ -100,13 +104,16 @@ describe('briefing service', () => {
       expect(prompt).toContain('Start with a brief, warm greeting');
       expect(prompt).toContain('max 150 words');
       expect(prompt).toContain('Do not use emojis');
+      expect(prompt).toContain('America/New_York');
+      const timezone = fastify.timezone;
       const now = new Date();
-      const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-      const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 8);
+      const tzNow = TZDate.tz(timezone);
+      const yesterdayStart = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate() - 1, timezone);
+      const yesterdayEnd = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate(), timezone);
+      const todayStart = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate(), timezone);
+      const todayEnd = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate() + 1, timezone);
+      const weekStart = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate() + 1, timezone);
+      const weekEnd = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate() + 8, timezone);
       expect(prompt).toContain(`Yesterday:     start "${yesterdayStart.toISOString()}" end "${yesterdayEnd.toISOString()}"`);
       expect(prompt).toContain(`Today:         start "${todayStart.toISOString()}"     end "${todayEnd.toISOString()}"`);
       expect(prompt).toContain(`Next 7 days:   start "${weekStart.toISOString()}"      end "${weekEnd.toISOString()}"`);

@@ -22,6 +22,7 @@
 
 - Prefer end-to-end (e2e) tests over narrow integration tests.
 - Do not use supertest. Use Fastify's `inject()` with `vitest` for HTTP assertions.
+- Use the command `npm run test:minimal` defined the package.json file when running tests instead of using `npx vitest`. This keeps output minimal and limited for agent use.
 
 ## Runtime
 

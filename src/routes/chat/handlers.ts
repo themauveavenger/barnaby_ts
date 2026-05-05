@@ -1,5 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { createAgentSession, SessionManager } from '@mariozechner/pi-coding-agent';
+import { TZDate } from '@date-fns/tz';
+import { format } from 'date-fns';
 
 export type ChatBody = {
   message: string;
@@ -10,6 +12,7 @@ export async function chatHandler(
   reply: FastifyReply
 ) {
   const { authStorage, modelRegistry, model, resourceLoader } = request.server.agent;
+  const timezone = request.server.timezone;
 
   const { session } = await createAgentSession({
     model,
@@ -21,12 +24,7 @@ export async function chatHandler(
   });
 
   try {
-    const today = new Date().toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    const today = format(TZDate.tz(timezone), 'EEEE, MMMM d, yyyy');
 
     const coreMemories = request.server.memoryRepository.findByTags(['core'], { permanentOnly: true });
 
