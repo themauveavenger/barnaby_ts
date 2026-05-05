@@ -107,10 +107,15 @@ describe('briefing service', () => {
       expect(prompt).toContain('max 150 words');
       expect(prompt).toContain('Do not use emojis');
       const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      expect(prompt).toContain(`start: "${startOfDay.toISOString()}"`);
-      expect(prompt).toContain(`end: "${endOfDay.toISOString()}"`);
+      const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 8);
+      expect(prompt).toContain(`Yesterday:     start "${yesterdayStart.toISOString()}" end "${yesterdayEnd.toISOString()}"`);
+      expect(prompt).toContain(`Today:         start "${todayStart.toISOString()}"     end "${todayEnd.toISOString()}"`);
+      expect(prompt).toContain(`Next 7 days:   start "${weekStart.toISOString()}"      end "${weekEnd.toISOString()}"`);
 
       expect(fastify.telegramClient.sendMessage).toHaveBeenCalledWith(
         12345,
@@ -282,6 +287,8 @@ describe('briefing service', () => {
       const prompt = mockSession.prompt.mock.calls[0][0];
       expect(prompt).toContain('Previous briefing content');
       expect(prompt).toContain('Try not to repeat the same information');
+      const expectedDate = new Date(previousBriefing.triggeredAt).toLocaleDateString('en-US');
+      expect(prompt).toContain(`from ${expectedDate}`);
     });
 
     it('saves manual briefings with correct trigger type', async () => {

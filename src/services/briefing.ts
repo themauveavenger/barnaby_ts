@@ -85,10 +85,12 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
 
           const memoryContext = [coreContext, recentContext].filter(Boolean).join('\n\n');
 
-          const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-          const startIso = startOfDay.toISOString();
-          const endIso = endOfDay.toISOString();
+          const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+          const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+          const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+          const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 8);
 
           const calendarContext = fastify.calendarIds.length > 0
             ? `Available calendars:\n${fastify.calendarIds.map((id) => `- ${id}`).join('\n')}`
@@ -102,13 +104,19 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
             calendarContext,
             '',
             'INSTRUCTIONS:',
-            '- Use the calendar_list tool to fetch today\'s events from each available calendar.',
-            `  Use start: "${startIso}" and end: "${endIso}" for each query.`,
-            '- Generate a daily briefing based on those events and the notes above.',
+            'Use the calendar_list tool to fetch events for each available calendar across these three ranges:',
+            `1. Yesterday:     start "${yesterdayStart.toISOString()}" end "${yesterdayEnd.toISOString()}"`,
+            `2. Today:         start "${todayStart.toISOString()}"     end "${todayEnd.toISOString()}"`,
+            `3. Next 7 days:   start "${weekStart.toISOString()}"      end "${weekEnd.toISOString()}"`,
+            '',
+            'Generate a daily briefing based on those events and the notes above.',
             '- Start with a brief, warm greeting referencing the time of day.',
+            '- Mention yesterday only if there were notable events worth following up on.',
+            '- Highlight important upcoming events within the next 3 days.',
+            '  It is okay to remind about the same event across multiple briefings, but vary how you phrase it.',
             '- Use 2-3 short paragraphs total, max 150 words.',
             '- Use a single bullet list only for 3+ calendar events; otherwise weave them into sentences.',
-            '- If no calendar events exist today, do not mention the calendar at all.',
+            '- If no calendar events exist, do not mention the calendar at all.',
             '- If no memories or tasks exist, do not mention them at all.',
             '- Do not mention core memories unless the user explicitly asks you about them.',
             '- Never apologize for lack of information; just provide what you have.',
