@@ -89,4 +89,19 @@ describe('database plugin', () => {
     }
     fs.unlinkSync(tmpDb);
   });
+
+  it('should have briefings table with correct columns', () => {
+    const columns = app.db.pragma('table_info(briefings)') as Array<ColumnInfo>;
+    const names = columns.map((c) => c.name);
+
+    expect(names).toContain('id');
+    expect(names).toContain('content');
+    expect(names).toContain('triggered_at');
+    expect(names).toContain('trigger_type');
+
+    const triggerType = columns.find((c) => c.name === 'trigger_type');
+    expect(triggerType).toBeDefined();
+    expect(triggerType!.type).toBe('TEXT');
+    expect(triggerType!.notnull).toBe(1);
+  });
 });

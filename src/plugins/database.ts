@@ -35,6 +35,13 @@ export default fp(async function databasePlugin(fastify: FastifyInstance) {
       tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
       PRIMARY KEY (memory_id, tag_id)
     );
+
+    CREATE TABLE IF NOT EXISTS briefings (
+      id TEXT PRIMARY KEY,
+      content TEXT NOT NULL,
+      triggered_at INTEGER NOT NULL,
+      trigger_type TEXT NOT NULL CHECK (trigger_type IN ('scheduled', 'manual'))
+    );
   `);
 
   // Migration: add permanent column to existing databases
