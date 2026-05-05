@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { subDays } from "date-fns";
 import createYnabExtension from "../../../../../../src/plugins/agent/extensions/ynab/index.js";
 import {
   createMockYnabAPI,
@@ -21,8 +22,7 @@ describe("ynab_get_transactions", () => {
 
   it("uses default since date (30 days ago) and returns formatted transactions", async () => {
     const { ynabAPI, tool } = setup();
-    const today = new Date();
-    today.setDate(today.getDate() - 30);
+    const today = subDays(new Date(), 30);
     const expectedDate = today.toISOString().split("T")[0];
 
     ynabAPI.transactions.getTransactions.mockResolvedValue({

@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { TZDate } from '@date-fns/tz';
-import { format } from 'date-fns';
-import { tzName } from '@date-fns/tz';
+import { TZDate, tzName } from '@date-fns/tz';
+import { add, format, sub } from 'date-fns';
 import { createBriefingService, registerBriefingJob } from '../../src/services/briefing.js';
 
 vi.mock('@mariozechner/pi-coding-agent', () => ({
@@ -108,12 +107,12 @@ describe('briefing service', () => {
       const timezone = fastify.timezone;
       const now = new Date();
       const tzNow = TZDate.tz(timezone);
-      const yesterdayStart = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate() - 1, timezone);
-      const yesterdayEnd = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate(), timezone);
       const todayStart = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate(), timezone);
-      const todayEnd = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate() + 1, timezone);
-      const weekStart = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate() + 1, timezone);
-      const weekEnd = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate() + 8, timezone);
+      const yesterdayStart = sub(todayStart, { days: 1 });
+      const yesterdayEnd = todayStart;
+      const todayEnd = add(todayStart, { days: 1 });
+      const weekStart = todayEnd;
+      const weekEnd = add(todayStart, { days: 8 });
       expect(prompt).toContain(`Yesterday:     start "${yesterdayStart.toISOString()}" end "${yesterdayEnd.toISOString()}"`);
       expect(prompt).toContain(`Today:         start "${todayStart.toISOString()}"     end "${todayEnd.toISOString()}"`);
       expect(prompt).toContain(`Next 7 days:   start "${weekStart.toISOString()}"      end "${weekEnd.toISOString()}"`);

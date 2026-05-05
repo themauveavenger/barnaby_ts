@@ -1,6 +1,6 @@
 import type * as ynab from "ynab";
 import currency from "currency.js";
-import { subMonths, differenceInDays, parseISO } from "date-fns";
+import { subDays, subMonths, differenceInDays, parseISO } from "date-fns";
 import { median, std, mean, sum, min, max } from "mathjs";
 
 // ---------------------------------------------------------------------------
@@ -149,9 +149,7 @@ export function formatAmount(c: currency): string {
 // ---------------------------------------------------------------------------
 
 export function getDefaultSinceDate(): string {
-  const date = new Date();
-  date.setDate(date.getDate() - 30);
-  return date.toISOString().split("T")[0];
+  return subDays(new Date(), 30).toISOString().split("T")[0];
 }
 
 export function getDefaultPayeeSinceDate(): string {

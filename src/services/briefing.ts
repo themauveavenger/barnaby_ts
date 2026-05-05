@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { createAgentSession, SessionManager } from '@mariozechner/pi-coding-agent';
 import { AsyncTask, CronJob } from 'toad-scheduler';
 import { TZDate, tzName } from '@date-fns/tz';
-import { format } from 'date-fns';
+import { add, format, sub } from 'date-fns';
 import type { Memory } from "../plugins/repository.js";
 
 export type BriefingService = {
@@ -77,12 +77,12 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
 
           const memoryContext = [coreContext, recentContext].filter(Boolean).join('\n\n');
 
-          const yesterdayStart = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate() - 1, timezone);
-          const yesterdayEnd = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate(), timezone);
           const todayStart = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate(), timezone);
-          const todayEnd = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate() + 1, timezone);
-          const weekStart = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate() + 1, timezone);
-          const weekEnd = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate() + 8, timezone);
+          const yesterdayStart = sub(todayStart, { days: 1 });
+          const yesterdayEnd = todayStart;
+          const todayEnd = add(todayStart, { days: 1 });
+          const weekStart = todayEnd;
+          const weekEnd = add(todayStart, { days: 8 });
 
           const tzAbbr = tzName(timezone, now, 'short');
           const tzLong = tzName(timezone, now, 'longGeneric');
