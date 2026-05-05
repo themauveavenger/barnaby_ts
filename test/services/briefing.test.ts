@@ -53,6 +53,7 @@ function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyIns
       info: vi.fn(),
       warn: vi.fn(),
       error: vi.fn(),
+      debug: vi.fn(),
     },
     ...overrides,
   } as unknown as FastifyInstance;
@@ -84,20 +85,28 @@ describe('briefing service', () => {
 
       const resourceLoaderCall = (DefaultResourceLoader as any).mock.calls[0][0];
       expect(resourceLoaderCall.systemPrompt).toContain('You are Barnaby');
-      expect(resourceLoaderCall.systemPrompt).toContain('EXAMPLE');
-      expect(resourceLoaderCall.systemPrompt).toContain('Only use information provided by the tools');
-      expect(resourceLoaderCall.systemPrompt).toContain('If a tool returns an error');
-      expect(resourceLoaderCall.systemPrompt).toContain('Do not use emojis');
+      expect(resourceLoaderCall.systemPrompt).toContain('friendly personal assistant');
+      expect(resourceLoaderCall.systemPrompt).not.toContain('EXAMPLE');
+      expect(resourceLoaderCall.systemPrompt).not.toContain('Only use information provided by the tools');
+      expect(resourceLoaderCall.systemPrompt).not.toContain('If a tool returns an error');
+      expect(resourceLoaderCall.systemPrompt).not.toContain('Do not use emojis');
 
       expect(fastify.memoryRepository.findByTags).toHaveBeenCalledWith(['core'], { permanentOnly: true });
       expect(fastify.memoryRepository.findRecent).toHaveBeenCalledWith(7);
 
-      expect(mockSession.prompt).toHaveBeenCalledWith(
-        expect.stringContaining('Today is')
-      );
-      expect(mockSession.prompt).toHaveBeenCalledWith(
-        expect.stringContaining('It is currently')
-      );
+      const prompt = mockSession.prompt.mock.calls[0][0];
+      expect(prompt).toContain('Today is');
+      expect(prompt).toContain('It is currently');
+      expect(prompt).toContain('Use the calendar_list tool');
+      expect(prompt).toContain('Generate a daily briefing');
+      expect(prompt).toContain('Start with a brief, warm greeting');
+      expect(prompt).toContain('max 150 words');
+      expect(prompt).toContain('Do not use emojis');
+      const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      expect(prompt).toContain(`start: "${startOfDay.toISOString()}"`);
+      expect(prompt).toContain(`end: "${endOfDay.toISOString()}"`);
 
       expect(fastify.telegramClient.sendMessage).toHaveBeenCalledWith(
         12345,
