@@ -27,10 +27,7 @@ describe('Calendar API', () => {
   const authHeader = 'Basic ' + Buffer.from('test:test').toString('base64');
 
   beforeAll(async () => {
-    process.env.CALENDAR_LIST = JSON.stringify([
-      { id: 'primary', name: 'Primary' },
-      { id: 'family@group.calendar.google.com', name: 'Family' },
-    ]);
+    process.env.CALENDAR_IDS = 'test@example.com,family@group.calendar.google.com';
     app = await buildTestApp();
   });
 
@@ -108,7 +105,7 @@ describe('Calendar API', () => {
       expect.stringContaining('Available calendars:')
     );
     expect(mockSession.prompt).toHaveBeenCalledWith(
-      expect.stringContaining('Family (ID: family@group.calendar.google.com)')
+      expect.stringContaining('family@group.calendar.google.com')
     );
   });
 

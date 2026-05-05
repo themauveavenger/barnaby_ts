@@ -10,6 +10,7 @@ export async function buildTestApp() {
   process.env.YNAB_ACCESS_TOKEN = 'test-ynab-token';
   process.env.TELEGRAM_BOT_TOKEN = 'test-bot-token';
   process.env.TELEGRAM_CHAT_ID = '123456789';
+  process.env.CALENDAR_IDS = 'test@example.com,family@group.calendar.google.com';
   process.env.BRIEFING_CRON = '0 7 * * *';
 
   const app = await buildApp();

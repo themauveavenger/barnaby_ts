@@ -16,31 +16,46 @@ export default fp(async function calendarClientPlugin(fastify: FastifyInstance) 
 
   const client: CalendarClient = {
     async listEvents(calendarId, timeMin, timeMax): Promise<CalendarEvent[]> {
-      const res = await calendar.events.list({
-        calendarId,
-        timeMin,
-        timeMax,
-        singleEvents: true,
-        orderBy: 'startTime',
-      });
-      return res.data.items || [];
+      try {
+        const res = await calendar.events.list({
+          calendarId,
+          timeMin,
+          timeMax,
+          singleEvents: true,
+          orderBy: 'startTime',
+        });
+        return res.data.items || [];
+      } catch (error) {
+        fastify.log.error(error, 'Failed to list calendar events');
+        throw error;
+      }
     },
 
-    async createEvent(calendarId, event) {
-      const res = await calendar.events.insert({
-        calendarId,
-        requestBody: event,
-      });
-      return res.data as CalendarEvent;
+    async createEvent(calendarId, event): Promise<CalendarEvent> {
+      try {
+        const res = await calendar.events.insert({
+          calendarId,
+          requestBody: event,
+        });
+        return res.data;
+      } catch (error) {
+        fastify.log.error(error, 'Failed to create calendar event');
+        throw error;
+      }
     },
 
-    async updateEvent(calendarId, eventId, event) {
-      const res = await calendar.events.patch({
-        calendarId,
-        eventId,
-        requestBody: event,
-      });
-      return res.data as CalendarEvent;
+    async updateEvent(calendarId, eventId, event): Promise<CalendarEvent> {
+      try {
+        const res = await calendar.events.patch({
+          calendarId,
+          eventId,
+          requestBody: event,
+        });
+        return res.data;
+      } catch (error) {
+        fastify.log.error(error, 'Failed to update calendar event');
+        throw error;
+      }
     },
   };
 

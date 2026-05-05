@@ -26,7 +26,7 @@ type LoggerConfig = FastifyLoggerOptions & PinoLoggerOptions;
 
 function getLoggerConfig(): LoggerConfig {
   return {
-    level: 'info',
+    level: process.env.LOG_LEVEL || 'info',
     redact: {
       paths: ['err.stack'],
       remove: true,
@@ -43,8 +43,18 @@ function getLoggerConfig(): LoggerConfig {
   };
 }
 
+function getCalendarIds(): string[] {
+  const raw = process.env.CALENDAR_IDS;
+  if (!raw || raw.trim() === '') {
+    throw new Error('CALENDAR_IDS is required. Set it to a comma-separated list of Google Calendar IDs.');
+  }
+  return raw.split(',').map((id) => id.trim()).filter(Boolean);
+}
+
 export async function buildApp() {
   const app = Fastify({ logger: getLoggerConfig() });
+
+  app.decorate('calendarIds', getCalendarIds());
 
   await app.register(helmet);
   await app.register(fStatic, {

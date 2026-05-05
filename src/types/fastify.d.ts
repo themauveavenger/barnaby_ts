@@ -16,6 +16,7 @@ declare module 'fastify' {
     agent: AgentServices;
     googleAuth: { oauth2Client: OAuth2Client };
     calendarClient: CalendarClient;
+    calendarIds: string[];
     ynabClient: YnabClient;
     telegramClient: TelegramClient;
     scheduler: ToadScheduler;

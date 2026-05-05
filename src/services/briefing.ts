@@ -90,14 +90,20 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
           const startIso = startOfDay.toISOString();
           const endIso = endOfDay.toISOString();
 
+          const calendarContext = fastify.calendarIds.length > 0
+            ? `Available calendars:\n${fastify.calendarIds.map((id) => `- ${id}`).join('\n')}`
+            : '';
+
           const prompt = [
             `Today is ${today}. It is currently ${timeOfDay}.`,
             '',
             memoryContext,
             '',
+            calendarContext,
+            '',
             'INSTRUCTIONS:',
-            '- Use the calendar_list tool to fetch today\'s events from the primary calendar.',
-            `  Use start: "${startIso}" and end: "${endIso}".`,
+            '- Use the calendar_list tool to fetch today\'s events from each available calendar.',
+            `  Use start: "${startIso}" and end: "${endIso}" for each query.`,
             '- Generate a daily briefing based on those events and the notes above.',
             '- Start with a brief, warm greeting referencing the time of day.',
             '- Use 2-3 short paragraphs total, max 150 words.',

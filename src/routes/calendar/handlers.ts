@@ -5,23 +5,14 @@ export type CalendarBody = {
   message: string;
 };
 
-function getCalendarList(): Array<{ id: string; name: string }> {
-  try {
-    return JSON.parse(process.env.CALENDAR_LIST || '[{"id":"primary","name":"Primary"}]');
-  } catch {
-    return [{ id: 'primary', name: 'Primary' }];
-  }
-}
-
 export async function calendarHandler(
   request: FastifyRequest<{ Body: CalendarBody }>,
   reply: FastifyReply
 ) {
   const { authStorage, modelRegistry, model, resourceLoader } = request.server.agent;
-  const calendars = getCalendarList();
 
-  const calendarContext = calendars
-    .map((c) => `- ${c.name} (ID: ${c.id})`)
+  const calendarContext = request.server.calendarIds
+    .map((id) => `- ${id}`)
     .join('\n');
 
   const { session } = await createAgentSession({

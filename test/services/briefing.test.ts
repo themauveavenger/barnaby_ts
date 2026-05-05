@@ -41,6 +41,7 @@ function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyIns
       modelRegistry: {},
       model: {},
     },
+    calendarIds: ['test@example.com', 'family@group.calendar.google.com'],
     telegramClient: {
       sendMessage: vi.fn().mockResolvedValue(undefined),
     },
@@ -98,6 +99,9 @@ describe('briefing service', () => {
       expect(prompt).toContain('Today is');
       expect(prompt).toContain('It is currently');
       expect(prompt).toContain('Use the calendar_list tool');
+      expect(prompt).toContain('Available calendars:');
+      expect(prompt).toContain('test@example.com');
+      expect(prompt).toContain('family@group.calendar.google.com');
       expect(prompt).toContain('Generate a daily briefing');
       expect(prompt).toContain('Start with a brief, warm greeting');
       expect(prompt).toContain('max 150 words');
