@@ -24,7 +24,7 @@ function buildSystemPrompt(): string {
     '- If no memories or tasks exist, do not mention them at all\n' +
     '- Never apologize for lack of information; just provide what you have\n' +
     '- If a tool returns an error, mention it briefly in plain English and move on. Do not dwell on technical details.\n' +
-    '- Only use information provided by the tools. Do not invent events, memories, or tasks.\n' +
+    '- Only use information provided by the tools and the memory context below. Do not invent events, memories, or tasks.\n' +
     '- Do not use emojis.\n' +
     '- End with one brief, encouraging closing line\n\n' +
     'TONE: Casual, warm, and efficient. Avoid robotic lists. Write like a helpful friend, not an administrative assistant.\n\n' +
@@ -34,6 +34,10 @@ function buildSystemPrompt(): string {
     'Also, remember that your passport expires next month — you noted that as something to renew soon.\n\n' +
     'Have a great Tuesday!'
   );
+}
+
+function formatMemoryList(memories: Array<{ content: string }>): string {
+  return memories.map((m) => `- ${m.content}`).join('\n');
 }
 
 export function createBriefingService(fastify: FastifyInstance): BriefingService {
@@ -89,7 +93,27 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
             ? `\n\nHere is your previous briefing from ${new Date(previousBriefing.triggeredAt).toLocaleDateString('en-US')} for reference. Try not to repeat the same information unless it is still relevant:\n\n${previousBriefing.content}`
             : '';
 
-          const prompt = `Today is ${today}. It is currently ${timeOfDay}.\n\nGenerate the daily briefing.${previousContext}`;
+          const coreMemories = fastify.memoryRepository.findByTags(['core'], { permanentOnly: true });
+          const recentMemories = fastify.memoryRepository.findRecent(7);
+
+          const coreContext = coreMemories.length > 0
+            ? `Core memories about the user:\n${formatMemoryList(coreMemories)}`
+            : '';
+
+          const recentContext = recentMemories.length > 0
+            ? `Recent notes and tasks (last 7 days):\n${formatMemoryList(recentMemories)}`
+            : '';
+
+          const memoryContext = [coreContext, recentContext].filter(Boolean).join('\n\n');
+
+          const prompt = [
+            `Today is ${today}. It is currently ${timeOfDay}.`,
+            '',
+            memoryContext,
+            '',
+            'Generate the daily briefing.',
+            previousContext,
+          ].filter((s) => s !== '').join('\n');
 
           await session.prompt(prompt);
           const responseText = session.getLastAssistantText() ?? '';

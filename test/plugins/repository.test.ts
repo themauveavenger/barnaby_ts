@@ -160,6 +160,36 @@ describe('repository plugin', () => {
     expect(results).toEqual([]);
   });
 
+  it('should find recent memories within given days', () => {
+    const recent = app.memoryRepository.create({
+      content: 'Recent note',
+      category: 'note',
+    });
+
+    const old = app.memoryRepository.create({
+      content: 'Old note',
+      category: 'note',
+    });
+    app.db
+      .prepare('UPDATE memories SET created_at = ? WHERE id = ?')
+      .run(Date.now() - 10 * 24 * 60 * 60 * 1000, old.id);
+
+    const results = app.memoryRepository.findRecent(7);
+    expect(results.map((m: Memory) => m.id)).toContain(recent.id);
+    expect(results.map((m: Memory) => m.id)).not.toContain(old.id);
+  });
+
+  it('should not include permanent memories in findRecent', () => {
+    const permanent = app.memoryRepository.create({
+      content: 'Permanent note',
+      category: 'note',
+      permanent: true,
+    });
+
+    const results = app.memoryRepository.findRecent(7);
+    expect(results.map((m: Memory) => m.id)).not.toContain(permanent.id);
+  });
+
   it('should order findByTags results by created_at DESC', () => {
     const older = app.memoryRepository.create({
       content: 'Older memory',

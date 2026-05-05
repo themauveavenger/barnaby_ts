@@ -25,6 +25,16 @@ function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyIns
     findAll: vi.fn().mockReturnValue([]),
   };
 
+  const mockMemoryRepo = {
+    create: vi.fn().mockReturnValue({}),
+    findById: vi.fn().mockReturnValue(null),
+    findAll: vi.fn().mockReturnValue({ data: [], total: 0 }),
+    delete: vi.fn().mockReturnValue(false),
+    findForContext: vi.fn().mockReturnValue({ permanent: [], recent: [] }),
+    findRecent: vi.fn().mockReturnValue([]),
+    findByTags: vi.fn().mockReturnValue([]),
+  };
+
   return {
     agent: {
       authStorage: {},
@@ -34,6 +44,7 @@ function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyIns
     telegramClient: {
       sendMessage: vi.fn().mockResolvedValue(undefined),
     },
+    memoryRepository: mockMemoryRepo,
     briefingRepository: mockBriefingRepo,
     scheduler: {
       addCronJob: vi.fn(),
@@ -78,6 +89,9 @@ describe('briefing service', () => {
       expect(resourceLoaderCall.systemPrompt).toContain('If a tool returns an error');
       expect(resourceLoaderCall.systemPrompt).toContain('Do not use emojis');
 
+      expect(fastify.memoryRepository.findByTags).toHaveBeenCalledWith(['core'], { permanentOnly: true });
+      expect(fastify.memoryRepository.findRecent).toHaveBeenCalledWith(7);
+
       expect(mockSession.prompt).toHaveBeenCalledWith(
         expect.stringContaining('Today is')
       );
@@ -96,6 +110,90 @@ describe('briefing service', () => {
       });
 
       expect(mockSession.dispose).toHaveBeenCalled();
+    });
+
+    it('includes core memories in the prompt when they exist', async () => {
+      const mockSession = {
+        prompt: vi.fn().mockResolvedValue(undefined),
+        getLastAssistantText: vi.fn().mockReturnValue('Briefing with memories'),
+        dispose: vi.fn(),
+      };
+
+      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+
+      const fastify = createMockFastify({
+        memoryRepository: {
+          create: vi.fn().mockReturnValue({}),
+          findById: vi.fn().mockReturnValue(null),
+          findAll: vi.fn().mockReturnValue({ data: [], total: 0 }),
+          delete: vi.fn().mockReturnValue(false),
+          findForContext: vi.fn().mockReturnValue({ permanent: [], recent: [] }),
+          findByTags: vi.fn().mockReturnValue([
+            { content: 'The user is vegetarian' },
+            { content: 'The user lives in Portland' },
+          ]),
+          findRecent: vi.fn().mockReturnValue([]),
+        },
+      });
+
+      const service = createBriefingService(fastify);
+      await service.sendBriefing();
+
+      const prompt = mockSession.prompt.mock.calls[0][0];
+      expect(prompt).toContain('Core memories about the user:');
+      expect(prompt).toContain('- The user is vegetarian');
+      expect(prompt).toContain('- The user lives in Portland');
+    });
+
+    it('includes recent memories in the prompt when they exist', async () => {
+      const mockSession = {
+        prompt: vi.fn().mockResolvedValue(undefined),
+        getLastAssistantText: vi.fn().mockReturnValue('Briefing with recent memories'),
+        dispose: vi.fn(),
+      };
+
+      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+
+      const fastify = createMockFastify({
+        memoryRepository: {
+          create: vi.fn().mockReturnValue({}),
+          findById: vi.fn().mockReturnValue(null),
+          findAll: vi.fn().mockReturnValue({ data: [], total: 0 }),
+          delete: vi.fn().mockReturnValue(false),
+          findForContext: vi.fn().mockReturnValue({ permanent: [], recent: [] }),
+          findByTags: vi.fn().mockReturnValue([]),
+          findRecent: vi.fn().mockReturnValue([
+            { content: 'Buy milk' },
+            { content: 'Call dentist' },
+          ]),
+        },
+      });
+
+      const service = createBriefingService(fastify);
+      await service.sendBriefing();
+
+      const prompt = mockSession.prompt.mock.calls[0][0];
+      expect(prompt).toContain('Recent notes and tasks (last 7 days):');
+      expect(prompt).toContain('- Buy milk');
+      expect(prompt).toContain('- Call dentist');
+    });
+
+    it('omits memory sections when no memories exist', async () => {
+      const mockSession = {
+        prompt: vi.fn().mockResolvedValue(undefined),
+        getLastAssistantText: vi.fn().mockReturnValue('Briefing without memories'),
+        dispose: vi.fn(),
+      };
+
+      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+
+      const fastify = createMockFastify();
+      const service = createBriefingService(fastify);
+      await service.sendBriefing();
+
+      const prompt = mockSession.prompt.mock.calls[0][0];
+      expect(prompt).not.toContain('Core memories about the user:');
+      expect(prompt).not.toContain('Recent notes and tasks');
     });
 
     it('skips when TELEGRAM_CHAT_ID is not set', async () => {

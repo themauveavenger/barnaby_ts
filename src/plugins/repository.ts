@@ -33,6 +33,7 @@ export interface MemoryRepository {
   findAll(query: ListMemoriesQuery): { data: Memory[]; total: number };
   delete(id: string): boolean;
   findForContext(): { permanent: Memory[]; recent: Memory[] };
+  findRecent(days: number): Memory[];
   findByTags(tags: string[], options?: { permanentOnly?: boolean }): Memory[];
 }
 
@@ -199,6 +200,25 @@ export function createMemoryRepository(db: Database): MemoryRepository {
         permanent: permanentRows.map((row) => rowToMemory(row)),
         recent: recentRows.map((row) => rowToMemory(row)),
       };
+    },
+
+    findRecent(days) {
+      const effectiveDays = Number.isNaN(days) || days <= 0 ? 7 : days;
+      const cutoff = Date.now() - effectiveDays * 24 * 60 * 60 * 1000;
+
+      const rows = db
+        .prepare(
+          `SELECT m.*, GROUP_CONCAT(t.name) as tag_names
+           FROM memories m
+           LEFT JOIN memory_tags mt ON m.id = mt.memory_id
+           LEFT JOIN tags t ON mt.tag_id = t.id
+           WHERE m.permanent = 0 AND m.created_at >= ?
+           GROUP BY m.id
+           ORDER BY m.created_at DESC`
+        )
+        .all(cutoff) as MemoryRow[];
+
+      return rows.map((row) => rowToMemory(row));
     },
 
     findByTags(tags, options = {}) {
