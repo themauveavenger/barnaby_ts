@@ -1,7 +1,9 @@
 import type { FastifyInstance } from 'fastify';
-import { createAgentSession, SessionManager, DefaultResourceLoader } from '@mariozechner/pi-coding-agent';
-import { CronJob, AsyncTask } from 'toad-scheduler';
+import { createAgentSession, DefaultResourceLoader, SessionManager } from '@mariozechner/pi-coding-agent';
+import { AsyncTask, CronJob } from 'toad-scheduler';
+import { BARNABY_PERSONALITY } from '../agent/personality.js';
 import createCalendarExtension from '../plugins/agent/extensions/google-calendar.js';
+import type { Memory } from "../plugins/repository.js";
 
 export type BriefingService = {
   sendBriefing(options?: { triggerType?: 'scheduled' | 'manual' }): Promise<void>;
@@ -13,30 +15,7 @@ function getTimeOfDay(hour: number): string {
   return 'evening';
 }
 
-function buildSystemPrompt(): string {
-  return (
-    'You are Barnaby, a friendly personal assistant who generates daily briefings for your user via Telegram.\n\n' +
-    'OUTPUT RULES:\n' +
-    '- Start with a brief, warm greeting that references the time of day (morning/afternoon/evening)\n' +
-    '- Use 2-3 short paragraphs total, max 150 words\n' +
-    '- Use a single bullet list only for 3+ calendar events; otherwise weave them into sentences\n' +
-    '- If no calendar events exist today, do not mention the calendar at all\n' +
-    '- If no memories or tasks exist, do not mention them at all\n' +
-    '- Never apologize for lack of information; just provide what you have\n' +
-    '- If a tool returns an error, mention it briefly in plain English and move on. Do not dwell on technical details.\n' +
-    '- Only use information provided by the tools and the memory context below. Do not invent events, memories, or tasks.\n' +
-    '- Do not use emojis.\n' +
-    '- End with one brief, encouraging closing line\n\n' +
-    'TONE: Casual, warm, and efficient. Avoid robotic lists. Write like a helpful friend, not an administrative assistant.\n\n' +
-    'EXAMPLE:\n' +
-    'Good morning! It is Tuesday, May 6, 2025.\n\n' +
-    'You have a busy day ahead. Your team standup is at 10:00 AM, followed by a dentist appointment at 2:30 PM. ' +
-    'Also, remember that your passport expires next month — you noted that as something to renew soon.\n\n' +
-    'Have a great Tuesday!'
-  );
-}
-
-function formatMemoryList(memories: Array<{ content: string }>): string {
+function formatMemoryList(memories: Pick<Memory, "content">[]): string {
   return memories.map((m) => `- ${m.content}`).join('\n');
 }
 
@@ -66,7 +45,7 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
           extensionFactories: [
             createCalendarExtension(fastify),
           ],
-          systemPrompt: buildSystemPrompt(),
+          systemPrompt: BARNABY_PERSONALITY,
         });
         await resourceLoader.reload();
 
@@ -106,14 +85,36 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
 
           const memoryContext = [coreContext, recentContext].filter(Boolean).join('\n\n');
 
+          const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+          const startIso = startOfDay.toISOString();
+          const endIso = endOfDay.toISOString();
+
           const prompt = [
             `Today is ${today}. It is currently ${timeOfDay}.`,
             '',
             memoryContext,
             '',
-            'Generate the daily briefing.',
+            'INSTRUCTIONS:',
+            '- Use the calendar_list tool to fetch today\'s events from the primary calendar.',
+            `  Use start: "${startIso}" and end: "${endIso}".`,
+            '- Generate a daily briefing based on those events and the notes above.',
+            '- Start with a brief, warm greeting referencing the time of day.',
+            '- Use 2-3 short paragraphs total, max 150 words.',
+            '- Use a single bullet list only for 3+ calendar events; otherwise weave them into sentences.',
+            '- If no calendar events exist today, do not mention the calendar at all.',
+            '- If no memories or tasks exist, do not mention them at all.',
+            '- Do not mention core memories unless the user explicitly asks you about them.',
+            '- Never apologize for lack of information; just provide what you have.',
+            '- If a tool returns an error, mention it briefly in plain English and move on.',
+            '- Do not use emojis.',
+            '- End with one brief, encouraging closing line.',
+            '',
+            'TONE: Casual, warm, and efficient. Avoid robotic lists. Write like a helpful friend.',
             previousContext,
           ].filter((s) => s !== '').join('\n');
+
+          fastify.log.debug({ prompt }, "Built briefing prompt");
 
           await session.prompt(prompt);
           const responseText = session.getLastAssistantText() ?? '';
