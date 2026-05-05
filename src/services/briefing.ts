@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { createAgentSession, SessionManager, DefaultResourceLoader } from '@mariozechner/pi-coding-agent';
 import { CronJob, AsyncTask } from 'toad-scheduler';
 import createCalendarExtension from '../plugins/agent/extensions/google-calendar.js';
-import createYnabExtension from '../plugins/agent/extensions/ynab/index.js';
+// import createYnabExtension from '../plugins/agent/extensions/ynab/index.js';
 
 export type BriefingService = {
   sendBriefing(): Promise<void>;
@@ -32,7 +32,7 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
           noThemes: true,
           extensionFactories: [
             createCalendarExtension(fastify),
-            createYnabExtension(fastify),
+            // createYnabExtension(fastify),
           ],
           systemPrompt:
             'You are Barnaby, a personal digital assistant. Generate a concise, friendly daily briefing. ' +
