@@ -2,15 +2,43 @@ import type { FastifyInstance } from 'fastify';
 import { createAgentSession, SessionManager, DefaultResourceLoader } from '@mariozechner/pi-coding-agent';
 import { CronJob, AsyncTask } from 'toad-scheduler';
 import createCalendarExtension from '../plugins/agent/extensions/google-calendar.js';
-// import createYnabExtension from '../plugins/agent/extensions/ynab/index.js';
 
 export type BriefingService = {
-  sendBriefing(): Promise<void>;
+  sendBriefing(options?: { triggerType?: 'scheduled' | 'manual' }): Promise<void>;
 };
+
+function getTimeOfDay(hour: number): string {
+  if (hour < 12) return 'morning';
+  if (hour < 17) return 'afternoon';
+  return 'evening';
+}
+
+function buildSystemPrompt(): string {
+  return (
+    'You are Barnaby, a friendly personal assistant who generates daily briefings for your user via Telegram.\n\n' +
+    'OUTPUT RULES:\n' +
+    '- Start with a brief, warm greeting that references the time of day (morning/afternoon/evening)\n' +
+    '- Use 2-3 short paragraphs total, max 150 words\n' +
+    '- Use a single bullet list only for 3+ calendar events; otherwise weave them into sentences\n' +
+    '- If no calendar events exist today, do not mention the calendar at all\n' +
+    '- If no memories or tasks exist, do not mention them at all\n' +
+    '- Never apologize for lack of information; just provide what you have\n' +
+    '- If a tool returns an error, mention it briefly in plain English and move on. Do not dwell on technical details.\n' +
+    '- Only use information provided by the tools. Do not invent events, memories, or tasks.\n' +
+    '- Do not use emojis.\n' +
+    '- End with one brief, encouraging closing line\n\n' +
+    'TONE: Casual, warm, and efficient. Avoid robotic lists. Write like a helpful friend, not an administrative assistant.\n\n' +
+    'EXAMPLE:\n' +
+    'Good morning! It is Tuesday, May 6, 2025.\n\n' +
+    'You have a busy day ahead. Your team standup is at 10:00 AM, followed by a dentist appointment at 2:30 PM. ' +
+    'Also, remember that your passport expires next month — you noted that as something to renew soon.\n\n' +
+    'Have a great Tuesday!'
+  );
+}
 
 export function createBriefingService(fastify: FastifyInstance): BriefingService {
   return {
-    async sendBriefing() {
+    async sendBriefing(options = {}) {
       const chatIdEnv = process.env.TELEGRAM_CHAT_ID;
       if (!chatIdEnv) {
         fastify.log.warn('TELEGRAM_CHAT_ID is not set, skipping briefing');
@@ -18,6 +46,7 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
       }
 
       const chatId = Number(chatIdEnv);
+      const triggerType = options.triggerType ?? 'scheduled';
 
       try {
         const { authStorage, modelRegistry, model } = fastify.agent;
@@ -32,12 +61,8 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
           noThemes: true,
           extensionFactories: [
             createCalendarExtension(fastify),
-            // createYnabExtension(fastify),
           ],
-          systemPrompt:
-            'You are Barnaby, a personal digital assistant. Generate a concise, friendly daily briefing. ' +
-            'Include calendar events if any are scheduled today, and mention any important memories or tasks. ' +
-            'Keep the briefing brief and actionable.',
+          systemPrompt: buildSystemPrompt(),
         });
         await resourceLoader.reload();
 
@@ -50,19 +75,31 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
         });
 
         try {
-          const today = new Date().toLocaleDateString('en-US', {
+          const now = new Date();
+          const today = now.toLocaleDateString('en-US', {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
             day: 'numeric',
           });
+          const timeOfDay = getTimeOfDay(now.getHours());
 
-          const prompt = `Generate a daily briefing for ${today}. Include relevant calendar events and any important memories.`;
+          const previousBriefing = fastify.briefingRepository.findLatest();
+          const previousContext = previousBriefing
+            ? `\n\nHere is your previous briefing from ${new Date(previousBriefing.triggeredAt).toLocaleDateString('en-US')} for reference. Try not to repeat the same information unless it is still relevant:\n\n${previousBriefing.content}`
+            : '';
+
+          const prompt = `Today is ${today}. It is currently ${timeOfDay}.\n\nGenerate the daily briefing.${previousContext}`;
 
           await session.prompt(prompt);
           const responseText = session.getLastAssistantText() ?? '';
 
           await fastify.telegramClient.sendMessage(chatId, responseText);
+
+          fastify.briefingRepository.create({
+            content: responseText,
+            triggerType,
+          });
         } finally {
           session.dispose();
         }

@@ -19,6 +19,12 @@ vi.mock('@mariozechner/pi-coding-agent', () => ({
 import { createAgentSession, DefaultResourceLoader } from '@mariozechner/pi-coding-agent';
 
 function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyInstance {
+  const mockBriefingRepo = {
+    create: vi.fn().mockReturnValue({}),
+    findLatest: vi.fn().mockReturnValue(null),
+    findAll: vi.fn().mockReturnValue([]),
+  };
+
   return {
     agent: {
       authStorage: {},
@@ -28,6 +34,7 @@ function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyIns
     telegramClient: {
       sendMessage: vi.fn().mockResolvedValue(undefined),
     },
+    briefingRepository: mockBriefingRepo,
     scheduler: {
       addCronJob: vi.fn(),
     },
@@ -51,7 +58,7 @@ describe('briefing service', () => {
   });
 
   describe('sendBriefing', () => {
-    it('creates agent session and sends result to Telegram', async () => {
+    it('creates agent session with improved system prompt and sends result to Telegram', async () => {
       const mockSession = {
         prompt: vi.fn().mockResolvedValue(undefined),
         getLastAssistantText: vi.fn().mockReturnValue('Good morning! You have 2 events today.'),
@@ -65,16 +72,28 @@ describe('briefing service', () => {
       await service.sendBriefing();
 
       const resourceLoaderCall = (DefaultResourceLoader as any).mock.calls[0][0];
-      expect(resourceLoaderCall.extensionFactories).toHaveLength(2);
+      expect(resourceLoaderCall.systemPrompt).toContain('You are Barnaby');
+      expect(resourceLoaderCall.systemPrompt).toContain('EXAMPLE');
+      expect(resourceLoaderCall.systemPrompt).toContain('Only use information provided by the tools');
+      expect(resourceLoaderCall.systemPrompt).toContain('If a tool returns an error');
+      expect(resourceLoaderCall.systemPrompt).toContain('Do not use emojis');
 
       expect(mockSession.prompt).toHaveBeenCalledWith(
-        expect.stringContaining('Generate a daily briefing')
+        expect.stringContaining('Today is')
+      );
+      expect(mockSession.prompt).toHaveBeenCalledWith(
+        expect.stringContaining('It is currently')
       );
 
       expect(fastify.telegramClient.sendMessage).toHaveBeenCalledWith(
         12345,
         'Good morning! You have 2 events today.'
       );
+
+      expect(fastify.briefingRepository.create).toHaveBeenCalledWith({
+        content: 'Good morning! You have 2 events today.',
+        triggerType: 'scheduled',
+      });
 
       expect(mockSession.dispose).toHaveBeenCalled();
     });
@@ -120,6 +139,57 @@ describe('briefing service', () => {
       await service.sendBriefing();
 
       expect(fastify.log.error).toHaveBeenCalled();
+    });
+
+    it('includes previous briefing context when one exists', async () => {
+      const mockSession = {
+        prompt: vi.fn().mockResolvedValue(undefined),
+        getLastAssistantText: vi.fn().mockReturnValue('New briefing'),
+        dispose: vi.fn(),
+      };
+
+      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+
+      const previousBriefing = {
+        id: 'prev-1',
+        content: 'Previous briefing content',
+        triggeredAt: new Date(Date.now() - 86400000).toISOString(),
+        triggerType: 'scheduled' as const,
+      };
+
+      const fastify = createMockFastify({
+        briefingRepository: {
+          create: vi.fn().mockReturnValue({}),
+          findLatest: vi.fn().mockReturnValue(previousBriefing),
+          findAll: vi.fn().mockReturnValue([previousBriefing]),
+        },
+      });
+
+      const service = createBriefingService(fastify);
+      await service.sendBriefing();
+
+      const prompt = mockSession.prompt.mock.calls[0][0];
+      expect(prompt).toContain('Previous briefing content');
+      expect(prompt).toContain('Try not to repeat the same information');
+    });
+
+    it('saves manual briefings with correct trigger type', async () => {
+      const mockSession = {
+        prompt: vi.fn().mockResolvedValue(undefined),
+        getLastAssistantText: vi.fn().mockReturnValue('Manual briefing'),
+        dispose: vi.fn(),
+      };
+
+      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+
+      const fastify = createMockFastify();
+      const service = createBriefingService(fastify);
+      await service.sendBriefing({ triggerType: 'manual' });
+
+      expect(fastify.briefingRepository.create).toHaveBeenCalledWith({
+        content: 'Manual briefing',
+        triggerType: 'manual',
+      });
     });
   });
 
