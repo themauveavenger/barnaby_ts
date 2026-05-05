@@ -76,6 +76,8 @@ describe('briefing service', () => {
         prompt: vi.fn().mockResolvedValue(undefined),
         getLastAssistantText: vi.fn().mockReturnValue('Good morning! You have 2 events today.'),
         dispose: vi.fn(),
+        setAutoRetryEnabled: vi.fn(),
+        abort: vi.fn().mockResolvedValue(undefined),
       };
 
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
@@ -130,11 +132,61 @@ describe('briefing service', () => {
       expect(mockSession.dispose).toHaveBeenCalled();
     });
 
+    it('disables auto-retry on the agent session', async () => {
+      const mockSession = {
+        prompt: vi.fn().mockResolvedValue(undefined),
+        getLastAssistantText: vi.fn().mockReturnValue('Briefing'),
+        dispose: vi.fn(),
+        setAutoRetryEnabled: vi.fn(),
+        abort: vi.fn().mockResolvedValue(undefined),
+      };
+
+      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+
+      const fastify = createMockFastify();
+      const service = createBriefingService(fastify);
+      await service.sendBriefing();
+
+      expect(mockSession.setAutoRetryEnabled).toHaveBeenCalledWith(false);
+    });
+
+    it('aborts and disposes the session when signal is triggered', async () => {
+      const mockSession = {
+        prompt: vi.fn().mockImplementation(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }),
+        getLastAssistantText: vi.fn().mockReturnValue('Briefing'),
+        dispose: vi.fn(),
+        setAutoRetryEnabled: vi.fn(),
+        abort: vi.fn().mockResolvedValue(undefined),
+      };
+
+      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+
+      const fastify = createMockFastify();
+      const service = createBriefingService(fastify);
+      const controller = new AbortController();
+
+      // Abort immediately
+      controller.abort();
+
+      try {
+        await service.sendBriefing({}, controller.signal);
+      } catch {
+        // Expected to fail when aborted
+      }
+
+      expect(mockSession.abort).toHaveBeenCalled();
+      expect(mockSession.dispose).toHaveBeenCalled();
+    });
+
     it('includes core memories in the prompt when they exist', async () => {
       const mockSession = {
         prompt: vi.fn().mockResolvedValue(undefined),
         getLastAssistantText: vi.fn().mockReturnValue('Briefing with memories'),
         dispose: vi.fn(),
+        setAutoRetryEnabled: vi.fn(),
+        abort: vi.fn().mockResolvedValue(undefined),
       };
 
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
@@ -168,6 +220,8 @@ describe('briefing service', () => {
         prompt: vi.fn().mockResolvedValue(undefined),
         getLastAssistantText: vi.fn().mockReturnValue('Briefing with recent memories'),
         dispose: vi.fn(),
+        setAutoRetryEnabled: vi.fn(),
+        abort: vi.fn().mockResolvedValue(undefined),
       };
 
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
@@ -201,6 +255,8 @@ describe('briefing service', () => {
         prompt: vi.fn().mockResolvedValue(undefined),
         getLastAssistantText: vi.fn().mockReturnValue('Briefing without memories'),
         dispose: vi.fn(),
+        setAutoRetryEnabled: vi.fn(),
+        abort: vi.fn().mockResolvedValue(undefined),
       };
 
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
@@ -241,6 +297,8 @@ describe('briefing service', () => {
         prompt: vi.fn().mockResolvedValue(undefined),
         getLastAssistantText: vi.fn().mockReturnValue('Briefing text'),
         dispose: vi.fn(),
+        setAutoRetryEnabled: vi.fn(),
+        abort: vi.fn().mockResolvedValue(undefined),
       };
 
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
@@ -262,6 +320,8 @@ describe('briefing service', () => {
         prompt: vi.fn().mockResolvedValue(undefined),
         getLastAssistantText: vi.fn().mockReturnValue('New briefing'),
         dispose: vi.fn(),
+        setAutoRetryEnabled: vi.fn(),
+        abort: vi.fn().mockResolvedValue(undefined),
       };
 
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
@@ -296,6 +356,8 @@ describe('briefing service', () => {
         prompt: vi.fn().mockResolvedValue(undefined),
         getLastAssistantText: vi.fn().mockReturnValue('Manual briefing'),
         dispose: vi.fn(),
+        setAutoRetryEnabled: vi.fn(),
+        abort: vi.fn().mockResolvedValue(undefined),
       };
 
       (createAgentSession as any).mockResolvedValue({ session: mockSession });

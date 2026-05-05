@@ -6,7 +6,7 @@ import createCalendarExtension from '../plugins/agent/extensions/google-calendar
 import type { Memory } from "../plugins/repository.js";
 
 export type BriefingService = {
-  sendBriefing(options?: { triggerType?: 'scheduled' | 'manual' }): Promise<void>;
+  sendBriefing(options?: { triggerType?: 'scheduled' | 'manual' }, signal?: AbortSignal): Promise<void>;
 };
 
 function getTimeOfDay(hour: number): string {
@@ -21,7 +21,7 @@ function formatMemoryList(memories: Pick<Memory, "content">[]): string {
 
 export function createBriefingService(fastify: FastifyInstance): BriefingService {
   return {
-    async sendBriefing(options = {}) {
+    async sendBriefing(options = {}, signal?: AbortSignal) {
       const chatIdEnv = process.env.TELEGRAM_CHAT_ID;
       if (!chatIdEnv) {
         fastify.log.warn('TELEGRAM_CHAT_ID is not set, skipping briefing');
@@ -56,6 +56,15 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
           resourceLoader,
           sessionManager: SessionManager.inMemory(),
         });
+        session.setAutoRetryEnabled(false);
+
+        const onAbort = () => {
+          session.abort().catch(() => {});
+        };
+        signal?.addEventListener('abort', onAbort);
+        if (signal?.aborted) {
+          onAbort();
+        }
 
         try {
           const now = new Date();
@@ -140,6 +149,7 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
             triggerType,
           });
         } finally {
+          signal?.removeEventListener('abort', onAbort);
           session.dispose();
         }
       } catch (error) {

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 import { buildTestApp } from '../helper.js';
 import { createAgentSession } from '@mariozechner/pi-coding-agent';
 
@@ -7,6 +8,8 @@ const mockSession = {
   prompt: vi.fn(async (_prompt: string) => {}),
   getLastAssistantText: vi.fn(() => 'Manual briefing content'),
   dispose: vi.fn(),
+  setAutoRetryEnabled: vi.fn(),
+  abort: vi.fn().mockResolvedValue(undefined),
 };
 
 const mockResourceLoader = {
@@ -83,4 +86,6 @@ describe('Briefing API', () => {
     expect(latest).not.toBeNull();
     expect(latest!.triggerType).toBe('manual');
   });
+
+
 });
