@@ -15,6 +15,8 @@ import telegramClientPlugin from './plugins/telegram-client.js';
 import schedulerPlugin from './plugins/scheduler.js';
 import agentPlugin from './plugins/agent/index.js';
 import { registerBriefingJob } from './services/briefing.js';
+import briefingRepositoryPlugin from './plugins/briefing-repository.js';
+import briefingRoutes from './routes/briefing/index.js';
 import memoryRoutes from './routes/memories/index.js';
 import pageRoutes from './routes/pages/index.js';
 import chatRoutes from './routes/chat/index.js';
@@ -53,6 +55,7 @@ export async function buildApp() {
   await app.register(errorHandlerPlugin);
   await app.register(databasePlugin);
   await app.register(repositoryPlugin);
+  await app.register(briefingRepositoryPlugin);
   await app.register(googleAuthPlugin);
   await app.register(calendarClientPlugin);
   await app.register(ynabClientPlugin);
@@ -114,6 +117,7 @@ export async function buildApp() {
   await app.register(pageRoutes);
   await app.register(chatRoutes, { prefix: '/chat' });
   await app.register(calendarRoutes, { prefix: '/calendar' });
+  await app.register(briefingRoutes, { prefix: '/briefing' });
 
   return app;
 }
