@@ -210,7 +210,7 @@ This shortcut calls "Build Memory Payload" and sends it to Barnaby.
 
 ## Deployment (Raspberry Pi)
 
-Barnaby can be deployed to a Raspberry Pi on your home network, served behind nginx at `barnaby.pi.local`.
+Barnaby can be deployed to a Raspberry Pi on your home network, served behind nginx at `barnaby.joshpiserver.local`.
 
 ### Prerequisites
 
@@ -250,8 +250,8 @@ Barnaby can be deployed to a Raspberry Pi on your home network, served behind ng
 
 4. Copy the nginx config and enable it:
    ```bash
-   sudo cp ~/barnaby_ts/scripts/nginx/barnaby.pi.local /etc/nginx/sites-available/
-   sudo ln -s /etc/nginx/sites-available/barnaby.pi.local /etc/nginx/sites-enabled/
+   sudo cp ~/barnaby_ts/scripts/nginx/barnaby.joshpiserver.local /etc/nginx/sites-available/
+   sudo ln -s /etc/nginx/sites-available/barnaby.joshpiserver.local /etc/nginx/sites-enabled/
    sudo nginx -t && sudo systemctl reload nginx
    ```
 
@@ -276,7 +276,7 @@ The SQLite database lives at `~/.local/share/barnaby/barnaby.db` — outside the
 ### Architecture Notes
 
 - Barnaby binds to `127.0.0.1:3001` by default (via `HOST` env var), avoiding conflicts with Pi-hole on port 80 and exposure to the LAN
-- nginx reverse-proxies `barnaby.pi.local` → `127.0.0.1:3001`
+- nginx reverse-proxies `barnaby.joshpiserver.local` → `127.0.0.1:3001`
 - The systemd user service auto-restarts on failure
 
 ## Memories
