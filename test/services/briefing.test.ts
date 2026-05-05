@@ -2,21 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { createBriefingService, registerBriefingJob } from '../../src/services/briefing.js';
 
-const mockResourceLoader = {
-  reload: vi.fn().mockResolvedValue(undefined),
-};
-
 vi.mock('@mariozechner/pi-coding-agent', () => ({
   createAgentSession: vi.fn(),
   SessionManager: {
     inMemory: vi.fn(() => ({})),
   },
-  DefaultResourceLoader: vi.fn(function DefaultResourceLoader() {
-    return mockResourceLoader;
-  }),
 }));
 
-import { createAgentSession, DefaultResourceLoader } from '@mariozechner/pi-coding-agent';
+import { createAgentSession } from '@mariozechner/pi-coding-agent';
 
 function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyInstance {
   const mockBriefingRepo = {
@@ -40,6 +33,7 @@ function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyIns
       authStorage: {},
       modelRegistry: {},
       model: {},
+      resourceLoader: {},
     },
     calendarIds: ['test@example.com', 'family@group.calendar.google.com'],
     telegramClient: {
@@ -86,13 +80,11 @@ describe('briefing service', () => {
       const service = createBriefingService(fastify);
       await service.sendBriefing();
 
-      const resourceLoaderCall = (DefaultResourceLoader as any).mock.calls[0][0];
-      expect(resourceLoaderCall.systemPrompt).toContain('You are Barnaby');
-      expect(resourceLoaderCall.systemPrompt).toContain('friendly personal assistant');
-      expect(resourceLoaderCall.systemPrompt).not.toContain('EXAMPLE');
-      expect(resourceLoaderCall.systemPrompt).not.toContain('Only use information provided by the tools');
-      expect(resourceLoaderCall.systemPrompt).not.toContain('If a tool returns an error');
-      expect(resourceLoaderCall.systemPrompt).not.toContain('Do not use emojis');
+      expect(createAgentSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tools: ['calendar_list'],
+        }),
+      );
 
       expect(fastify.memoryRepository.findByTags).toHaveBeenCalledWith(['core'], { permanentOnly: true });
       expect(fastify.memoryRepository.findRecent).toHaveBeenCalledWith(7);

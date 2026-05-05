@@ -1,8 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { createAgentSession, DefaultResourceLoader, SessionManager } from '@mariozechner/pi-coding-agent';
+import { createAgentSession, SessionManager } from '@mariozechner/pi-coding-agent';
 import { AsyncTask, CronJob } from 'toad-scheduler';
-import { BARNABY_PERSONALITY } from '../agent/personality.js';
-import createCalendarExtension from '../plugins/agent/extensions/google-calendar.js';
 import type { Memory } from "../plugins/repository.js";
 
 export type BriefingService = {
@@ -32,22 +30,7 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
       const triggerType = options.triggerType ?? 'scheduled';
 
       try {
-        const { authStorage, modelRegistry, model } = fastify.agent;
-
-        const resourceLoader = new DefaultResourceLoader({
-          cwd: process.cwd(),
-          agentDir: '/dev/null',
-          noContextFiles: true,
-          noExtensions: true,
-          noSkills: true,
-          noPromptTemplates: true,
-          noThemes: true,
-          extensionFactories: [
-            createCalendarExtension(fastify),
-          ],
-          systemPrompt: BARNABY_PERSONALITY,
-        });
-        await resourceLoader.reload();
+        const { authStorage, modelRegistry, model, resourceLoader } = fastify.agent;
 
         const { session } = await createAgentSession({
           model,
@@ -55,6 +38,7 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
           modelRegistry,
           resourceLoader,
           sessionManager: SessionManager.inMemory(),
+          tools: ['calendar_list'],
         });
         session.setAutoRetryEnabled(false);
 
