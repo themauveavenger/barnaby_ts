@@ -9,8 +9,9 @@ export function formatEventLine(event: CalendarEvent, timezone: string): string 
   const startTime = event.start?.dateTime ?? undefined;
   const endTime = event.end?.dateTime ?? undefined;
 
-  const formatDate = (iso: string | undefined) => {
-    if (!iso) return "no time";
+  type FormattedDate = { date: string; time: string };
+
+  const formatDate = (iso: string): FormattedDate => {
     const tzAbbr = tzName(timezone, new Date(iso), "short");
     return { date: format(new TZDate(iso, timezone), "EEE, MMM d", { in: tz(timezone) }), time: format(new TZDate(iso, timezone), "h:mm a", { in: tz(timezone) }) + " " + tzAbbr };
   };
@@ -19,8 +20,8 @@ export function formatEventLine(event: CalendarEvent, timezone: string): string 
     return `- ${event.id} | no time | ${event.summary} | ${event.description ?? ""}`;
   }
 
-  const start = formatDate(startTime);
-  const end = formatDate(endTime);
+  const start = formatDate(startTime!);
+  const end = formatDate(endTime!);
   const sameDay = start.date === end.date;
   const endStr = sameDay ? end.time : `${end.date}, ${end.time}`;
 

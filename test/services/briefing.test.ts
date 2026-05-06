@@ -18,6 +18,8 @@ function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyIns
     create: vi.fn().mockReturnValue({}),
     findLatest: vi.fn().mockReturnValue(null),
     findAll: vi.fn().mockReturnValue([]),
+    findAllPaginated: vi.fn().mockReturnValue({ data: [], total: 0 }),
+    delete: vi.fn().mockReturnValue(false),
   };
 
   const mockMemoryRepo = {
@@ -383,6 +385,8 @@ describe('briefing service', () => {
           create: vi.fn().mockReturnValue({}),
           findLatest: vi.fn().mockReturnValue(previousBriefing),
           findAll: vi.fn().mockReturnValue([previousBriefing]),
+          findAllPaginated: vi.fn().mockReturnValue({ data: [previousBriefing], total: 1 }),
+          delete: vi.fn().mockReturnValue(false),
         },
       });
 
