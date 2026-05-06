@@ -71,13 +71,19 @@ ssh -p "${PI_PORT}" "${PI_USER}@${PI_HOST}" bash -s <<REMOTE
 
   echo "--> Pulling latest code..."
   cd "\${APP_DIR}"
+  LOCKFILE_HASH_BEFORE=$(md5sum package-lock.json 2>/dev/null || echo "none")
   git pull
+  LOCKFILE_HASH_AFTER=$(md5sum package-lock.json 2>/dev/null || echo "none")
 
   echo "--> Trusting mise config..."
   mise trust
 
-  echo "--> Installing dependencies..."
-  mise x -- npm ci
+  if [ "\${LOCKFILE_HASH_BEFORE}" = "\${LOCKFILE_HASH_AFTER}" ]; then
+    echo "--> package-lock.json unchanged, skipping npm ci"
+  else
+    echo "--> package-lock.json changed, installing dependencies..."
+    mise x -- npm ci
+  fi
 
   # ── Per-deploy: update service and nginx configs ─────────────────
 
