@@ -71,9 +71,9 @@ ssh -p "${PI_PORT}" "${PI_USER}@${PI_HOST}" bash -s <<REMOTE
 
   echo "--> Pulling latest code..."
   cd "\${APP_DIR}"
-  LOCKFILE_HASH_BEFORE=$(md5sum package-lock.json 2>/dev/null || echo "none")
+  LOCKFILE_HASH_BEFORE=\$(md5sum package-lock.json 2>/dev/null || echo "none")
   git pull
-  LOCKFILE_HASH_AFTER=$(md5sum package-lock.json 2>/dev/null || echo "none")
+  LOCKFILE_HASH_AFTER=\$(md5sum package-lock.json 2>/dev/null || echo "none")
 
   echo "--> Trusting mise config..."
   mise trust
