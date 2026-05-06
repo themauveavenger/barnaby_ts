@@ -1,5 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { createBriefingService } from '../../services/briefing.js';
+import { NotFoundError } from '../../plugins/error-handler.js';
+import type { ListBriefingsQuery } from '../../plugins/briefing-repository.js';
 
 const BRIEFING_TIMEOUT_MS = process.env.BRIEFING_TIMEOUT_MS
   ? Number(process.env.BRIEFING_TIMEOUT_MS)
@@ -26,4 +28,27 @@ export async function briefingTriggerHandler(
     }
     throw error;
   }
+}
+
+export async function listBriefings(
+  request: FastifyRequest<{ Querystring: ListBriefingsQuery }>
+) {
+  const { data, total } = request.server.briefingRepository.findAllPaginated(request.query);
+  const page = request.query.page ?? 1;
+  const limit = request.query.limit ?? 20;
+  return {
+    data,
+    pagination: { page, limit, total },
+  };
+}
+
+export async function deleteBriefing(
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply
+) {
+  const deleted = request.server.briefingRepository.delete(request.params.id);
+  if (!deleted) {
+    throw new NotFoundError('Briefing not found');
+  }
+  reply.code(204);
 }

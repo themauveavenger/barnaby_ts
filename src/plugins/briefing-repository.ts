@@ -14,10 +14,17 @@ export type CreateBriefingBody = {
   triggerType: 'scheduled' | 'manual';
 };
 
+export type ListBriefingsQuery = {
+  page?: number;
+  limit?: number;
+};
+
 export interface BriefingRepository {
   create(data: CreateBriefingBody): Briefing;
   findLatest(): Briefing | null;
   findAll(): Briefing[];
+  findAllPaginated(query: ListBriefingsQuery): { data: Briefing[]; total: number };
+  delete(id: string): boolean;
 }
 
 type BriefingRow = {
@@ -68,6 +75,26 @@ export function createBriefingRepository(db: Database): BriefingRepository {
         .all() as BriefingRow[];
 
       return rows.map((row) => rowToBriefing(row));
+    },
+
+    findAllPaginated(query: ListBriefingsQuery) {
+      const countRow = db.prepare('SELECT COUNT(*) as total FROM briefings').get() as { total: number };
+      const total = countRow.total;
+
+      const page = Math.max(1, query.page || 1);
+      const limit = Math.min(100, Math.max(1, query.limit || 20));
+      const offset = (page - 1) * limit;
+
+      const rows = db
+        .prepare('SELECT * FROM briefings ORDER BY triggered_at DESC, rowid DESC LIMIT ? OFFSET ?')
+        .all(limit, offset) as BriefingRow[];
+
+      return { data: rows.map((row) => rowToBriefing(row)), total };
+    },
+
+    delete(id: string) {
+      const result = db.prepare('DELETE FROM briefings WHERE id = ?').run(id);
+      return result.changes > 0;
     },
   };
 }
