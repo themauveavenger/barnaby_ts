@@ -65,6 +65,7 @@
         <th>Create Date</th>
         <th>Permanent?</th>
         <th>Tags</th>
+        <th>Status</th>
       </tr>
     </thead>
     <tbody>
@@ -87,6 +88,37 @@
             {{/each}}
           {{else}}
             No Tags
+          {{/if}}
+        </td>
+        <td>
+          {{#if actions.length}}
+            {{#each actions}}
+              {{#if (eq action "completed")}}✓ Completed{{else}}✕ Dismissed{{/if}} ({{formattedDate}})
+            {{/each}}
+          {{else if (eq category "todo")}}
+            <form method="post" action="/actions" style="display:inline">
+              <input type="hidden" name="memoryId" value="{{id}}">
+              <input type="hidden" name="actionType" value="completed">
+              <button type="submit">Complete</button>
+            </form>
+            <form method="post" action="/actions" style="display:inline">
+              <input type="hidden" name="memoryId" value="{{id}}">
+              <input type="hidden" name="actionType" value="dismissed">
+              <button type="submit">Dismiss</button>
+            </form>
+          {{else if (eq category "purchase")}}
+            <form method="post" action="/actions" style="display:inline">
+              <input type="hidden" name="memoryId" value="{{id}}">
+              <input type="hidden" name="actionType" value="completed">
+              <button type="submit">Bought</button>
+            </form>
+            <form method="post" action="/actions" style="display:inline">
+              <input type="hidden" name="memoryId" value="{{id}}">
+              <input type="hidden" name="actionType" value="dismissed">
+              <button type="submit">Dismiss</button>
+            </form>
+          {{else}}
+            —
           {{/if}}
         </td>
       </tr>

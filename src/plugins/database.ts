@@ -42,6 +42,16 @@ export default fp(async function databasePlugin(fastify: FastifyInstance) {
       triggered_at INTEGER NOT NULL,
       trigger_type TEXT NOT NULL CHECK (trigger_type IN ('scheduled', 'manual'))
     );
+
+    CREATE TABLE IF NOT EXISTS memory_actions (
+      id TEXT PRIMARY KEY,
+      memory_id TEXT NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
+      action TEXT NOT NULL CHECK(action IN ('completed', 'dismissed')),
+      created_at INTEGER NOT NULL
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_actions_unique
+      ON memory_actions(memory_id, action);
   `);
 
   // Migration: add permanent column to existing databases

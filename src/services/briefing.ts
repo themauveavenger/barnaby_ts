@@ -3,7 +3,7 @@ import { createAgentSession, SessionManager } from '@mariozechner/pi-coding-agen
 import { AsyncTask, CronJob } from 'toad-scheduler';
 import { TZDate, tzName } from '@date-fns/tz';
 import { add, format, sub } from 'date-fns';
-import type { Memory } from "../plugins/repository.js";
+import type { Memory, ResolvedMemory } from "../plugins/repository.js";
 
 export type BriefingService = {
   sendBriefing(options?: { triggerType?: 'scheduled' | 'manual' }, signal?: AbortSignal): Promise<void>;
@@ -17,6 +17,14 @@ function getTimeOfDay(hour: number): string {
 
 function formatMemoryList(memories: Pick<Memory, "content">[]): string {
   return memories.map((m) => `- ${m.content}`).join('\n');
+}
+
+function formatResolvedList(memories: ResolvedMemory[]): string {
+  return memories.map((m) => {
+    const date = new Date(m.actionCreatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const action = m.action === 'completed' ? 'completed' : 'dismissed';
+    return `- ${m.content} (${action} ${date})`;
+  }).join('\n');
 }
 
 export function createBriefingService(fastify: FastifyInstance): BriefingService {
@@ -71,11 +79,17 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
             ? `Core memories about the user:\n${formatMemoryList(coreMemories)}`
             : '';
 
+          const resolvedMemories = fastify.memoryRepository.findResolvedRecent(7);
+
           const recentContext = recentMemories.length > 0
             ? `Recent notes and tasks (last 7 days):\n${formatMemoryList(recentMemories)}`
             : '';
 
-          const memoryContext = [coreContext, recentContext].filter(Boolean).join('\n\n');
+          const resolvedContext = resolvedMemories.length > 0
+            ? `Tasks already completed or dismissed (do not mention these again):\n${formatResolvedList(resolvedMemories)}`
+            : '';
+
+          const memoryContext = [coreContext, recentContext, resolvedContext].filter(Boolean).join('\n\n');
 
           const todayStart = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate(), timezone);
           const yesterdayStart = sub(todayStart, { days: 1 });
@@ -109,10 +123,12 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
             '- Mention yesterday only if there were notable events worth following up on.',
             '- Highlight important upcoming events within the next 3 days.',
             '  It is okay to remind about the same event across multiple briefings, but vary how you phrase it.',
+            '- If there are any US holidays coming up, you an let the user know about them even though they may not celebrate that particular one.',
             '- Use 2-3 short paragraphs total, max 150 words.',
             '- Use a single bullet list only for 3+ calendar events; otherwise weave them into sentences.',
             '- If no calendar events exist, do not mention the calendar at all.',
             '- If no memories or tasks exist, do not mention them at all.',
+            '- Do not remind the user about any task listed in the "completed or dismissed" section — those are already handled.',
             '- Do not mention core memories unless the user explicitly asks you about them.',
             '- Never apologize for lack of information; just provide what you have.',
             '- If a tool returns an error, mention it briefly in plain English and move on.',

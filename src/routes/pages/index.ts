@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import type { ListMemoriesQuery, CreateMemoryBody } from '../../plugins/repository.js';
+import type { ListMemoriesQuery, CreateMemoryBody, MemoryActionType } from '../../plugins/repository.js';
 import { listMemoriesSchema, createMemorySchema } from '../memories/schemas.js';
 
 function formatDate(isoString: string): string {
@@ -28,16 +28,19 @@ type MemoryFormData = {
   tags?: unknown;
 };
 
+type MemoryViewModel = {
+  id: string;
+  content: string;
+  category: string;
+  tags: string[];
+  permanent: boolean;
+  createdAt: string;
+  formattedDate: string;
+  actions: Array<{ id: string; action: string; formattedDate: string }>;
+};
+
 type MemoriesViewModel = {
-  memories: Array<{
-    id: string;
-    content: string;
-    category: string;
-    tags: string[];
-    permanent: boolean;
-    createdAt: string;
-    formattedDate: string;
-  }>;
+  memories: MemoryViewModel[];
   filters: {
     category: string;
     categoryAppointment: boolean;
@@ -98,9 +101,17 @@ function buildViewModel(
     return '/?' + params.toString();
   };
 
+  const memoryIds = data.map((m) => m.id);
+  const actionsMap = fastify.memoryActionRepository.findByMemoryIds(memoryIds);
+
   const memories = data.map((memory) => ({
     ...memory,
     formattedDate: formatDate(memory.createdAt),
+    actions: (actionsMap.get(memory.id) || []).map((a) => ({
+      id: a.id,
+      action: a.action,
+      formattedDate: formatDate(a.createdAt),
+    })),
   }));
 
   return {
@@ -178,6 +189,23 @@ export default async function pageRoutes(fastify: FastifyInstance) {
     }
 
     request.server.memoryRepository.create(request.body);
+    return reply.redirect('/');
+  });
+
+  // Action form submission (complete/dismiss a memory)
+  type ActionFormData = {
+    memoryId?: unknown;
+    actionType?: unknown;
+  };
+
+  fastify.post('/actions', async (request: FastifyRequest<{ Body: ActionFormData }>, reply: FastifyReply) => {
+    const { memoryId, actionType } = request.body as ActionFormData;
+    if (typeof memoryId === 'string' && typeof actionType === 'string') {
+      const memory = fastify.memoryRepository.findById(memoryId);
+      if (memory) {
+        fastify.memoryActionRepository.create(memoryId, actionType as MemoryActionType);
+      }
+    }
     return reply.redirect('/');
   });
 }

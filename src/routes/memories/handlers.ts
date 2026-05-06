@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { NotFoundError } from '../../plugins/error-handler.js';
-import type { CreateMemoryBody, ListMemoriesQuery } from '../../plugins/repository.js';
+import type { CreateMemoryBody, ListMemoriesQuery, MemoryActionType } from '../../plugins/repository.js';
 
 export async function createMemory(
   request: FastifyRequest<{ Body: CreateMemoryBody }>,
@@ -40,6 +40,31 @@ export async function deleteMemory(
   const deleted = request.server.memoryRepository.delete(request.params.id);
   if (!deleted) {
     throw new NotFoundError('Memory not found');
+  }
+  reply.code(204);
+}
+
+export async function createAction(
+  request: FastifyRequest<{ Params: { id: string }; Body: { action: MemoryActionType } }>,
+  reply: FastifyReply
+) {
+  const memory = request.server.memoryRepository.findById(request.params.id);
+  if (!memory) {
+    throw new NotFoundError('Memory not found');
+  }
+
+  const action = request.server.memoryActionRepository.create(request.params.id, request.body.action);
+  reply.code(201);
+  return action;
+}
+
+export async function deleteAction(
+  request: FastifyRequest<{ Params: { id: string; actionId: string } }>,
+  reply: FastifyReply
+) {
+  const deleted = request.server.memoryActionRepository.delete(request.params.actionId);
+  if (!deleted) {
+    throw new NotFoundError('Action not found');
   }
   reply.code(204);
 }

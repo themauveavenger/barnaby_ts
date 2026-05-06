@@ -205,4 +205,99 @@ describe('Memories Page', () => {
     expect(response.headers['content-type']).toContain('text/html');
     expect(response.payload).toContain('Add Memory');
   });
+
+  it('should display action buttons for todo memories without actions', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: { content: 'Buy milk', category: 'todo' },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/',
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain('Complete');
+    expect(response.payload).toContain('Dismiss');
+  });
+
+  it('should not display action buttons for note memories', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: { content: 'Random thought', category: 'note' },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/',
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).not.toContain('Complete</button>');
+    expect(response.payload).not.toContain('Dismiss</button>');
+  });
+
+  it('should display action status for completed memories', async () => {
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: { content: 'Buy groceries', category: 'todo' },
+    });
+    const created = createRes.json();
+
+    await app.inject({
+      method: 'POST',
+      url: `/memories/${created.id}/actions`,
+      headers: { authorization: authHeader },
+      payload: { action: 'completed' },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/',
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain('Completed');
+  });
+
+  it('should create action via form submission and redirect', async () => {
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: { content: 'Call dentist', category: 'todo' },
+    });
+    const created = createRes.json();
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/actions',
+      headers: {
+        authorization: authHeader,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      payload: `memoryId=${created.id}&actionType=completed`,
+    });
+
+    expect(response.statusCode).toBe(302);
+    expect(response.headers.location).toBe('/');
+
+    // Verify action was created
+    const page = await app.inject({
+      method: 'GET',
+      url: '/',
+      headers: { authorization: authHeader },
+    });
+    expect(page.payload).toContain('Completed');
+  });
 });

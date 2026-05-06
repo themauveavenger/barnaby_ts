@@ -346,4 +346,203 @@ describe('Memories API', () => {
       expect(response.statusCode).toBe(401);
     });
   });
+
+  describe('POST /memories/:id/actions', () => {
+    it('should create a completed action on a memory', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: { content: 'Buy milk', category: 'todo' },
+      });
+      const created = createRes.json();
+
+      const actionRes = await app.inject({
+        method: 'POST',
+        url: `/memories/${created.id}/actions`,
+        headers: { authorization: authHeader },
+        payload: { action: 'completed' },
+      });
+
+      expect(actionRes.statusCode).toBe(201);
+      const action = actionRes.json();
+      expect(action.memoryId).toBe(created.id);
+      expect(action.action).toBe('completed');
+      expect(action.id).toBeDefined();
+    });
+
+    it('should create a dismissed action on a memory', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: { content: 'Call dentist', category: 'todo' },
+      });
+      const created = createRes.json();
+
+      const actionRes = await app.inject({
+        method: 'POST',
+        url: `/memories/${created.id}/actions`,
+        headers: { authorization: authHeader },
+        payload: { action: 'dismissed' },
+      });
+
+      expect(actionRes.statusCode).toBe(201);
+      expect(actionRes.json().action).toBe('dismissed');
+    });
+
+    it('should return 404 for nonexistent memory', async () => {
+      const actionRes = await app.inject({
+        method: 'POST',
+        url: '/memories/00000000-0000-0000-0000-000000000000/actions',
+        headers: { authorization: authHeader },
+        payload: { action: 'completed' },
+      });
+
+      expect(actionRes.statusCode).toBe(404);
+    });
+
+    it('should reject invalid action type', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: { content: 'Test', category: 'note' },
+      });
+      const created = createRes.json();
+
+      const actionRes = await app.inject({
+        method: 'POST',
+        url: `/memories/${created.id}/actions`,
+        headers: { authorization: authHeader },
+        payload: { action: 'invalid' },
+      });
+
+      expect(actionRes.statusCode).toBe(400);
+    });
+
+    it('should reject missing action', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: { content: 'Test', category: 'note' },
+      });
+      const created = createRes.json();
+
+      const actionRes = await app.inject({
+        method: 'POST',
+        url: `/memories/${created.id}/actions`,
+        headers: { authorization: authHeader },
+        payload: {},
+      });
+
+      expect(actionRes.statusCode).toBe(400);
+    });
+
+    it('should reject duplicate action on same memory', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: { content: 'Duplicate test', category: 'todo' },
+      });
+      const created = createRes.json();
+
+      await app.inject({
+        method: 'POST',
+        url: `/memories/${created.id}/actions`,
+        headers: { authorization: authHeader },
+        payload: { action: 'completed' },
+      });
+
+      const secondRes = await app.inject({
+        method: 'POST',
+        url: `/memories/${created.id}/actions`,
+        headers: { authorization: authHeader },
+        payload: { action: 'completed' },
+      });
+
+      expect(secondRes.statusCode).toBe(500);
+    });
+  });
+
+  describe('DELETE /memories/:id/actions/:actionId', () => {
+    it('should delete an action', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: { content: 'Undo test', category: 'todo' },
+      });
+      const created = createRes.json();
+
+      const actionRes = await app.inject({
+        method: 'POST',
+        url: `/memories/${created.id}/actions`,
+        headers: { authorization: authHeader },
+        payload: { action: 'completed' },
+      });
+      const action = actionRes.json();
+
+      const deleteRes = await app.inject({
+        method: 'DELETE',
+        url: `/memories/${created.id}/actions/${action.id}`,
+        headers: { authorization: authHeader },
+      });
+
+      expect(deleteRes.statusCode).toBe(204);
+    });
+
+    it('should return 404 for nonexistent action', async () => {
+      const deleteRes = await app.inject({
+        method: 'DELETE',
+        url: '/memories/00000000-0000-0000-0000-000000000000/actions/00000000-0000-0000-0000-000000000000',
+        headers: { authorization: authHeader },
+      });
+
+      expect(deleteRes.statusCode).toBe(404);
+    });
+
+    it('should restore memory to context after action deleted', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: { content: 'Restored todo', category: 'todo' },
+      });
+      const created = createRes.json();
+
+      const actionRes = await app.inject({
+        method: 'POST',
+        url: `/memories/${created.id}/actions`,
+        headers: { authorization: authHeader },
+        payload: { action: 'completed' },
+      });
+      const action = actionRes.json();
+
+      // Verify memory excluded from context
+      const contextBefore = await app.inject({
+        method: 'GET',
+        url: '/memories/context',
+        headers: { authorization: authHeader },
+      });
+      expect(contextBefore.json().recent.every((m: { id: string }) => m.id !== created.id)).toBe(true);
+
+      // Delete the action
+      await app.inject({
+        method: 'DELETE',
+        url: `/memories/${created.id}/actions/${action.id}`,
+        headers: { authorization: authHeader },
+      });
+
+      // Verify memory is back in context
+      const contextAfter = await app.inject({
+        method: 'GET',
+        url: '/memories/context',
+        headers: { authorization: authHeader },
+      });
+      expect(contextAfter.json().recent.some((m: { id: string }) => m.id === created.id)).toBe(true);
+    });
+  });
 });

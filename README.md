@@ -161,6 +161,39 @@ The agent has access to 7 YNAB tools:
 ## Planned Features
 - integration with home assistant
 - MCP server support for external tool discovery
+- Telegram bot interaction for completing/dismissing todo memories
+
+## Memory Actions
+
+Memories with the `todo` (or `purchase`) category can be acted on — for example, marking a todo as done or a purchase as no longer needed. Rather than pollute the `memories` table with a `status` column that only applies to certain categories, we use a `memory_actions` table.
+
+### Schema
+
+```sql
+CREATE TABLE memory_actions (
+  id TEXT PRIMARY KEY,
+  memory_id TEXT NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
+  action TEXT NOT NULL CHECK(action IN ('completed', 'dismissed')),
+  created_at INTEGER NOT NULL
+);
+
+CREATE UNIQUE INDEX idx_memory_actions_unique ON memory_actions(memory_id, action);
+```
+
+### Supported Actions
+
+| Action | Meaning |
+|--------|----------|
+| `completed` | The task/purchase has been fulfilled. Should no longer appear in briefings as something to do. |
+| `dismissed` | No longer relevant, but not fulfilled. Stop reminding about it. |
+
+### How It Works
+
+- A memory can have at most one of each action type (unique index on `memory_id, action`).
+- When building briefing context, `todo` memories with a `completed` action are excluded from "active tasks" and optionally listed as "completed tasks" so the LLM knows not to re-notify about them.
+- The `memories` row is **not deleted** — it persists for historical reference.
+- Deleting a memory cascades to its actions.
+- Future actions (e.g. `snoozed`) can be added to the CHECK constraint and potentially with extra columns.
 
 ## How does Barnaby acquire new memories?
 

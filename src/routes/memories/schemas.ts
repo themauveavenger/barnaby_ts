@@ -54,3 +54,34 @@ export const deleteMemorySchema = {
     required: ['id'],
   },
 };
+
+export const createActionSchema = {
+  params: {
+    type: 'object',
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+    },
+    required: ['id'],
+  },
+  body: {
+    type: 'object',
+    properties: {
+      action: {
+        type: 'string',
+        enum: ['completed', 'dismissed'],
+      },
+    },
+    required: ['action'],
+  },
+};
+
+export const deleteActionSchema = {
+  params: {
+    type: 'object',
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      actionId: { type: 'string', format: 'uuid' },
+    },
+    required: ['id', 'actionId'],
+  },
+};

@@ -94,6 +94,8 @@ export async function buildApp() {
     registerBriefingJob(app);
   });
 
+  handlebars.registerHelper('eq', (a, b) => a === b);
+
   await app.register(view, {
     engine: { handlebars },
     root: new URL('./templates', import.meta.url).pathname,
