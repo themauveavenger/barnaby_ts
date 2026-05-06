@@ -8,12 +8,23 @@ import type { CalendarEvent } from "../../calendar-client.js";
 export function formatEventLine(event: CalendarEvent, timezone: string): string {
   const startTime = event.start?.dateTime ?? undefined;
   const endTime = event.end?.dateTime ?? undefined;
-  const fmt = (iso: string | undefined) => {
+
+  const formatDate = (iso: string | undefined) => {
     if (!iso) return "no time";
     const tzAbbr = tzName(timezone, new Date(iso), "short");
-    return format(new TZDate(iso, timezone), "h:mm a", { in: tz(timezone) }) + " " + tzAbbr;
+    return { date: format(new TZDate(iso, timezone), "EEE, MMM d", { in: tz(timezone) }), time: format(new TZDate(iso, timezone), "h:mm a", { in: tz(timezone) }) + " " + tzAbbr };
   };
-  return `- ${event.id} | ${fmt(startTime)} - ${fmt(endTime)} | ${event.summary} | ${event.description ?? ""}`;
+
+  if (!startTime && !endTime) {
+    return `- ${event.id} | no time | ${event.summary} | ${event.description ?? ""}`;
+  }
+
+  const start = formatDate(startTime);
+  const end = formatDate(endTime);
+  const sameDay = start.date === end.date;
+  const endStr = sameDay ? end.time : `${end.date}, ${end.time}`;
+
+  return `- ${event.id} | ${start.date}, ${start.time} - ${endStr} | ${event.summary} | ${event.description ?? ""}`;
 }
 
 export function formatEvents(events: CalendarEvent[], timezone: string): string[] {

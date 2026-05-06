@@ -24,17 +24,28 @@ describe("formatEventLine", () => {
   it("formats a complete event with local times", () => {
     const event = makeEvent();
     const result = formatEventLine(event, timezone);
-    expect(result).toBe("- evt-1 | 5:00 AM EDT - 5:30 AM EDT | Team Standup | Daily sync");
+    expect(result).toBe("- evt-1 | Wed, Apr 29, 5:00 AM EDT - 5:30 AM EDT | Team Standup | Daily sync");
   });
 
-  it("handles missing optional fields", () => {
+  it("handles missing start and end times", () => {
     const event = makeEvent({
       description: undefined,
       start: { dateTime: undefined },
       end: { dateTime: undefined },
     });
     expect(formatEventLine(event, timezone)).toBe(
-      "- evt-1 | no time - no time | Team Standup | "
+      "- evt-1 | no time | Team Standup | "
+    );
+  });
+
+  it("shows end date when event spans multiple days", () => {
+    const event = makeEvent({
+      start: { dateTime: "2026-04-29T09:00:00Z" },
+      end: { dateTime: "2026-04-30T17:00:00Z" },
+    });
+    const result = formatEventLine(event, timezone);
+    expect(result).toBe(
+      "- evt-1 | Wed, Apr 29, 5:00 AM EDT - Thu, Apr 30, 1:00 PM EDT | Team Standup | Daily sync"
     );
   });
 });
