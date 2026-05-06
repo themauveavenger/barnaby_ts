@@ -144,3 +144,6 @@ dist
 
 # omo stuff
 .sisyphus/
+
+# http client stuff
+.http/http-client.private.env.json

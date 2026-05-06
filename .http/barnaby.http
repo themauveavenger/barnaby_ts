@@ -3,4 +3,16 @@
 # @connection-timeout 120s
 POST http://localhost:3000/briefing
 Accept: application/json
-Authorization: Basic am9zaDpzb21ldGhpbmdlbHNl
+Authorization: Basic {{basicAuth}}
+
+### get memories
+GET http://barnaby.joshpiserver.lan/memories
+Accept: application/json
+Content-Type: application/json
+Authorization: Basic {{basicAuth}}
+
+
+### remove old memories
+#DELETE http://barnaby.joshpiserver.lan/memories/123
+Accept: application/json
+Authorization: Basic {{basicAuth}}
