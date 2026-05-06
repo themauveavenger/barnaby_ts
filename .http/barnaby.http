@@ -5,6 +5,14 @@ POST http://localhost:3000/briefing
 Accept: application/json
 Authorization: Basic {{basicAuth}}
 
+
+### production manual briefing
+# @timeout 120s
+# @connection-timeout 120s
+POST http://barnaby.joshpiserver.lan/briefing
+Accept: application/json
+Authorization: Basic {{basicAuth}}
+
 ### get memories
 GET http://barnaby.joshpiserver.lan/memories
 Accept: application/json
