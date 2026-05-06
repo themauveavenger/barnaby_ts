@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=%h/barnaby_ts
-ExecStart=%h/.local/bin/mise x -- npx tsx --env-file=%h/.config/barnaby/.env %h/barnaby_ts/src/index.ts
+ExecStart=/usr/bin/mise x -- npx tsx --env-file=%h/.config/barnaby/.env %h/barnaby_ts/src/index.ts
 Restart=on-failure
 RestartSec=5
 Environment="NODE_ENV=production"

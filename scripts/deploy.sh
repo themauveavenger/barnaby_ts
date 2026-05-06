@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PI_HOST="${PI_HOST:-joshpiserver.local}"
+PI_HOST="${PI_HOST:-joshpiserver.lan}"
 PI_USER="${PI_USER:-joshjosh}"
 PI_PORT="${PI_PORT:-22}"
 APP_DIR="/home/${PI_USER}/barnaby_ts"
