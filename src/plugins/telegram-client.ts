@@ -1,6 +1,6 @@
 import fp from 'fastify-plugin';
 import type { FastifyInstance } from 'fastify';
-import { Bot } from 'grammy';
+import { Bot, type Context } from 'grammy';
 import { autoRetry } from '@grammyjs/auto-retry';
 
 export type TelegramClient = {
@@ -54,4 +54,5 @@ export default fp(async function telegramClientPlugin(fastify: FastifyInstance) 
   };
 
   fastify.decorate('telegramClient', client);
+  fastify.decorate('telegramBot', bot);
 });

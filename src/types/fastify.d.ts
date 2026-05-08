@@ -6,6 +6,7 @@ import type { OAuth2Client } from 'google-auth-library';
 import type { CalendarClient } from '../plugins/calendar-client.js';
 import type { YnabClient } from '../plugins/ynab-client.js';
 import type { TelegramClient } from '../plugins/telegram-client.js';
+import type { Bot, Context } from 'grammy';
 import type { ToadScheduler } from '@fastify/schedule';
 
 declare module 'fastify' {
@@ -21,6 +22,7 @@ declare module 'fastify' {
     timezone: string;
     ynabClient: YnabClient;
     telegramClient: TelegramClient;
+    telegramBot: Bot<Context>;
     scheduler: ToadScheduler;
   }
 }

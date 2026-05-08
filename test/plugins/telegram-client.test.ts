@@ -48,7 +48,7 @@ describe('telegram-client plugin (TL;DR: TDD-driven)', () => {
     await expect(app.ready()).rejects.toThrowError('TELEGRAM_BOT_TOKEN');
   });
 
-  it('decorates fastify with telegramClient and starts bot on ready', async () => {
+  it('decorates fastify with telegramClient and telegramBot, and starts bot on ready', async () => {
     const app = Fastify();
     app.register(telegramClientPlugin as any);
     await app.ready();
@@ -56,6 +56,10 @@ describe('telegram-client plugin (TL;DR: TDD-driven)', () => {
     const telegramClient = (app as any).telegramClient;
     expect(telegramClient).toBeDefined();
     expect(typeof telegramClient.sendMessage).toBe('function');
+
+    const telegramBot = (app as any).telegramBot;
+    expect(telegramBot).toBeDefined();
+    expect(typeof telegramBot.command).toBe('function');
 
     const botInstance = (globalThis as any).__GRAMMY_BOT_INSTANCE__;
     expect(botInstance).toBeDefined();

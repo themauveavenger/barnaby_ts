@@ -1,7 +1,6 @@
 import Fastify, { type FastifyRequest, type FastifyLoggerOptions } from 'fastify';
 import type { LoggerOptions as PinoLoggerOptions } from 'pino';
 import basicAuth from '@fastify/basic-auth';
-// import helmet from "@fastify/helmet";
 import fStatic from "@fastify/static";
 import view from '@fastify/view';
 import handlebars from 'handlebars';
@@ -15,6 +14,7 @@ import telegramClientPlugin from './plugins/telegram-client.js';
 import schedulerPlugin from './plugins/scheduler.js';
 import agentPlugin from './plugins/agent/index.js';
 import { registerBriefingJob } from './services/briefing.js';
+import registerTelegramCommands from './services/telegram-commands.js';
 import briefingRepositoryPlugin from './plugins/briefing-repository.js';
 import briefingRoutes from './routes/briefing/index.js';
 import memoryRoutes from './routes/memories/index.js';
@@ -57,23 +57,6 @@ export async function buildApp() {
   app.decorate('calendarIds', getCalendarIds());
   app.decorate('timezone', process.env.TIMEZONE || 'America/New_York');
 
-  // await app.register(helmet, {
-  //   hsts: false,
-  //   contentSecurityPolicy: {
-  //     directives: {
-  //       'default-src': ["'self'"],
-  //       'base-uri': ["'self'"],
-  //       'font-src': ["'self'", 'https:', 'data:'],
-  //       'form-action': ["'self'"],
-  //       'frame-ancestors': ["'self'"],
-  //       'img-src': ["'self'", 'data:'],
-  //       'object-src': ["'none'"],
-  //       'script-src': ["'self'"],
-  //       'script-src-attr': ["'none'"],
-  //       'style-src': ["'self'", 'https:', "'unsafe-inline'"],
-  //     },
-  //   },
-  // });
   await app.register(fStatic, {
     root: new URL("../public", import.meta.url).pathname,
     prefix: "/"
@@ -91,6 +74,7 @@ export async function buildApp() {
   await app.register(schedulerPlugin);
 
   app.addHook('onReady', () => {
+    registerTelegramCommands(app);
     registerBriefingJob(app);
   });
 

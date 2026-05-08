@@ -21,6 +21,17 @@ Authorization: Basic {{basicAuth}}
 
 
 ### remove old memories
-#DELETE http://barnaby.joshpiserver.lan/memories/123
+DELETE http://barnaby.joshpiserver.lan/memories/123
+Accept: application/json
+Authorization: Basic {{basicAuth}}
+
+
+### get all briefings
+GET http://barnaby.joshpiserver.lan/briefing
+Accept: application/json
+Authorization: Basic {{basicAuth}}
+
+### delete a briefing
+DELETE http://barnaby.joshpiserver.lan/briefing/78cc7076-19b0-4293-abdd-f57339d59b8d
 Accept: application/json
 Authorization: Basic {{basicAuth}}

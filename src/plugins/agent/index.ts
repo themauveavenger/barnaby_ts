@@ -7,6 +7,7 @@ import { BARNABY_PERSONALITY } from "../../agent/personality.js";
 import createCalendarExtension from "./extensions/google-calendar.js";
 import createYnabExtension from "./extensions/ynab/index.js";
 import createTelegramExtension from "./extensions/telegram.js";
+import createMemoryExtension from "./extensions/memory.js";
 
 export type AgentServices = {
   authStorage: AuthStorage;
@@ -28,7 +29,12 @@ export default fp(async function agentPlugin(fastify: FastifyInstance) {
     noSkills: true,
     noPromptTemplates: true,
     noThemes: true,
-    extensionFactories: [createCalendarExtension(fastify), createYnabExtension(fastify), createTelegramExtension(fastify)],
+    extensionFactories: [
+      createCalendarExtension(fastify),
+      createYnabExtension(fastify),
+      createTelegramExtension(fastify),
+      createMemoryExtension(fastify)
+    ],
     systemPrompt: BARNABY_PERSONALITY,
   });
   await resourceLoader.reload();
