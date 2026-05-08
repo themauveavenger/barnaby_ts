@@ -4,8 +4,11 @@
 
 set -euo pipefail
 
-# loads .env file
-set -o allexport; source .env; set +o allexport
+# loads .env file from project root
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$SCRIPT_DIR/../.env" ]; then
+  set -o allexport; source "$SCRIPT_DIR/../.env"; set +o allexport
+fi
 
 if [ -z "${GOOGLE_CLIENT_ID:-}" ] || [ -z "${GOOGLE_CLIENT_SECRET:-}" ] || [ -z "${GOOGLE_REFRESH_TOKEN:-}" ]; then
   echo "Error: Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN"

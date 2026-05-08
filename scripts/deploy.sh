@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PI_HOST="${PI_HOST:-joshpiserver.lan}"
-PI_USER="${PI_USER:-joshjosh}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ENV_FILE="$SCRIPT_DIR/../.env"
+if [ -f "$ENV_FILE" ]; then
+  set -a
+  source "$ENV_FILE"
+  set +a
+fi
+
+PI_HOST="${PI_HOST:?must be set}"
+PI_USER="${PI_USER:?must be set}"
 PI_PORT="${PI_PORT:-22}"
-REPO_URL="${REPO_URL:-https://github.com/joshjosh/barnaby_ts.git}"
-NGINX_SITE="barnaby.joshpiserver.lan"
+REPO_URL="${REPO_URL:?must be set}"
+NGINX_SITE="barnaby.conf"
 REMOTE_APP_DIR="/home/${PI_USER}/barnaby_ts"
 
 echo "Deploying to ${PI_USER}@${PI_HOST}..."
@@ -17,7 +25,7 @@ scp -P "${PI_PORT}" \
   "${PI_USER}@${PI_HOST}:/tmp/barnaby.service"
 
 scp -P "${PI_PORT}" \
-  scripts/nginx/barnaby.joshpiserver.lan \
+  scripts/nginx/barnaby.conf \
   "${PI_USER}@${PI_HOST}:/tmp/${NGINX_SITE}"
 
 ssh -p "${PI_PORT}" "${PI_USER}@${PI_HOST}" bash -s <<REMOTE
