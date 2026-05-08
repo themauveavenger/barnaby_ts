@@ -37,6 +37,7 @@ ssh -p "${PI_PORT}" "${PI_USER}@${PI_HOST}" bash -s <<REMOTE
   DATA_DIR="\${HOME}/.local/share/barnaby"
   SYSTEMD_DIR="\${HOME}/.config/systemd/user"
   NGINX_SITE="${NGINX_SITE}"
+  DOMAIN="${DOMAIN}"
 
   # ── One-time setup: directories ──────────────────────────────────
 
