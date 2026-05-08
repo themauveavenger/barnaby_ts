@@ -17,6 +17,7 @@ export default function registerTelegramCommands(fastify: FastifyInstance): void
 
     const text = ctx.match?.trim();
     if (!text) {
+      await ctx.react('🤔');
       await ctx.reply('Usage: /remember <text>\n\nExamples:\n/remember call the dentist on Friday\n/remember shellfish allergy\n/remember what todos do I have?');
       return;
     }
@@ -26,6 +27,9 @@ export default function registerTelegramCommands(fastify: FastifyInstance): void
     // build the prompt for the agent up here so we can log any errors.
     const guidelines = MEMORY_CATEGORIZATION_GUIDELINES.join('\n');
     const prompt = `${guidelines}\n\nUser says: "${text}"`;
+
+    let sessionCreated = false;
+    let wasTimeout = false;
 
     try {
       const { authStorage, modelRegistry, model, resourceLoader } = fastify.agent;
@@ -39,8 +43,13 @@ export default function registerTelegramCommands(fastify: FastifyInstance): void
         tools: ['memory_create', 'memory_list', 'memory_resolve'],
       });
 
+      sessionCreated = true;
+
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), REMEMBER_TIMEOUT_MS);
+      const timeoutId = setTimeout(() => {
+        wasTimeout = true;
+        controller.abort();
+      }, REMEMBER_TIMEOUT_MS);
 
       try {
         session.setAutoRetryEnabled(false);
@@ -50,16 +59,22 @@ export default function registerTelegramCommands(fastify: FastifyInstance): void
         });
 
         await session.prompt(prompt);
-        const responseText = session.getLastAssistantText() ?? '';
-
-        await ctx.reply(responseText);
+        await ctx.react('👍');
       } finally {
         clearTimeout(timeoutId);
         session.dispose();
       }
     } catch (error) {
       fastify.log.error({ err: error, prompt, text }, 'Failed to process /remember command');
-      await ctx.reply('Sorry, something went wrong processing that. Please try again.');
+      await ctx.react('🤷');
+
+      if (wasTimeout) {
+        await ctx.reply('That took too long — please try again.');
+      } else if (!sessionCreated) {
+        await ctx.reply("Couldn't start a session — please try again.");
+      } else {
+        await ctx.reply('Something went wrong — please try again.');
+      }
     }
   });
 }

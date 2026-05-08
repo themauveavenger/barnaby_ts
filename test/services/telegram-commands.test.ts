@@ -92,7 +92,7 @@ describe('telegram-commands', () => {
       expect(bot.command).toHaveBeenCalledWith('remember', expect.any(Function));
     });
 
-    it('creates agent session and replies with agent response', async () => {
+    it('creates agent session and reacts with checkmark on success', async () => {
       const bot = createMockBot();
       const fastify = createMockFastify(bot);
       const mockSession = createMockSession();
@@ -102,10 +102,12 @@ describe('telegram-commands', () => {
 
       const handler = (bot as any)._handlers.get('remember') as Function;
       const reply = vi.fn().mockResolvedValue(undefined);
+      const react = vi.fn().mockResolvedValue(undefined);
       await handler({
         chat: { id: 12345 },
         match: 'call the dentist on Friday',
         reply,
+        react,
       });
 
       expect(createAgentSession).toHaveBeenCalledWith(
@@ -119,7 +121,8 @@ describe('telegram-commands', () => {
       expect(prompt).toContain('todo');
       expect(prompt).toContain('appointment');
 
-      expect(reply).toHaveBeenCalledWith('Created todo: "Call the dentist"');
+      expect(react).toHaveBeenCalledWith('👍');
+      expect(reply).not.toHaveBeenCalled();
       expect(mockSession.dispose).toHaveBeenCalled();
     });
 
@@ -130,14 +133,17 @@ describe('telegram-commands', () => {
 
       const handler = (bot as any)._handlers.get('remember') as Function;
       const reply = vi.fn();
+      const react = vi.fn();
 
       await handler({
         chat: { id: 99999 },
         match: 'should be ignored',
         reply,
+        react,
       });
 
       expect(reply).not.toHaveBeenCalled();
+      expect(react).not.toHaveBeenCalled();
       expect(createAgentSession).not.toHaveBeenCalled();
     });
 
@@ -148,13 +154,16 @@ describe('telegram-commands', () => {
 
       const handler = (bot as any)._handlers.get('remember') as Function;
       const reply = vi.fn().mockResolvedValue(undefined);
+      const react = vi.fn().mockResolvedValue(undefined);
 
       await handler({
         chat: { id: 12345 },
         match: undefined,
         reply,
+        react,
       });
 
+      expect(react).toHaveBeenCalledWith('🤔');
       expect(reply).toHaveBeenCalledWith(expect.stringContaining('Usage: /remember'));
       expect(createAgentSession).not.toHaveBeenCalled();
     });
@@ -166,18 +175,21 @@ describe('telegram-commands', () => {
 
       const handler = (bot as any)._handlers.get('remember') as Function;
       const reply = vi.fn().mockResolvedValue(undefined);
+      const react = vi.fn().mockResolvedValue(undefined);
 
       await handler({
         chat: { id: 12345 },
         match: '   ',
         reply,
+        react,
       });
 
+      expect(react).toHaveBeenCalledWith('🤔');
       expect(reply).toHaveBeenCalledWith(expect.stringContaining('Usage: /remember'));
       expect(createAgentSession).not.toHaveBeenCalled();
     });
 
-    it('handles agent session creation failure gracefully', async () => {
+    it('reacts with 🤷 and sends specific message when session creation fails', async () => {
       const bot = createMockBot();
       const fastify = createMockFastify(bot);
       (createAgentSession as any).mockRejectedValue(new Error('LLM API down'));
@@ -186,18 +198,21 @@ describe('telegram-commands', () => {
 
       const handler = (bot as any)._handlers.get('remember') as Function;
       const reply = vi.fn().mockResolvedValue(undefined);
+      const react = vi.fn().mockResolvedValue(undefined);
 
       await handler({
         chat: { id: 12345 },
         match: 'something to remember',
         reply,
+        react,
       });
 
-      expect(reply).toHaveBeenCalledWith('Sorry, something went wrong processing that. Please try again.');
+      expect(react).toHaveBeenCalledWith('🤷');
+      expect(reply).toHaveBeenCalledWith("Couldn't start a session — please try again.");
       expect(fastify.log.error).toHaveBeenCalled();
     });
 
-    it('handles agent prompt failure gracefully', async () => {
+    it('reacts with 🤷 and sends generic message when prompt fails', async () => {
       const bot = createMockBot();
       const fastify = createMockFastify(bot);
       const mockSession = createMockSession();
@@ -208,14 +223,17 @@ describe('telegram-commands', () => {
 
       const handler = (bot as any)._handlers.get('remember') as Function;
       const reply = vi.fn().mockResolvedValue(undefined);
+      const react = vi.fn().mockResolvedValue(undefined);
 
       await handler({
         chat: { id: 12345 },
         match: 'something to remember',
         reply,
+        react,
       });
 
-      expect(reply).toHaveBeenCalledWith('Sorry, something went wrong processing that. Please try again.');
+      expect(react).toHaveBeenCalledWith('🤷');
+      expect(reply).toHaveBeenCalledWith('Something went wrong — please try again.');
       expect(mockSession.dispose).toHaveBeenCalled();
     });
 
@@ -230,11 +248,13 @@ describe('telegram-commands', () => {
 
       const handler = (bot as any)._handlers.get('remember') as Function;
       const reply = vi.fn().mockResolvedValue(undefined);
+      const react = vi.fn().mockResolvedValue(undefined);
 
       await handler({
         chat: { id: 12345 },
         match: 'something to remember',
         reply,
+        react,
       });
 
       expect(mockSession.dispose).toHaveBeenCalled();
@@ -250,11 +270,13 @@ describe('telegram-commands', () => {
 
       const handler = (bot as any)._handlers.get('remember') as Function;
       const reply = vi.fn().mockResolvedValue(undefined);
+      const react = vi.fn().mockResolvedValue(undefined);
 
       await handler({
         chat: { id: 12345 },
         match: 'shellfish allergy',
         reply,
+        react,
       });
 
       const prompt = mockSession.prompt.mock.calls[0][0];
