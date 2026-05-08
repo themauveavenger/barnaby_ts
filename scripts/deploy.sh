@@ -13,6 +13,7 @@ PI_HOST="${PI_HOST:?must be set}"
 PI_USER="${PI_USER:?must be set}"
 PI_PORT="${PI_PORT:-22}"
 REPO_URL="${REPO_URL:?must be set}"
+DOMAIN="${DOMAIN:?must be set}"
 NGINX_SITE="barnaby.conf"
 REMOTE_APP_DIR="/home/${PI_USER}/barnaby_ts"
 
@@ -100,8 +101,22 @@ ssh -p "${PI_PORT}" "${PI_USER}@${PI_HOST}" bash -s <<REMOTE
   systemctl --user daemon-reload
 
   echo "--> Updating nginx config..."
-  sudo cp "/tmp/\${NGINX_SITE}" /etc/nginx/sites-available/
+  sed "s/server_name .*/server_name \${DOMAIN};/" "/tmp/\${NGINX_SITE}" | sudo tee "/etc/nginx/sites-available/\${NGINX_SITE}" > /dev/null
   sudo ln -sf "/etc/nginx/sites-available/\${NGINX_SITE}" /etc/nginx/sites-enabled/
+
+  # ── Clean up old nginx configs from previous naming scheme ──────
+
+  for f in /etc/nginx/sites-enabled/barnaby*; do
+    if [ -f "\$f" ] || [ -L "\$f" ]; then
+      name=\$(basename "\$f")
+      if [ "\$name" != "\${NGINX_SITE}" ]; then
+        echo "--> Removing old nginx config: \$name"
+        sudo rm -f "/etc/nginx/sites-available/\$name"
+        sudo rm -f "/etc/nginx/sites-enabled/\$name"
+      fi
+    fi
+  done
+
   sudo nginx -t && sudo systemctl reload nginx
 
   # ── Restart and verify ───────────────────────────────────────────

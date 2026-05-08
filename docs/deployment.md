@@ -71,7 +71,7 @@ Barnaby can deploy to a Raspberry Pi on your home network, served behind nginx.
 From your dev machine, set the required env vars and run:
 
 ```bash
-PI_HOST=your-pi.local PI_USER=your-user REPO_URL=https://github.com/you/barnaby_ts.git ./scripts/deploy.sh
+PI_HOST=your-pi.local PI_USER=your-user REPO_URL=https://github.com/you/barnaby_ts.git DOMAIN=barnaby.example.lan ./scripts/deploy.sh
 ```
 
 This SSHs into the Pi, pulls the latest code, installs dependencies via `mise` if `package-lock.json` changed, updates configs, and restarts the service. You can set `PI_PORT` to override the default SSH port (`22`).
