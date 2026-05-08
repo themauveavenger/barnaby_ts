@@ -1,5 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { createBriefingService } from '../../services/briefing.js';
+import { createAfternoonUpdateService } from '../../services/afternoon-update.js';
+import { MissingChatIdError, EmptyResponseError } from '../../services/briefing-helpers.js';
 import { NotFoundError } from '../../plugins/error-handler.js';
 import type { ListBriefingsQuery } from '../../plugins/briefing-repository.js';
 
@@ -25,6 +27,49 @@ export async function briefingTriggerHandler(
     if (controller.signal.aborted) {
       reply.code(504);
       return { success: false, message: `Briefing generation timed out after ${BRIEFING_TIMEOUT_MS / 1000} seconds` };
+    }
+    if (error instanceof MissingChatIdError) {
+      reply.code(503);
+      return { success: false, message: 'Telegram chat ID is not configured' };
+    }
+    if (error instanceof EmptyResponseError) {
+      reply.code(502);
+      return { success: false, message: 'Agent returned an empty response' };
+    }
+    throw error;
+  }
+}
+
+const AFTERNOON_TIMEOUT_MS = process.env.AFTERNOON_TIMEOUT_MS
+  ? Number(process.env.AFTERNOON_TIMEOUT_MS)
+  : 60000;
+
+export async function afternoonUpdateTriggerHandler(
+  _request: FastifyRequest,
+  reply: FastifyReply
+) {
+  const service = createAfternoonUpdateService(reply.server);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), AFTERNOON_TIMEOUT_MS);
+
+  try {
+    await service.sendUpdate(controller.signal);
+    clearTimeout(timeoutId);
+    return { success: true, message: 'Afternoon update sent' };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (controller.signal.aborted) {
+      reply.code(504);
+      return { success: false, message: `Afternoon update generation timed out after ${AFTERNOON_TIMEOUT_MS / 1000} seconds` };
+    }
+    if (error instanceof MissingChatIdError) {
+      reply.code(503);
+      return { success: false, message: 'Telegram chat ID is not configured' };
+    }
+    if (error instanceof EmptyResponseError) {
+      reply.code(502);
+      return { success: false, message: 'Agent returned an empty response' };
     }
     throw error;
   }

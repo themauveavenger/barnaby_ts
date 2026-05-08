@@ -53,37 +53,73 @@ describe('Briefing API', () => {
     await app.close();
   });
 
-  it('should reject unauthenticated requests', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: '/briefing',
+  describe('POST /briefing', () => {
+    it('should reject unauthenticated requests', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/briefing',
+      });
+      expect(response.statusCode).toBe(401);
     });
-    expect(response.statusCode).toBe(401);
+
+    it('should trigger a manual briefing', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/briefing',
+        headers: { authorization: authHeader },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.success).toBe(true);
+      expect(body.message).toBe('Briefing sent');
+    });
+
+    it('should save manual briefing to repository', async () => {
+      await app.inject({
+        method: 'POST',
+        url: '/briefing',
+        headers: { authorization: authHeader },
+      });
+
+      const latest = app.briefingRepository.findLatest();
+      expect(latest).not.toBeNull();
+      expect(latest!.triggerType).toBe('manual');
+    });
   });
 
-  it('should trigger a manual briefing', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: '/briefing',
-      headers: { authorization: authHeader },
+  describe('POST /briefing/afternoon', () => {
+    it('should reject unauthenticated requests', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/briefing/afternoon',
+      });
+      expect(response.statusCode).toBe(401);
     });
 
-    expect(response.statusCode).toBe(200);
-    const body = response.json();
-    expect(body.success).toBe(true);
-    expect(body.message).toBe('Briefing sent');
-  });
+    it('should trigger an afternoon update', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/briefing/afternoon',
+        headers: { authorization: authHeader },
+      });
 
-  it('should save manual briefing to repository', async () => {
-    await app.inject({
-      method: 'POST',
-      url: '/briefing',
-      headers: { authorization: authHeader },
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.success).toBe(true);
+      expect(body.message).toBe('Afternoon update sent');
     });
 
-    const latest = app.briefingRepository.findLatest();
-    expect(latest).not.toBeNull();
-    expect(latest!.triggerType).toBe('manual');
+    it('should NOT save afternoon update to briefing repository', async () => {
+      await app.inject({
+        method: 'POST',
+        url: '/briefing/afternoon',
+        headers: { authorization: authHeader },
+      });
+
+      const latest = app.briefingRepository.findLatest();
+      expect(latest).toBeNull();
+    });
   });
 
   describe('GET /briefing', () => {

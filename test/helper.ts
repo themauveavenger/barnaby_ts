@@ -12,6 +12,7 @@ export async function buildTestApp() {
   process.env.TELEGRAM_CHAT_ID = '123456789';
   process.env.CALENDAR_IDS = 'test@example.com,family@group.calendar.google.com';
   process.env.BRIEFING_CRON = '0 7 * * *';
+  process.env.AFTERNOON_UPDATE_CRON = '0 14 * * *';
 
   const app = await buildApp();
   return app;

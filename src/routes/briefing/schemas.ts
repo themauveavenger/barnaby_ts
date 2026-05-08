@@ -1,20 +1,50 @@
+const triggerResponseShape = {
+  type: 'object' as const,
+  properties: {
+    success: { type: 'boolean' as const },
+    message: { type: 'string' as const },
+  },
+  required: ['success', 'message'] as const,
+};
+
 export const briefingTriggerSchema = {
   response: {
     200: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean' },
-        message: { type: 'string' },
-      },
-      required: ['success', 'message'],
+      ...triggerResponseShape,
+      description: 'Briefing generated and sent successfully.',
+    },
+    502: {
+      ...triggerResponseShape,
+      description: 'The AI agent returned an empty response.',
+    },
+    503: {
+      ...triggerResponseShape,
+      description: 'TELEGRAM_CHAT_ID is not configured.',
     },
     504: {
-      type: 'object',
-      properties: {
-        success: { type: 'boolean' },
-        message: { type: 'string' },
-      },
-      required: ['success', 'message'],
+      ...triggerResponseShape,
+      description: 'Briefing generation timed out.',
+    },
+  },
+};
+
+export const afternoonUpdateTriggerSchema = {
+  response: {
+    200: {
+      ...triggerResponseShape,
+      description: 'Afternoon update generated and sent successfully.',
+    },
+    502: {
+      ...triggerResponseShape,
+      description: 'The AI agent returned an empty response.',
+    },
+    503: {
+      ...triggerResponseShape,
+      description: 'TELEGRAM_CHAT_ID is not configured.',
+    },
+    504: {
+      ...triggerResponseShape,
+      description: 'Afternoon update generation timed out.',
     },
   },
 };
