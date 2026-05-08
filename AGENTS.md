@@ -18,6 +18,15 @@
 - Function signatures must have explicit return types to catch changes that have broken contracts.
 - Do not reimplement types from 3rd party modules. Check if they export an appropriate type and use TypeScript's utility types to create a new type if you must derive a new type.
 
+## Pattern Matching (ts-pattern)
+
+- Use `ts-pattern` (`match`/`P`) instead of `switch` statements or long `if`/`else if` chains when mapping a value to a result.
+- Use `.with()` with multiple pattern arguments for multi-value cases (e.g. `.with(45, 48, () => "Fog")` instead of fallthrough `case` blocks).
+- Use `P.when()` for range/predicate-based matching (e.g. `.with(P.when((n) => n <= 50), () => "Good")`).
+- Use `.otherwise()` for default/fallback branches. Use `.exhaustive()` only when every possible case must be handled and a missing case should be a type error.
+- Prefer `match` over ternary expressions when branching on a nullable value — `.with(null, ...).otherwise(...)` narrows the type in the handler and avoids nested `? :`.
+- Do **not** use `match` for simple two-branch booleans, procedural `let`-mutation inside `if`/`else` blocks, or cases where a plain `if` is clearer. Pattern matching should improve readability, not add indirection.
+
 ## Testing
 
 - Prefer end-to-end (e2e) tests over narrow integration tests.

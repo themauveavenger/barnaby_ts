@@ -1,5 +1,6 @@
 import { format, isSameDay, parseISO } from "date-fns";
 import { TZDate } from "@date-fns/tz";
+import { match, P } from "ts-pattern";
 
 export type OpenMeteoForecastResponse = {
   latitude: number;
@@ -121,62 +122,33 @@ export function getMiddayAqi(
 }
 
 export function aqiCategory(aqi: number): string {
-  if (aqi <= 50) return "Good";
-  if (aqi <= 100) return "Moderate";
-  if (aqi <= 150) return "Unhealthy for Sensitive Groups";
-  if (aqi <= 200) return "Unhealthy";
-  if (aqi <= 300) return "Very Unhealthy";
-  return "Hazardous";
+  return match(aqi)
+    .with(P.when((n) => n <= 50), () => "Good")
+    .with(P.when((n) => n <= 100), () => "Moderate")
+    .with(P.when((n) => n <= 150), () => "Unhealthy for Sensitive Groups")
+    .with(P.when((n) => n <= 200), () => "Unhealthy")
+    .with(P.when((n) => n <= 300), () => "Very Unhealthy")
+    .otherwise(() => "Hazardous");
 }
 
 export function weatherCodeToDescription(code: number): string {
-  switch (code) {
-    case 0:
-      return "Clear sky";
-    case 1:
-      return "Mainly clear";
-    case 2:
-      return "Partly cloudy";
-    case 3:
-      return "Overcast";
-    case 45:
-    case 48:
-      return "Fog";
-    case 51:
-    case 53:
-    case 55:
-      return "Drizzle";
-    case 56:
-    case 57:
-      return "Freezing drizzle";
-    case 61:
-    case 63:
-    case 65:
-      return "Rain";
-    case 66:
-    case 67:
-      return "Freezing rain";
-    case 71:
-    case 73:
-    case 75:
-      return "Snow";
-    case 77:
-      return "Snow grains";
-    case 80:
-    case 81:
-    case 82:
-      return "Rain showers";
-    case 85:
-    case 86:
-      return "Snow showers";
-    case 95:
-      return "Thunderstorm";
-    case 96:
-    case 99:
-      return "Thunderstorm with hail";
-    default:
-      return "Unknown";
-  }
+  return match(code)
+    .with(0, () => "Clear sky")
+    .with(1, () => "Mainly clear")
+    .with(2, () => "Partly cloudy")
+    .with(3, () => "Overcast")
+    .with(45, 48, () => "Fog")
+    .with(51, 53, 55, () => "Drizzle")
+    .with(56, 57, () => "Freezing drizzle")
+    .with(61, 63, 65, () => "Rain")
+    .with(66, 67, () => "Freezing rain")
+    .with(71, 73, 75, () => "Snow")
+    .with(77, () => "Snow grains")
+    .with(80, 81, 82, () => "Rain showers")
+    .with(85, 86, () => "Snow showers")
+    .with(95, () => "Thunderstorm")
+    .with(96, 99, () => "Thunderstorm with hail")
+    .otherwise(() => "Unknown");
 }
 
 function formatTimeRange(
@@ -224,9 +196,9 @@ export function formatWeatherSummary(
   const condition = weatherCodeToDescription(code);
 
   const peakHour = findPeakTempHour(forecast.hourly, targetDate);
-  const peakTimeStr = peakHour
-    ? ` around ${formatSingleTime(peakHour, timezone)}`
-    : "";
+  const peakTimeStr = match(peakHour)
+    .with(null, () => "")
+    .otherwise((hour) => ` around ${formatSingleTime(hour, timezone)}`);
 
   const useApparentHigh = apparentHigh !== high;
   const useApparentLow = apparentLow !== low;
