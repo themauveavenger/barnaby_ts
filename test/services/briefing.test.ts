@@ -95,7 +95,7 @@ describe('briefing service', () => {
 
       expect(createAgentSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          tools: ['calendar_list'],
+          tools: ['calendar_list', 'get_weather_forecast'],
         }),
       );
 
@@ -107,6 +107,8 @@ describe('briefing service', () => {
       expect(prompt).toContain('It is currently');
       expect(prompt).toContain('Use the calendar_list tool');
       expect(prompt).toContain('Available calendars:');
+      expect(prompt).toContain('Call get_weather_forecast');
+      expect(prompt).toContain('weather summary');
       expect(prompt).toContain('test@example.com');
       expect(prompt).toContain('family@group.calendar.google.com');
       expect(prompt).toContain('Generate a daily briefing');

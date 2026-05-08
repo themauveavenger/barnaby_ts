@@ -48,7 +48,7 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
           modelRegistry,
           resourceLoader,
           sessionManager: SessionManager.inMemory(),
-          tools: ['calendar_list'],
+          tools: ['calendar_list', 'get_weather_forecast'],
         });
         session.setAutoRetryEnabled(false);
 
@@ -105,6 +105,12 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
             ? `Available calendars:\n${fastify.calendarIds.map((id) => `- ${id}`).join('\n')}`
             : '';
 
+          const weatherLat = process.env.WEATHER_LATITUDE;
+          const weatherLon = process.env.WEATHER_LONGITUDE;
+          const weatherContext = weatherLat && weatherLon
+            ? `Your fixed weather location is latitude ${weatherLat}, longitude ${weatherLon} (New Jersey, USA).`
+            : '';
+
           const prompt = [
             `Today is ${today}. It is currently ${timeOfDay}. All times are in ${tzLong} (${timezone}, ${tzAbbr}).`,
             '',
@@ -112,11 +118,18 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
             '',
             calendarContext,
             '',
+            weatherContext,
+            '',
             'INSTRUCTIONS:',
             'Use the calendar_list tool to fetch events for each available calendar across these three ranges:',
             `1. Yesterday:     start "${yesterdayStart.toISOString()}" end "${yesterdayEnd.toISOString()}"`,
             `2. Today:         start "${todayStart.toISOString()}"     end "${todayEnd.toISOString()}"`,
             `3. Next 7 days:   start "${weekStart.toISOString()}"      end "${weekEnd.toISOString()}"`,
+            '',
+            'Call get_weather_forecast and include a 1-2 sentence weather summary after your greeting.',
+            'Mention the weather condition, high and low temperatures, approximately when the high will be reached, and whether rain is expected (with timing if available).',
+            'Include the US Air Quality Index only if it is moderate or worse.',
+            'If the weather tool returns an error, omit the weather section entirely — do not mention it.',
             '',
             'Generate a daily briefing based on those events and the notes above.',
             '- Start with a brief, warm greeting referencing the time of day.',
