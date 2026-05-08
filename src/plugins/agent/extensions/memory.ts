@@ -3,6 +3,9 @@ import type { ExtensionAPI, ToolDefinition } from '@mariozechner/pi-coding-agent
 import { Type } from 'typebox';
 import {
   MEMORY_CATEGORIES,
+  type MemoryCategory,
+} from '../../memory-categories.js';
+import {
   MEMORY_ACTION_TYPES,
   MEMORY_TOOL_PROMPT_SNIPPETS,
   MEMORY_TOOL_PROMPT_GUIDELINES,
@@ -17,7 +20,7 @@ function createMemoryCreateTool(fastify: FastifyInstance): ToolDefinition {
     promptGuidelines: [...MEMORY_TOOL_PROMPT_GUIDELINES.memory_create],
     parameters: Type.Object({
       content: Type.String({ description: 'The content of the memory. Concise and clear.' }),
-      category: Type.Union(MEMORY_CATEGORIES.map((c) => Type.Literal(c)), { description: 'The category of memory' }),
+      category: Type.Union(MEMORY_CATEGORIES.map((c) => Type.Literal(c.name)), { description: 'The category of memory' }),
       tags: Type.Optional(Type.Array(Type.String(), { description: 'Tags to attach to the memory' })),
       permanent: Type.Optional(Type.Boolean({ description: 'Whether this memory should persist indefinitely. Set true for core facts about the user.' })),
     }),
@@ -25,7 +28,7 @@ function createMemoryCreateTool(fastify: FastifyInstance): ToolDefinition {
       try {
         const memory = fastify.memoryRepository.create({
           content: params.content,
-          category: params.category as 'appointment' | 'note' | 'todo' | 'purchase',
+          category: params.category as MemoryCategory,
           tags: params.tags,
           permanent: params.permanent,
         });
@@ -62,7 +65,7 @@ function createMemoryListTool(fastify: FastifyInstance): ToolDefinition {
     promptSnippet: MEMORY_TOOL_PROMPT_SNIPPETS.memory_list,
     promptGuidelines: [...MEMORY_TOOL_PROMPT_GUIDELINES.memory_list],
     parameters: Type.Object({
-      category: Type.Optional(Type.Union(MEMORY_CATEGORIES.map((c) => Type.Literal(c)), { description: 'Filter by category' })),
+      category: Type.Optional(Type.Union(MEMORY_CATEGORIES.map((c) => Type.Literal(c.name)), { description: 'Filter by category' })),
       tags: Type.Optional(Type.Array(Type.String(), { description: 'Filter by tags' })),
       recent_days: Type.Optional(Type.Number({ description: 'Only show memories from the last N days. Defaults to all time if omitted.' })),
       limit: Type.Optional(Type.Number({ description: 'Maximum number of memories to return. Defaults to 10.' })),

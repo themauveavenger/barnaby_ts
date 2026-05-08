@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { buildTestApp } from '../helper.js';
+import { MEMORY_CATEGORY_NAMES } from '../../src/plugins/memory-categories.js';
 
 describe('Memories API', () => {
   let app: Awaited<ReturnType<typeof buildTestApp>>;
@@ -90,6 +91,22 @@ describe('Memories API', () => {
       const body = response.json();
       expect(body.permanent).toBe(true);
       expect(body.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    });
+
+    it.each(MEMORY_CATEGORY_NAMES)('should accept category "%s"', async (category) => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: {
+          content: `Test ${category}`,
+          category,
+        },
+      });
+
+      expect(response.statusCode).toBe(201);
+      const body = response.json();
+      expect(body.category).toBe(category);
     });
 
     it('should reject invalid category', async () => {
@@ -203,6 +220,25 @@ describe('Memories API', () => {
       expect(response.statusCode).toBe(200);
       const body = response.json();
       expect(body.data.every((m: { category: string }) => m.category === 'todo')).toBe(true);
+    });
+
+    it.each(MEMORY_CATEGORY_NAMES)('should filter by category "%s"', async (category) => {
+      await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: { content: `Filter ${category}`, category },
+      });
+
+      const response = await app.inject({
+        method: 'GET',
+        url: `/memories?category=${category}`,
+        headers: { authorization: authHeader },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.data.every((m: { category: string }) => m.category === category)).toBe(true);
     });
 
     it('should reject invalid category in query', async () => {

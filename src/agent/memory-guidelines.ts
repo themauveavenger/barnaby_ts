@@ -1,21 +1,21 @@
-export const MEMORY_CATEGORIES = [
-  'todo',
-  'appointment',
-  'note',
-  'purchase',
-] as const;
+import { MEMORY_CATEGORIES, type MemoryCategory } from '../plugins/memory-categories.js';
+export { MEMORY_CATEGORIES };
 
 export const MEMORY_ACTION_TYPES = [
   'completed',
   'dismissed',
 ] as const;
 
+const categoryDescriptions: Record<MemoryCategory, string> = {
+  todo: 'a task or thing the user needs to do',
+  appointment: 'a scheduled event, date, or meeting',
+  purchase: 'something to buy or a spending-related note',
+  note: 'general information, facts, or reminders (default when unclear)',
+};
+
 export const MEMORY_CATEGORIZATION_GUIDELINES = [
   'Categorize the user\'s memory based on what it describes:',
-  '- "todo" — a task or thing the user needs to do',
-  '- "appointment" — a scheduled event, date, or meeting',
-  '- "purchase" — something to buy or a spending-related note',
-  '- "note" — general information, facts, or reminders (default when unclear)',
+  ...MEMORY_CATEGORIES.map((c) => `- "${c.name}" — ${categoryDescriptions[c.name]}`),
   '',
   'Additional rules:',
   '- Tag facts about the user\'s identity, preferences, or permanent traits with "core" and set permanent=true',

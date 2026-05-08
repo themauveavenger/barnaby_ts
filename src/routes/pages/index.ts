@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ListMemoriesQuery, CreateMemoryBody, MemoryActionType } from '../../plugins/repository.js';
+import { MEMORY_CATEGORIES } from '../../plugins/memory-categories.js';
 import { listMemoriesSchema, createMemorySchema } from '../memories/schemas.js';
 
 function formatDate(isoString: string): string {
@@ -28,6 +29,13 @@ type MemoryFormData = {
   tags?: unknown;
 };
 
+type CategoryOption = {
+  name: string;
+  label: string;
+  selected: boolean;
+  actionLabel: string | null;
+};
+
 type MemoryViewModel = {
   id: string;
   content: string;
@@ -36,6 +44,7 @@ type MemoryViewModel = {
   permanent: boolean;
   createdAt: string;
   formattedDate: string;
+  actionLabel: string | null;
   actions: Array<{ id: string; action: string; formattedDate: string }>;
 };
 
@@ -43,10 +52,7 @@ type MemoriesViewModel = {
   memories: MemoryViewModel[];
   filters: {
     category: string;
-    categoryAppointment: boolean;
-    categoryNote: boolean;
-    categoryTodo: boolean;
-    categoryPurchase: boolean;
+    categories: CategoryOption[];
     tags: string;
   };
   pagination: {
@@ -65,10 +71,7 @@ type MemoriesViewModel = {
     category?: unknown;
     permanent?: boolean;
     tags?: unknown;
-    categoryAppointment: boolean;
-    categoryNote: boolean;
-    categoryTodo: boolean;
-    categoryPurchase: boolean;
+    categories: CategoryOption[];
   };
 };
 
@@ -103,10 +106,12 @@ function buildViewModel(
 
   const memoryIds = data.map((m) => m.id);
   const actionsMap = fastify.memoryActionRepository.findByMemoryIds(memoryIds);
+  const categoryMap = new Map(MEMORY_CATEGORIES.map((c) => [c.name, c]));
 
   const memories = data.map((memory) => ({
     ...memory,
     formattedDate: formatDate(memory.createdAt),
+    actionLabel: categoryMap.get(memory.category)?.actionLabel ?? null,
     actions: (actionsMap.get(memory.id) || []).map((a) => ({
       id: a.id,
       action: a.action,
@@ -118,10 +123,10 @@ function buildViewModel(
     memories,
     filters: {
       category: repoQuery.category || '',
-      categoryAppointment: repoQuery.category === 'appointment',
-      categoryNote: repoQuery.category === 'note',
-      categoryTodo: repoQuery.category === 'todo',
-      categoryPurchase: repoQuery.category === 'purchase',
+      categories: MEMORY_CATEGORIES.map((c) => ({
+        ...c,
+        selected: repoQuery.category === c.name,
+      })),
       tags: repoQuery.tags || '',
     },
     pagination: {
@@ -141,10 +146,10 @@ function buildViewModel(
           category: form.category,
           permanent: form.permanent === true,
           tags: Array.isArray(form.tags) ? form.tags.join(', ') : form.tags,
-          categoryAppointment: form.category === 'appointment',
-          categoryNote: form.category === 'note',
-          categoryTodo: form.category === 'todo',
-          categoryPurchase: form.category === 'purchase',
+          categories: MEMORY_CATEGORIES.map((c) => ({
+            ...c,
+            selected: form.category === c.name,
+          })),
         }
       : undefined,
   };

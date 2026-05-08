@@ -12,10 +12,9 @@
   <label for="category-input">Category:</label>
   <select id="category-input" name="category" required>
     <option value="">-- Select --</option>
-    <option value="appointment" {{#if form.categoryAppointment}}selected{{/if}}>Appointment</option>
-    <option value="note" {{#if form.categoryNote}}selected{{/if}}>Note</option>
-    <option value="todo" {{#if form.categoryTodo}}selected{{/if}}>Todo</option>
-    <option value="purchase" {{#if form.categoryPurchase}}selected{{/if}}>Purchase</option>
+    {{#each form.categories}}
+      <option value="{{name}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+    {{/each}}
   </select>
 
   <div>
@@ -39,10 +38,9 @@
   <label for="category">Category:</label>
   <select id="category" name="category">
     <option value="">All</option>
-    <option value="appointment" {{#if filters.categoryAppointment}}selected{{/if}}>Appointment</option>
-    <option value="note" {{#if filters.categoryNote}}selected{{/if}}>Note</option>
-    <option value="todo" {{#if filters.categoryTodo}}selected{{/if}}>Todo</option>
-    <option value="purchase" {{#if filters.categoryPurchase}}selected{{/if}}>Purchase</option>
+    {{#each filters.categories}}
+      <option value="{{name}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+    {{/each}}
   </select>
 
 
@@ -59,14 +57,14 @@
 {{#if memories.length}}
   <table>
     <thead>
-      <tr>
-        <th>Content</th>
-        <th>Category</th>
-        <th>Create Date</th>
-        <th>Permanent?</th>
-        <th>Tags</th>
-        <th>Status</th>
-      </tr>
+    <tr>
+      <th>Content</th>
+      <th>Category</th>
+      <th>Create Date</th>
+      <th>Permanent?</th>
+      <th>Tags</th>
+      <th>Status</th>
+    </tr>
     </thead>
     <tbody>
     {{#each memories}}
@@ -95,22 +93,11 @@
             {{#each actions}}
               {{#if (eq action "completed")}}✓ Completed{{else}}✕ Dismissed{{/if}} ({{formattedDate}})
             {{/each}}
-          {{else if (eq category "todo")}}
+          {{else if actionLabel}}
             <form method="post" action="/actions" style="display:inline">
               <input type="hidden" name="memoryId" value="{{id}}">
               <input type="hidden" name="actionType" value="completed">
-              <button type="submit">Complete</button>
-            </form>
-            <form method="post" action="/actions" style="display:inline">
-              <input type="hidden" name="memoryId" value="{{id}}">
-              <input type="hidden" name="actionType" value="dismissed">
-              <button type="submit">Dismiss</button>
-            </form>
-          {{else if (eq category "purchase")}}
-            <form method="post" action="/actions" style="display:inline">
-              <input type="hidden" name="memoryId" value="{{id}}">
-              <input type="hidden" name="actionType" value="completed">
-              <button type="submit">Bought</button>
+              <button type="submit">{{actionLabel}}</button>
             </form>
             <form method="post" action="/actions" style="display:inline">
               <input type="hidden" name="memoryId" value="{{id}}">

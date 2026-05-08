@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { ExtensionAPI } from '@mariozechner/pi-coding-agent';
 import type { FastifyInstance } from 'fastify';
+import { MEMORY_CATEGORIES } from '../../../../src/plugins/memory-categories.js';
 import createMemoryExtension from '../../../../src/plugins/agent/extensions/memory.js';
 
 function createMockExtensionAPI(): ExtensionAPI & { _tools: Array<{ name: string; execute: Function }> } {
@@ -99,6 +100,19 @@ describe('memory extension', () => {
     expect(names).toContain('memory_create');
     expect(names).toContain('memory_list');
     expect(names).toContain('memory_resolve');
+  });
+
+  it('uses the exact categories from MEMORY_CATEGORIES in tool schemas', async () => {
+    const tools = getTools(extApi);
+    const createTool = tools.find((t) => t.name === 'memory_create')!;
+
+    for (const cat of MEMORY_CATEGORIES) {
+      const result = await createTool.execute('call-test', {
+        content: `Test ${cat.name}`,
+        category: cat.name,
+      });
+      expect(result.content[0].text).toContain(`Created ${cat.name}`);
+    }
   });
 
   describe('memory_create', () => {

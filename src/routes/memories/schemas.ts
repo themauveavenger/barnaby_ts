@@ -1,3 +1,5 @@
+import { MEMORY_CATEGORY_NAMES } from '../../plugins/memory-categories.js';
+
 export const createMemorySchema = {
   body: {
     type: 'object',
@@ -7,7 +9,7 @@ export const createMemorySchema = {
       content: { type: 'string', minLength: 1, maxLength: 2000 },
       category: {
         type: 'string',
-        enum: ['appointment', 'note', 'todo', 'purchase'],
+        enum: [...MEMORY_CATEGORY_NAMES],
       },
       permanent: { type: 'boolean', default: false },
       tags: {
@@ -36,7 +38,7 @@ export const listMemoriesSchema = {
     properties: {
       category: {
         type: 'string',
-        enum: ['appointment', 'note', 'todo', 'purchase'],
+        enum: [...MEMORY_CATEGORY_NAMES],
       },
       tags: { type: 'string' },
       page: { type: 'integer', minimum: 1, default: 1 },

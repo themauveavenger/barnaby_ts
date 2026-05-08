@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { buildTestApp } from '../helper.js';
+import { MEMORY_CATEGORIES } from '../../src/plugins/memory-categories.js';
 
 describe('Memories Page', () => {
   let app: Awaited<ReturnType<typeof buildTestApp>>;
@@ -148,6 +149,20 @@ describe('Memories Page', () => {
     expect(response.payload).not.toContain('Untagged memory');
   });
 
+  it('should include all categories in the creation dropdown', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/',
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    for (const cat of MEMORY_CATEGORIES) {
+      expect(response.payload).toContain(`value="${cat.name}"`);
+      expect(response.payload).toContain(`>${cat.label}</option>`);
+    }
+  });
+
   it('should reject invalid query parameters', async () => {
     const response = await app.inject({
       method: 'GET',
@@ -155,6 +170,22 @@ describe('Memories Page', () => {
       headers: { authorization: authHeader },
     });
     expect(response.statusCode).toBe(400);
+  });
+
+  it('should re-render page with error on invalid category in form submission', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/',
+      headers: {
+        authorization: authHeader,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      payload: 'content=Bad+category&category=invalid&tags=test',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toContain('text/html');
+    expect(response.payload).toContain('Add Memory');
   });
 
   it('should show empty state when no memories exist', async () => {
@@ -225,6 +256,25 @@ describe('Memories Page', () => {
     expect(response.payload).toContain('Dismiss');
   });
 
+  it('should display action buttons for purchase memories without actions', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: { content: 'Buy milk', category: 'purchase' },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/',
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain('Bought');
+    expect(response.payload).toContain('Dismiss');
+  });
+
   it('should not display action buttons for note memories', async () => {
     await app.inject({
       method: 'POST',
@@ -241,6 +291,26 @@ describe('Memories Page', () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.payload).not.toContain('Complete</button>');
+    expect(response.payload).not.toContain('Dismiss</button>');
+  });
+
+  it('should not display action buttons for appointment memories', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: { content: 'Dentist at 2pm', category: 'appointment' },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/',
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).not.toContain('Complete</button>');
+    expect(response.payload).not.toContain('Bought</button>');
     expect(response.payload).not.toContain('Dismiss</button>');
   });
 

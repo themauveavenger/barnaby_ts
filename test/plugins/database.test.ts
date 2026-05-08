@@ -5,6 +5,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import databasePlugin, { type ColumnInfo } from '../../src/plugins/database.js';
+import { MEMORY_CATEGORY_NAMES } from '../../src/plugins/memory-categories.js';
 
 describe('database plugin', () => {
   let app: Awaited<ReturnType<typeof Fastify>>;
@@ -88,6 +89,21 @@ describe('database plugin', () => {
       process.env.DATABASE_PATH = prevDbPath;
     }
     fs.unlinkSync(tmpDb);
+  });
+
+  it('should have a memories CHECK constraint that matches MEMORY_CATEGORY_NAMES', () => {
+    const { sql } = app.db
+      .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'memories'")
+      .get() as { sql: string };
+
+    const match = sql.match(/CHECK\s*\(\s*category\s+IN\s*\(([^)]+)\)\s*\)/i);
+    expect(match).toBeTruthy();
+
+    const constraintCategories = match![1]
+      .split(',')
+      .map((s) => s.trim().replace(/^'|'$/g, ''));
+
+    expect(constraintCategories).toEqual([...MEMORY_CATEGORY_NAMES]);
   });
 
   it('should have briefings table with correct columns', () => {

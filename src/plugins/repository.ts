@@ -1,8 +1,8 @@
 import fp from 'fastify-plugin';
 import type { FastifyInstance } from 'fastify';
 import type { Database } from 'better-sqlite3';
+import { MEMORY_CATEGORY_NAMES, type MemoryCategory } from './memory-categories.js';
 
-export type MemoryCategory = 'appointment' | 'note' | 'todo' | 'purchase';
 export type MemoryActionType = 'completed' | 'dismissed';
 
 export type Memory = {
@@ -188,7 +188,10 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       const id = crypto.randomUUID();
       const createdAt = Date.now();
       const content = data.content.trim();
-      const category = data.category.toLowerCase() as MemoryCategory;
+      const category = data.category.toLowerCase();
+      if (!MEMORY_CATEGORY_NAMES.includes(category as MemoryCategory)) {
+        throw new Error(`Invalid category: ${data.category}`);
+      }
       const permanent = data.permanent ? 1 : 0;
       const tags = [
         ...new Set(
