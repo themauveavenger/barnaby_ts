@@ -11,10 +11,12 @@
 | 4     | Google Calendar integration (read/create/edit)               | Done        |
 | 5.1   | Telegram Bot integration (send/receive, /start, /remember)   | Done        |
 | 5.2   | Daily Briefings via Telegram (cron + manual trigger)         | Done        |
-| 5.3   | YNAB tools (transactions, payees, splits, approve, etc.)     | Done¹       |
+| 5.3   | YNAB tools (transactions, payees, splits, approve, etc.)     | Done        |
 | 5.4   | Telegram /remember command with memory create/list/resolve   | Done        |
-| 5.5   | Open-Meteo weather reports as a part of the daily briefing   | Not started |
+| 5.5   | Open-Meteo weather reports as a part of the daily briefing   | Done        |
 | 5.6   | Additional scheduled messages as "check-ins" through the day | Not started |
 | 5.7   | Home Assistant integration                                   | Not started |
+| 6     | Google Drive Integration                                     | Not started |
+
 
 ¹ YNAB tools are implemented but not yet exposed through any user-facing endpoint.
