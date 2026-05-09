@@ -16,7 +16,7 @@
 | 5.5   | Open-Meteo weather reports as a part of the daily briefing   | Done        |
 | 5.6   | Additional scheduled messages as "check-ins" through the day | Not started |
 | 5.7   | Home Assistant integration                                   | Not started |
-| 6     | Google Drive Integration                                     | Not started |
+| 6     | Google Drive Integration (read Google Docs)                   | Done        |
 
 
 ¹ YNAB tools are implemented but not yet exposed through any user-facing endpoint.

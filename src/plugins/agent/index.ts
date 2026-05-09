@@ -9,6 +9,7 @@ import createYnabExtension from "./extensions/ynab/index.js";
 import createTelegramExtension from "./extensions/telegram.js";
 import createMemoryExtension from "./extensions/memory.js";
 import createWeatherExtension from "./extensions/weather.js";
+import createGoogleDriveExtension from "./extensions/google-drive.js";
 
 export type AgentServices = {
   authStorage: AuthStorage;
@@ -36,6 +37,7 @@ export default fp(async function agentPlugin(fastify: FastifyInstance) {
       createTelegramExtension(fastify),
       createMemoryExtension(fastify),
       createWeatherExtension(fastify),
+      createGoogleDriveExtension(fastify),
     ],
     systemPrompt: BARNABY_PERSONALITY,
   });
