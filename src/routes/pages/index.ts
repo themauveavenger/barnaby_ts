@@ -22,18 +22,10 @@ function formatDate(isoString: string): string {
   return `${weekday} ${month} ${day}${year} ${hours}:${minutes}${ampm}`;
 }
 
-type MemoryFormData = {
-  content?: unknown;
-  category?: unknown;
-  permanent?: unknown;
-  tags?: unknown;
-};
-
-type CategoryOption = {
+type CategorySelectOption = {
   name: string;
   label: string;
   selected: boolean;
-  actionLabel: string | null;
 };
 
 type MemoryViewModel = {
@@ -52,7 +44,7 @@ type MemoriesViewModel = {
   memories: MemoryViewModel[];
   filters: {
     category: string;
-    categories: CategoryOption[];
+    categories: CategorySelectOption[];
     tags: string;
   };
   pagination: {
@@ -65,21 +57,29 @@ type MemoriesViewModel = {
     previousUrl: string;
     nextUrl: string;
   };
+};
+
+type NewMemoryViewModel = {
   error?: string;
-  form?: {
-    content?: unknown;
-    category?: unknown;
-    permanent?: boolean;
-    tags?: unknown;
-    categories: CategoryOption[];
+  form: {
+    content: string;
+    category: string;
+    permanent: boolean;
+    tags: string;
+    categories: CategorySelectOption[];
   };
+};
+
+type MemoryFormData = {
+  content?: unknown;
+  category?: unknown;
+  permanent?: unknown;
+  tags?: unknown;
 };
 
 function buildViewModel(
   fastify: FastifyInstance,
   query: ListMemoriesQuery,
-  error?: string,
-  form?: MemoryFormData
 ): MemoriesViewModel {
   const page = Math.max(1, query.page || 1);
   const limit = Math.min(100, Math.max(1, query.limit || 20));
@@ -124,7 +124,8 @@ function buildViewModel(
     filters: {
       category: repoQuery.category || '',
       categories: MEMORY_CATEGORIES.map((c) => ({
-        ...c,
+        name: c.name,
+        label: c.label,
         selected: repoQuery.category === c.name,
       })),
       tags: repoQuery.tags || '',
@@ -139,32 +140,60 @@ function buildViewModel(
       previousUrl: buildUrl(page - 1),
       nextUrl: buildUrl(page + 1),
     },
-    error,
-    form: form
-      ? {
-          content: form.content,
-          category: form.category,
-          permanent: form.permanent === true,
-          tags: Array.isArray(form.tags) ? form.tags.join(', ') : form.tags,
-          categories: MEMORY_CATEGORIES.map((c) => ({
-            ...c,
-            selected: form.category === c.name,
-          })),
-        }
-      : undefined,
+  };
+}
+
+function buildEmptyForm(): NewMemoryViewModel['form'] {
+  return {
+    content: '',
+    category: '',
+    permanent: false,
+    tags: '',
+    categories: MEMORY_CATEGORIES.map((c) => ({
+      name: c.name,
+      label: c.label,
+      selected: false,
+    })),
+  };
+}
+
+function buildFormFromSubmission(data: MemoryFormData): NewMemoryViewModel['form'] {
+  const tagsValue = Array.isArray(data.tags)
+    ? data.tags.join(', ')
+    : typeof data.tags === 'string'
+      ? data.tags
+      : '';
+
+  return {
+    content: typeof data.content === 'string' ? data.content : '',
+    category: typeof data.category === 'string' ? data.category : '',
+    permanent: data.permanent === true,
+    tags: tagsValue,
+    categories: MEMORY_CATEGORIES.map((c) => ({
+      name: c.name,
+      label: c.label,
+      selected: data.category === c.name,
+    })),
   };
 }
 
 export default async function pageRoutes(fastify: FastifyInstance) {
   fastify.get('/', { schema: listMemoriesSchema }, async (request: FastifyRequest<{ Querystring: ListMemoriesQuery }>, reply: FastifyReply) => {
     const viewModel = buildViewModel(fastify, request.query);
-    return reply.view('memories', viewModel);
+    return reply.view('memories/index', viewModel);
   });
 
-  fastify.post('/', {
+  fastify.get('/memories/new', async (request: FastifyRequest, reply: FastifyReply) => {
+    const viewModel: NewMemoryViewModel = {
+      form: buildEmptyForm(),
+    };
+    return reply.view('memories/new', viewModel);
+  });
+
+  fastify.post('/memories/new', {
     schema: createMemorySchema,
     attachValidation: true,
-    preValidation: async (request, reply) => {
+    preValidation: async (request) => {
       const body = request.body as MemoryFormData;
       if (typeof body.permanent === 'string') {
         body.permanent = body.permanent === 'on';
@@ -178,19 +207,11 @@ export default async function pageRoutes(fastify: FastifyInstance) {
     },
   }, async (request: FastifyRequest<{ Body: CreateMemoryBody }>, reply: FastifyReply) => {
     if (request.validationError) {
-      const body = request.body as MemoryFormData;
-      const viewModel = buildViewModel(
-        fastify,
-        {},
-        request.validationError.message,
-        {
-          content: body.content,
-          category: body.category,
-          permanent: body.permanent === true,
-          tags: body.tags,
-        }
-      );
-      return reply.view('memories', viewModel);
+      const viewModel: NewMemoryViewModel = {
+        error: request.validationError.message,
+        form: buildFormFromSubmission(request.body as MemoryFormData),
+      };
+      return reply.view('memories/new', viewModel);
     }
 
     request.server.memoryRepository.create(request.body);

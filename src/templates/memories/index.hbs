@@ -1,39 +1,8 @@
 <h3>Memories</h3>
 
-<p>Create & browse Barnaby's memories.</p>
-
-<h4>Add Memory</h4>
-
-<form method="post" action="/">
-  <label for="content-input">Content:</label>
-  <textarea id="content-input" name="content" required maxlength="2000">{{form.content}}</textarea>
-
-
-  <label for="category-input">Category:</label>
-  <select id="category-input" name="category" required>
-    <option value="">-- Select --</option>
-    {{#each form.categories}}
-      <option value="{{name}}" {{#if selected}}selected{{/if}}>{{label}}</option>
-    {{/each}}
-  </select>
-
-  <div>
-    <label for="permanent">Permanent</label>
-    <input id="permanent" type="checkbox" name="permanent" value="on" {{#if form.permanent}}checked{{/if}}>
-  </div>
-
-  <div>
-    <label for="tags-input">Tags:</label>
-    <input id="tags-input" type="text" name="tags" value="{{form.tags}}" placeholder="comma-separated">
-  </div>
-
-  <button type="submit">Add Memory</button>
-</form>
-
-<hr/>
+<p>Browse Barnaby's memories. <a href="/memories/new">Add a memory</a>.</p>
 
 <h3>Search</h3>
-
 <form method="get" action="/">
   <label for="category">Category:</label>
   <select id="category" name="category">
@@ -49,10 +18,6 @@
 
   <button type="submit">Filter</button>
 </form>
-
-{{#if error}}
-  <p style="color: red;">{{error}}</p>
-{{/if}}
 
 {{#if memories.length}}
   <table>

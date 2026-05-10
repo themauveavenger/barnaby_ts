@@ -149,20 +149,6 @@ describe('Memories Page', () => {
     expect(response.payload).not.toContain('Untagged memory');
   });
 
-  it('should include all categories in the creation dropdown', async () => {
-    const response = await app.inject({
-      method: 'GET',
-      url: '/',
-      headers: { authorization: authHeader },
-    });
-
-    expect(response.statusCode).toBe(200);
-    for (const cat of MEMORY_CATEGORIES) {
-      expect(response.payload).toContain(`value="${cat.name}"`);
-      expect(response.payload).toContain(`>${cat.label}</option>`);
-    }
-  });
-
   it('should reject invalid query parameters', async () => {
     const response = await app.inject({
       method: 'GET',
@@ -170,22 +156,6 @@ describe('Memories Page', () => {
       headers: { authorization: authHeader },
     });
     expect(response.statusCode).toBe(400);
-  });
-
-  it('should re-render page with error on invalid category in form submission', async () => {
-    const response = await app.inject({
-      method: 'POST',
-      url: '/',
-      headers: {
-        authorization: authHeader,
-        'content-type': 'application/x-www-form-urlencoded',
-      },
-      payload: 'content=Bad+category&category=invalid&tags=test',
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.headers['content-type']).toContain('text/html');
-    expect(response.payload).toContain('Add Memory');
   });
 
   it('should show empty state when no memories exist', async () => {
@@ -199,42 +169,27 @@ describe('Memories Page', () => {
     expect(response.payload).toContain('No memories found');
   });
 
-  it('should create a memory from form submission and redirect to root', async () => {
+  it('should include a link to create new memory', async () => {
     const response = await app.inject({
-      method: 'POST',
-      url: '/',
-      headers: {
-        authorization: authHeader,
-        'content-type': 'application/x-www-form-urlencoded',
-      },
-      payload: 'content=Form+memory&category=note&tags=test%2C+tag',
-    });
-
-    expect(response.statusCode).toBe(302);
-    expect(response.headers.location).toBe('/');
-
-    const getResponse = await app.inject({
       method: 'GET',
       url: '/',
       headers: { authorization: authHeader },
     });
-    expect(getResponse.payload).toContain('Form memory');
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain('/memories/new');
   });
 
-  it('should re-render page with error on invalid form submission', async () => {
+  it('should not include the creation form on the list page', async () => {
     const response = await app.inject({
-      method: 'POST',
+      method: 'GET',
       url: '/',
-      headers: {
-        authorization: authHeader,
-        'content-type': 'application/x-www-form-urlencoded',
-      },
-      payload: 'content=&category=note&tags=test',
+      headers: { authorization: authHeader },
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.headers['content-type']).toContain('text/html');
-    expect(response.payload).toContain('Add Memory');
+    expect(response.payload).not.toContain('id="content-input"');
+    expect(response.payload).not.toContain('id="category-input"');
   });
 
   it('should display action buttons for todo memories without actions', async () => {
@@ -369,5 +324,137 @@ describe('Memories Page', () => {
       headers: { authorization: authHeader },
     });
     expect(page.payload).toContain('Completed');
+  });
+});
+
+describe('New Memory Page', () => {
+  let app: Awaited<ReturnType<typeof buildTestApp>>;
+  const authHeader = 'Basic ' + Buffer.from('test:test').toString('base64');
+
+  beforeEach(async () => {
+    app = await buildTestApp();
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it('should reject unauthenticated requests', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/memories/new',
+    });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it('should return HTML with the creation form', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/memories/new',
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toContain('text/html');
+    expect(response.payload).toContain('New Memory');
+    expect(response.payload).toContain('id="content-input"');
+    expect(response.payload).toContain('id="category-input"');
+    expect(response.payload).toContain('action="/memories/new"');
+  });
+
+  it('should include all categories in the creation dropdown', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/memories/new',
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    for (const cat of MEMORY_CATEGORIES) {
+      expect(response.payload).toContain(`value="${cat.name}"`);
+      expect(response.payload).toContain(`>${cat.label}</option>`);
+    }
+  });
+
+  it('should include a link back to memories list', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/memories/new',
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain('href="/"');
+  });
+
+  it('should create a memory from form submission and redirect to root', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/memories/new',
+      headers: {
+        authorization: authHeader,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      payload: 'content=Form+memory&category=note&tags=test%2C+tag',
+    });
+
+    expect(response.statusCode).toBe(302);
+    expect(response.headers.location).toBe('/');
+
+    const getResponse = await app.inject({
+      method: 'GET',
+      url: '/',
+      headers: { authorization: authHeader },
+    });
+    expect(getResponse.payload).toContain('Form memory');
+  });
+
+  it('should re-render form with error on invalid form submission', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/memories/new',
+      headers: {
+        authorization: authHeader,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      payload: 'content=&category=note&tags=test',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toContain('text/html');
+    expect(response.payload).toContain('New Memory');
+  });
+
+  it('should re-render form with error on invalid category in form submission', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/memories/new',
+      headers: {
+        authorization: authHeader,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      payload: 'content=Bad+category&category=invalid&tags=test',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toContain('text/html');
+    expect(response.payload).toContain('New Memory');
+  });
+
+  it('should preserve form values on validation error', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/memories/new',
+      headers: {
+        authorization: authHeader,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      payload: 'content=My+content&category=invalid&permanent=on&tags=fun%2C+games',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain('My content');
+    expect(response.payload).toContain('checked');
+    expect(response.payload).toContain('fun, games');
   });
 });

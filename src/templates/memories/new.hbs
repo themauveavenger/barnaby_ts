@@ -1,0 +1,33 @@
+<h3>New Memory</h3>
+
+<p><a href="/">← Back to Memories</a></p>
+
+{{#if error}}
+  <p style="color: red;">{{error}}</p>
+{{/if}}
+
+<form method="post" action="/memories/new">
+  <label for="content-input">Content:</label>
+  <textarea id="content-input" name="content" required maxlength="2000">{{form.content}}</textarea>
+
+
+  <label for="category-input">Category:</label>
+  <select id="category-input" name="category" required>
+    <option value="">-- Select --</option>
+    {{#each form.categories}}
+      <option value="{{name}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+    {{/each}}
+  </select>
+
+  <div>
+    <label for="permanent">Permanent</label>
+    <input id="permanent" type="checkbox" name="permanent" value="on" {{#if form.permanent}}checked{{/if}}>
+  </div>
+
+  <div>
+    <label for="tags-input">Tags:</label>
+    <input id="tags-input" type="text" name="tags" value="{{form.tags}}" placeholder="comma-separated">
+  </div>
+
+  <button type="submit">Add Memory</button>
+</form>
