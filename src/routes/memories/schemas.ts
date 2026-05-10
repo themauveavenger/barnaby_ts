@@ -22,16 +22,6 @@ export const createMemorySchema = {
   },
 };
 
-export const getMemorySchema = {
-  params: {
-    type: 'object',
-    properties: {
-      id: { type: 'string', format: 'uuid' },
-    },
-    required: ['id'],
-  },
-};
-
 export const listMemoriesSchema = {
   querystring: {
     type: 'object',
@@ -43,6 +33,26 @@ export const listMemoriesSchema = {
       tags: { type: 'string' },
       page: { type: 'integer', minimum: 1, default: 1 },
       limit: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+    },
+  },
+};
+
+export const updateMemorySchema = {
+  params: {
+    type: 'object',
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+    },
+    required: ['id'],
+  },
+  body: {
+    type: 'object',
+    properties: {
+      content: { type: 'string', minLength: 1, maxLength: 2000 },
+      tags: {
+        type: 'array',
+        items: { type: 'string', minLength: 1 },
+      },
     },
   },
 };

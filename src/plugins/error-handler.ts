@@ -8,6 +8,13 @@ export class NotFoundError extends Error {
   }
 }
 
+export class BadRequestError extends Error {
+  statusCode = 400;
+  constructor(message: string) {
+    super(message);
+  }
+}
+
 export default fp(async function errorHandlerPlugin(fastify: FastifyInstance) {
   fastify.setErrorHandler((error, request, reply) => {
     request.log.error({ err: error }, 'Request error');

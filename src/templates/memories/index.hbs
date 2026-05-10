@@ -29,11 +29,12 @@
       <th>Permanent?</th>
       <th>Tags</th>
       <th>Status</th>
+      <th>Actions</th>
     </tr>
     </thead>
     <tbody>
     {{#each memories}}
-      <tr>
+      <tr id="memory-{{id}}">
         <td>{{content}}</td>
         <td>{{category}}</td>
         <td>{{formattedDate}}</td>
@@ -72,6 +73,9 @@
           {{else}}
             —
           {{/if}}
+        </td>
+        <td>
+          <a href="{{editUrl}}">✏️</a>
         </td>
       </tr>
     {{/each}}

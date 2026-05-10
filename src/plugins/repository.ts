@@ -28,6 +28,11 @@ export type CreateMemoryBody = {
   permanent?: boolean;
 };
 
+export type UpdateMemoryBody = {
+  content?: string;
+  tags?: string[];
+};
+
 export type ListMemoriesQuery = {
   category?: string;
   tags?: string;
@@ -44,6 +49,7 @@ export interface MemoryRepository {
   create(data: CreateMemoryBody): Memory;
   findById(id: string): Memory | null;
   findAll(query: ListMemoriesQuery): { data: Memory[]; total: number };
+  update(id: string, data: UpdateMemoryBody): Memory;
   delete(id: string): boolean;
   findForContext(): { permanent: Memory[]; recent: Memory[] };
   findRecent(days: number): Memory[];
@@ -366,6 +372,46 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       const rows = db.prepare(sql).all(...params) as MemoryRow[];
 
       return rows.map((row) => rowToMemory(row));
+    },
+
+    update(id, data) {
+      const existing = db.prepare('SELECT id FROM memories WHERE id = ?').get(id);
+      if (!existing) {
+        throw new Error(`Memory not found: ${id}`);
+      }
+
+      const setContent = db.prepare('UPDATE memories SET content = ? WHERE id = ?');
+      const deleteMemoryTags = db.prepare('DELETE FROM memory_tags WHERE memory_id = ?');
+      const insertTag = db.prepare('INSERT OR IGNORE INTO tags (name) VALUES (?)');
+      const linkTag = db.prepare(
+        'INSERT INTO memory_tags (memory_id, tag_id) VALUES (?, (SELECT id FROM tags WHERE name = ?))'
+      );
+
+      const transaction = db.transaction(() => {
+        if (data.content !== undefined) {
+          setContent.run(data.content.trim(), id);
+        }
+
+        if (data.tags !== undefined) {
+          const normalizedTags = [
+            ...new Set(
+              data.tags
+                .map((t) => t.toLowerCase().trim())
+                .filter(Boolean)
+            ),
+          ];
+
+          deleteMemoryTags.run(id);
+          for (const tag of normalizedTags) {
+            insertTag.run(tag);
+            linkTag.run(id, tag);
+          }
+        }
+      });
+
+      transaction();
+
+      return this.findById(id)!;
     },
 
     delete(id) {

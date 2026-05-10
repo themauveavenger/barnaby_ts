@@ -192,6 +192,61 @@ describe('Memories Page', () => {
     expect(response.payload).not.toContain('id="category-input"');
   });
 
+  it('should include edit links on each memory row', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: { content: 'Editable memory', category: 'note' },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/',
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain('✏️');
+  });
+
+  it('should include anchor IDs on memory rows', async () => {
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: { content: 'Anchor test', category: 'note' },
+    });
+    const created = createRes.json();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/',
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain(`id="memory-${created.id}"`);
+  });
+
+  it('should include an Actions column header in the table', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: { content: 'Table test', category: 'note' },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/',
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain('<th>Actions</th>');
+  });
+
   it('should display action buttons for todo memories without actions', async () => {
     await app.inject({
       method: 'POST',
@@ -456,5 +511,176 @@ describe('New Memory Page', () => {
     expect(response.payload).toContain('My content');
     expect(response.payload).toContain('checked');
     expect(response.payload).toContain('fun, games');
+  });
+});
+
+describe('Edit Memory Page', () => {
+  let app: Awaited<ReturnType<typeof buildTestApp>>;
+  const authHeader = 'Basic ' + Buffer.from('test:test').toString('base64');
+
+  beforeEach(async () => {
+    app = await buildTestApp();
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it('should reject unauthenticated requests', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/memories/00000000-0000-0000-0000-000000000000',
+    });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it('should return HTML with the edit form for an existing memory', async () => {
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: { content: 'Edit me', category: 'note', tags: ['test'] },
+    });
+    const created = createRes.json();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/memories/${created.id}`,
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toContain('text/html');
+    expect(response.payload).toContain('Edit Memory');
+    expect(response.payload).toContain('Edit me');
+    expect(response.payload).toContain('test');
+    expect(response.payload).toContain('id="edit-form"');
+  });
+
+  it('should display category as read-only label', async () => {
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: { content: 'Categorized', category: 'todo' },
+    });
+    const created = createRes.json();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/memories/${created.id}`,
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain('Todo');
+    expect(response.payload).not.toContain('id="category-input"');
+  });
+
+  it('should display permanent status as read-only label', async () => {
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: { content: 'Permanent one', category: 'note', permanent: true },
+    });
+    const created = createRes.json();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/memories/${created.id}`,
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain('Permanent');
+  });
+
+  it('should return 404 for nonexistent memory', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/memories/00000000-0000-0000-0000-000000000000',
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(404);
+  });
+
+  it('should include return URL without filters by default', async () => {
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: { content: 'Return test', category: 'note' },
+    });
+    const created = createRes.json();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/memories/${created.id}`,
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain('href="/"');
+  });
+
+  it('should include return URL with filter params', async () => {
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: { content: 'Filter test', category: 'todo' },
+    });
+    const created = createRes.json();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/memories/${created.id}?category=todo&page=2`,
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain('category=todo');
+    expect(response.payload).toContain('page=2');
+  });
+
+  it('should include memory ID in the template for JavaScript', async () => {
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: { content: 'JS test', category: 'note' },
+    });
+    const created = createRes.json();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/memories/${created.id}`,
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain(`const id = '${created.id}'`);
+  });
+
+  it('should include save and delete buttons', async () => {
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/memories',
+      headers: { authorization: authHeader },
+      payload: { content: 'Button test', category: 'note' },
+    });
+    const created = createRes.json();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/memories/${created.id}`,
+      headers: { authorization: authHeader },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain('id="save-btn"');
+    expect(response.payload).toContain('id="delete-btn"');
   });
 });

@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { NotFoundError } from '../../plugins/error-handler.js';
-import type { CreateMemoryBody, ListMemoriesQuery, MemoryActionType } from '../../plugins/repository.js';
+import { NotFoundError, BadRequestError } from '../../plugins/error-handler.js';
+import type { CreateMemoryBody, UpdateMemoryBody, ListMemoriesQuery, MemoryActionType } from '../../plugins/repository.js';
 
 export async function createMemory(
   request: FastifyRequest<{ Body: CreateMemoryBody }>,
@@ -11,14 +11,24 @@ export async function createMemory(
   return memory;
 }
 
-export async function getMemory(
-  request: FastifyRequest<{ Params: { id: string } }>
+export async function updateMemory(
+  request: FastifyRequest<{ Params: { id: string }; Body: UpdateMemoryBody }>,
+  reply: FastifyReply
 ) {
-  const memory = request.server.memoryRepository.findById(request.params.id);
-  if (!memory) {
-    throw new NotFoundError('Memory not found');
+  const { content, tags } = request.body;
+  if (content === undefined && tags === undefined) {
+    throw new BadRequestError('At least one field (content or tags) must be provided');
   }
-  return memory;
+
+  try {
+    const memory = request.server.memoryRepository.update(request.params.id, request.body);
+    return memory;
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith('Memory not found')) {
+      throw new NotFoundError('Memory not found');
+    }
+    throw err;
+  }
 }
 
 export async function listMemories(

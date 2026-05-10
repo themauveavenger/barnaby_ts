@@ -78,6 +78,92 @@ describe('repository plugin', () => {
     expect(found).toBeNull();
   });
 
+  describe('update', () => {
+    it('should update content only', () => {
+      const created = app.memoryRepository.create({
+        content: 'Original content',
+        category: 'note',
+        tags: ['keep-me'],
+      });
+
+      const updated = app.memoryRepository.update(created.id, { content: 'Updated content' });
+      expect(updated.content).toBe('Updated content');
+      expect(updated.tags).toEqual(['keep-me']);
+      expect(updated.id).toBe(created.id);
+    });
+
+    it('should update tags only', () => {
+      const created = app.memoryRepository.create({
+        content: 'Keep this content',
+        category: 'note',
+      });
+
+      const updated = app.memoryRepository.update(created.id, { tags: ['new-tag'] });
+      expect(updated.content).toBe('Keep this content');
+      expect(updated.tags).toEqual(['new-tag']);
+    });
+
+    it('should update both content and tags', () => {
+      const created = app.memoryRepository.create({
+        content: 'Original',
+        category: 'note',
+        tags: ['old'],
+      });
+
+      const updated = app.memoryRepository.update(created.id, { content: 'Updated', tags: ['new'] });
+      expect(updated.content).toBe('Updated');
+      expect(updated.tags).toEqual(['new']);
+    });
+
+    it('should replace tags entirely, not merge', () => {
+      const created = app.memoryRepository.create({
+        content: 'Tag replace',
+        category: 'note',
+        tags: ['old1', 'old2'],
+      });
+
+      const updated = app.memoryRepository.update(created.id, { tags: ['replacement'] });
+      expect(updated.tags).toEqual(['replacement']);
+    });
+
+    it('should normalize and deduplicate tags on update', () => {
+      const created = app.memoryRepository.create({
+        content: 'Dedup update',
+        category: 'note',
+      });
+
+      const updated = app.memoryRepository.update(created.id, { tags: ['Foo', 'foo', 'FOO'] });
+      expect(updated.tags).toEqual(['foo']);
+    });
+
+    it('should trim content whitespace on update', () => {
+      const created = app.memoryRepository.create({
+        content: 'Original',
+        category: 'note',
+      });
+
+      const updated = app.memoryRepository.update(created.id, { content: '  Trimmed  ' });
+      expect(updated.content).toBe('Trimmed');
+    });
+
+    it('should clear tags with empty array', () => {
+      const created = app.memoryRepository.create({
+        content: 'Clear my tags',
+        category: 'note',
+        tags: ['remove-me'],
+      });
+
+      const updated = app.memoryRepository.update(created.id, { tags: [] });
+      expect(updated.tags).toEqual([]);
+    });
+
+    it('should throw for nonexistent memory', () => {
+      expect(() => {
+        app.memoryRepository.update('00000000-0000-0000-0000-000000000000', { content: 'Nope' });
+      }).toThrow('Memory not found');
+    });
+  });
+
   it('should find memories for context', () => {
     const permanent = app.memoryRepository.create({
       content: 'I like dark mode',

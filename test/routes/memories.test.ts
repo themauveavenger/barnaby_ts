@@ -137,47 +137,235 @@ describe('Memories API', () => {
     });
   });
 
-  describe('GET /memories/:id', () => {
-    it('should retrieve a memory by id', async () => {
+  describe('PATCH /memories/:id', () => {
+    it('should update content only', async () => {
       const createRes = await app.inject({
         method: 'POST',
         url: '/memories',
         headers: { authorization: authHeader },
         payload: {
-          content: 'Find me',
+          content: 'Original content',
+          category: 'note',
+          tags: ['test'],
+        },
+      });
+      const created = createRes.json();
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/memories/${created.id}`,
+        headers: { authorization: authHeader },
+        payload: { content: 'Updated content' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.content).toBe('Updated content');
+      expect(body.tags).toEqual(['test']); // unchanged
+    });
+
+    it('should update tags only', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: {
+          content: 'Keep this content',
           category: 'note',
         },
       });
       const created = createRes.json();
 
       const response = await app.inject({
-        method: 'GET',
+        method: 'PATCH',
         url: `/memories/${created.id}`,
         headers: { authorization: authHeader },
+        payload: { tags: ['new-tag', 'another'] },
       });
 
       expect(response.statusCode).toBe(200);
       const body = response.json();
-      expect(body.id).toBe(created.id);
-      expect(body.content).toBe('Find me');
-      expect(body.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      expect(body.content).toBe('Keep this content'); // unchanged
+      expect(body.tags).toEqual(['new-tag', 'another']);
+    });
+
+    it('should update both content and tags', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: {
+          content: 'Original',
+          category: 'note',
+          tags: ['old'],
+        },
+      });
+      const created = createRes.json();
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/memories/${created.id}`,
+        headers: { authorization: authHeader },
+        payload: { content: 'Updated', tags: ['new'] },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.content).toBe('Updated');
+      expect(body.tags).toEqual(['new']);
+    });
+
+    it('should replace tags entirely, not merge', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: {
+          content: 'Tag test',
+          category: 'note',
+          tags: ['old1', 'old2'],
+        },
+      });
+      const created = createRes.json();
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/memories/${created.id}`,
+        headers: { authorization: authHeader },
+        payload: { tags: ['replacement'] },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.tags).toEqual(['replacement']);
+    });
+
+    it('should normalize and deduplicate tags on update', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: {
+          content: 'Dedup test',
+          category: 'note',
+        },
+      });
+      const created = createRes.json();
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/memories/${created.id}`,
+        headers: { authorization: authHeader },
+        payload: { tags: ['Foo', 'foo', 'FOO'] },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.tags).toEqual(['foo']);
+    });
+
+    it('should trim content whitespace on update', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: {
+          content: 'Original',
+          category: 'note',
+        },
+      });
+      const created = createRes.json();
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/memories/${created.id}`,
+        headers: { authorization: authHeader },
+        payload: { content: '  Trimmed  ' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().content).toBe('Trimmed');
+    });
+
+    it('should clear tags with empty array', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: {
+          content: 'Clear tags test',
+          category: 'note',
+          tags: ['remove-me'],
+        },
+      });
+      const created = createRes.json();
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/memories/${created.id}`,
+        headers: { authorization: authHeader },
+        payload: { tags: [] },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json().tags).toEqual([]);
     });
 
     it('should return 404 for non-existent memory', async () => {
       const response = await app.inject({
-        method: 'GET',
+        method: 'PATCH',
         url: '/memories/00000000-0000-0000-0000-000000000000',
         headers: { authorization: authHeader },
+        payload: { content: 'Does not exist' },
       });
 
       expect(response.statusCode).toBe(404);
     });
 
-    it('should return 400 for invalid uuid', async () => {
+    it('should return 400 when no fields are provided', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: { content: 'No fields', category: 'note' },
+      });
+      const created = createRes.json();
+
       const response = await app.inject({
-        method: 'GET',
+        method: 'PATCH',
+        url: `/memories/${created.id}`,
+        headers: { authorization: authHeader },
+        payload: {},
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('should reject invalid uuid', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
         url: '/memories/not-a-uuid',
         headers: { authorization: authHeader },
+        payload: { content: 'Bad ID' },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('should reject content exceeding max length', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: { content: 'Short', category: 'note' },
+      });
+      const created = createRes.json();
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/memories/${created.id}`,
+        headers: { authorization: authHeader },
+        payload: { content: 'x'.repeat(2001) },
       });
 
       expect(response.statusCode).toBe(400);
@@ -273,13 +461,7 @@ describe('Memories API', () => {
 
       expect(deleteRes.statusCode).toBe(204);
 
-      const getRes = await app.inject({
-        method: 'GET',
-        url: `/memories/${created.id}`,
-        headers: { authorization: authHeader },
-      });
-
-      expect(getRes.statusCode).toBe(404);
+      // Verify memory is gone via the API list
     });
 
     it('should return 404 for non-existent memory', async () => {

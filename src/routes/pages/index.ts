@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ListMemoriesQuery, CreateMemoryBody, MemoryActionType } from '../../plugins/repository.js';
 import { MEMORY_CATEGORIES } from '../../plugins/memory-categories.js';
 import { listMemoriesSchema, createMemorySchema } from '../memories/schemas.js';
+import { NotFoundError } from '../../plugins/error-handler.js';
 
 function formatDate(isoString: string): string {
   const date = new Date(isoString);
@@ -38,6 +39,7 @@ type MemoryViewModel = {
   formattedDate: string;
   actionLabel: string | null;
   actions: Array<{ id: string; action: string; formattedDate: string }>;
+  editUrl: string;
 };
 
 type MemoriesViewModel = {
@@ -70,12 +72,32 @@ type NewMemoryViewModel = {
   };
 };
 
+type EditMemoryViewModel = {
+  id: string;
+  content: string;
+  category: string;
+  categoryLabel: string;
+  tags: string;
+  permanent: boolean;
+  returnUrl: string;
+};
+
 type MemoryFormData = {
   content?: unknown;
   category?: unknown;
   permanent?: unknown;
   tags?: unknown;
 };
+
+function buildFilterUrl(query: ListMemoriesQuery): string {
+  const params = new URLSearchParams();
+  if (query.category) params.set('category', query.category);
+  if (query.tags) params.set('tags', query.tags);
+  const page = query.page || 1;
+  if (page > 1) params.set('page', String(page));
+  const qs = params.toString();
+  return qs ? `/?${qs}` : '/';
+}
 
 function buildViewModel(
   fastify: FastifyInstance,
@@ -104,20 +126,33 @@ function buildViewModel(
     return '/?' + params.toString();
   };
 
+  const filterUrl = buildFilterUrl(query);
+
   const memoryIds = data.map((m) => m.id);
   const actionsMap = fastify.memoryActionRepository.findByMemoryIds(memoryIds);
   const categoryMap = new Map(MEMORY_CATEGORIES.map((c) => [c.name, c]));
 
-  const memories = data.map((memory) => ({
-    ...memory,
-    formattedDate: formatDate(memory.createdAt),
-    actionLabel: categoryMap.get(memory.category)?.actionLabel ?? null,
-    actions: (actionsMap.get(memory.id) || []).map((a) => ({
-      id: a.id,
-      action: a.action,
-      formattedDate: formatDate(a.createdAt),
-    })),
-  }));
+  const memories = data.map((memory) => {
+    const editParams = new URLSearchParams();
+    if (query.category) editParams.set('category', query.category);
+    if (query.tags) editParams.set('tags', query.tags);
+    if (page > 1) editParams.set('page', String(page));
+    const editParamsStr = editParams.toString();
+
+    return {
+      ...memory,
+      formattedDate: formatDate(memory.createdAt),
+      actionLabel: categoryMap.get(memory.category)?.actionLabel ?? null,
+      actions: (actionsMap.get(memory.id) || []).map((a) => ({
+        id: a.id,
+        action: a.action,
+        formattedDate: formatDate(a.createdAt),
+      })),
+      editUrl: editParamsStr
+        ? `/memories/${memory.id}?${editParamsStr}`
+        : `/memories/${memory.id}`,
+    };
+  });
 
   return {
     memories,
@@ -216,6 +251,29 @@ export default async function pageRoutes(fastify: FastifyInstance) {
 
     request.server.memoryRepository.create(request.body);
     return reply.redirect('/');
+  });
+
+  fastify.get('/memories/:id', async (request: FastifyRequest<{ Params: { id: string }; Querystring: ListMemoriesQuery }>, reply: FastifyReply) => {
+    const { id } = request.params;
+    const memory = fastify.memoryRepository.findById(id);
+    if (!memory) {
+      throw new NotFoundError('Memory not found');
+    }
+
+    const categoryMap = new Map(MEMORY_CATEGORIES.map((c) => [c.name, c]));
+    const returnUrl = buildFilterUrl(request.query);
+
+    const viewModel: EditMemoryViewModel = {
+      id: memory.id,
+      content: memory.content,
+      category: memory.category,
+      categoryLabel: categoryMap.get(memory.category)?.label ?? memory.category,
+      tags: memory.tags.join(', '),
+      permanent: memory.permanent,
+      returnUrl,
+    };
+
+    return reply.view('memories/edit', viewModel);
   });
 
   // Action form submission (complete/dismiss a memory)
