@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { FastifyInstance } from "fastify";
 import type { DriveClient, DriveFile, DriveDoc } from "../../../../src/plugins/drive-client.js";
 import createGoogleDriveExtension from "../../../../src/plugins/agent/extensions/google-drive.js";

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { createAgentSession, SessionManager } from '@mariozechner/pi-coding-agent';
+import { createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
 import type { Memory, ResolvedMemory } from '../plugins/repository.js';
 
 export function getTimeOfDay(hour: number): string {

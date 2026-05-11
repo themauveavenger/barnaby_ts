@@ -1,5 +1,5 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { createAgentSession, SessionManager } from '@mariozechner/pi-coding-agent';
+import { createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
 import { TZDate } from '@date-fns/tz';
 import { format } from 'date-fns';
 

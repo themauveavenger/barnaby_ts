@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { FastifyInstance } from "fastify";
 import createWeatherExtension from "../../../../src/plugins/agent/extensions/weather.js";
 

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import ynabGetTransactionsTool from "./tools/ynab-get-transactions.js";
 import ynabGetPayeeHistoryTool from "./tools/ynab-get-payee-history.js";
 import ynabCreateTransactionTool from "./tools/ynab-create-transaction.js";

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
+import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import currency from "currency.js";
 import { formatMilliunits, getYnabErrorMessage, isYnabNotFoundError, validateAndResolveSplits } from "../utils.js";

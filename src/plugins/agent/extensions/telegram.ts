@@ -1,4 +1,4 @@
-import type { ExtensionAPI, ExtensionFactory } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-agent";
 import type { FastifyInstance } from "fastify";
 import { Type } from "typebox";
 

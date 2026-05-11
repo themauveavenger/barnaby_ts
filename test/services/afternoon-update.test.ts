@@ -2,14 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { createAfternoonUpdateService, registerAfternoonUpdateJob } from '../../src/services/afternoon-update.js';
 
-vi.mock('@mariozechner/pi-coding-agent', () => ({
+vi.mock('@earendil-works/pi-coding-agent', () => ({
   createAgentSession: vi.fn(),
   SessionManager: {
     inMemory: vi.fn(() => ({})),
   },
 }));
 
-import { createAgentSession } from '@mariozechner/pi-coding-agent';
+import { createAgentSession } from '@earendil-works/pi-coding-agent';
 
 function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
   return {

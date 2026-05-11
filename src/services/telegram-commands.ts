@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { Bot, Context } from 'grammy';
-import { createAgentSession, SessionManager } from '@mariozechner/pi-coding-agent';
+import { createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
 import { MEMORY_CATEGORIZATION_GUIDELINES } from '../agent/memory-guidelines.js';
 
 const REMEMBER_TIMEOUT_MS = 30_000;

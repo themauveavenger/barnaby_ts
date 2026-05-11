@@ -1,8 +1,8 @@
 import fp from "fastify-plugin";
 import type { FastifyInstance } from "fastify";
-import { AuthStorage, ModelRegistry, DefaultResourceLoader } from "@mariozechner/pi-coding-agent";
-import { getModel } from "@mariozechner/pi-ai";
-import type { Model } from "@mariozechner/pi-ai";
+import { AuthStorage, ModelRegistry, DefaultResourceLoader } from "@earendil-works/pi-coding-agent";
+import { getModel } from "@earendil-works/pi-ai";
+import type { Model } from "@earendil-works/pi-ai";
 import { BARNABY_PERSONALITY } from "../../agent/personality.js";
 import createCalendarExtension from "./extensions/google-calendar.js";
 import createYnabExtension from "./extensions/ynab/index.js";

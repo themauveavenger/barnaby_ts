@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-vi.mock('@mariozechner/pi-coding-agent', () => ({
+vi.mock('@earendil-works/pi-coding-agent', () => ({
   createAgentSession: vi.fn(),
   SessionManager: {
     inMemory: vi.fn(() => ({})),
   },
 }));
 
-import { createAgentSession } from '@mariozechner/pi-coding-agent';
+import { createAgentSession } from '@earendil-works/pi-coding-agent';
 import type { FastifyInstance } from 'fastify';
 import type { Bot, Context, RawApi } from 'grammy';
 import registerTelegramCommands from '../../src/services/telegram-commands.js';

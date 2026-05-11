@@ -4,14 +4,14 @@ import { createBriefingService, registerBriefingJob } from '../../src/services/b
 import { getTimeOfDay, formatMemoryList, formatResolvedList, buildMemoryContext, createAgentAndDeliver, MissingChatIdError, EmptyResponseError } from '../../src/services/briefing-helpers.js';
 import type { Memory, ResolvedMemory } from '../../src/plugins/repository.js';
 
-vi.mock('@mariozechner/pi-coding-agent', () => ({
+vi.mock('@earendil-works/pi-coding-agent', () => ({
   createAgentSession: vi.fn(),
   SessionManager: {
     inMemory: vi.fn(() => ({})),
   },
 }));
 
-import { createAgentSession } from '@mariozechner/pi-coding-agent';
+import { createAgentSession } from '@earendil-works/pi-coding-agent';
 
 function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
   return {

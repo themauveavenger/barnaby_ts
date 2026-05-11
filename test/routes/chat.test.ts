@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 import { buildTestApp } from '../helper.js';
-import { createAgentSession } from '@mariozechner/pi-coding-agent';
+import { createAgentSession } from '@earendil-works/pi-coding-agent';
 
 // Mock the pi SDK packages so tests don't need real API keys
 const mockSession = {
@@ -14,7 +14,7 @@ const mockResourceLoader = {
   reload: vi.fn(async () => {}),
 };
 
-vi.mock('@mariozechner/pi-coding-agent', async () => {
+vi.mock('@earendil-works/pi-coding-agent', async () => {
   return {
     AuthStorage: {
       create: vi.fn(() => ({})),
@@ -34,7 +34,7 @@ vi.mock('@mariozechner/pi-coding-agent', async () => {
   };
 });
 
-vi.mock('@mariozechner/pi-ai', async () => {
+vi.mock('@earendil-works/pi-ai', async () => {
   return {
     getModel: vi.fn(() => ({
       id: 'kimi-k2.5',

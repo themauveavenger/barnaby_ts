@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import type { ExtensionAPI, ToolDefinition } from '@mariozechner/pi-coding-agent';
+import type { ExtensionAPI, ToolDefinition } from '@earendil-works/pi-coding-agent';
 import { Type } from 'typebox';
 import {
   MEMORY_CATEGORIES,

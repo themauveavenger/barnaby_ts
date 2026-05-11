@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { ExtensionAPI } from '@mariozechner/pi-coding-agent';
+import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import type { FastifyInstance } from 'fastify';
 import { MEMORY_CATEGORIES } from '../../../../src/plugins/memory-categories.js';
 import createMemoryExtension from '../../../../src/plugins/agent/extensions/memory.js';
