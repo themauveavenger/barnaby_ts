@@ -65,7 +65,7 @@ describe('Memories API', () => {
         headers: { authorization: authHeader },
         payload: {
           content: 'Buy milk',
-          category: 'purchase',
+          category: 'todo',
           tags: ['Shop', 'shop', 'SHOP'],
         },
       });

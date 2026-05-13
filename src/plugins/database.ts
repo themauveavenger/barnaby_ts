@@ -21,7 +21,7 @@ export default fp(async function databasePlugin(fastify: FastifyInstance) {
       id TEXT PRIMARY KEY,
       content TEXT NOT NULL,
       -- Category list must stay in sync with src/plugins/memory-categories.ts
-      category TEXT NOT NULL CHECK (category IN ('appointment', 'note', 'todo', 'purchase')),
+      category TEXT NOT NULL CHECK (category IN ('appointment', 'note', 'todo')),
       permanent INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL
     );

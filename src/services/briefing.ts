@@ -26,6 +26,13 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
 
       const memoryContext = buildMemoryContext(fastify);
 
+      const memoryPriorityContext = `PRIORITY GUIDE FOR USING MEMORIES:
+- Calendar events are ground truth for WHAT is happening and WHEN.
+- Core memories help you personalize (preferences, facts about the user).
+- Recent notes provide context but do NOT override calendar dates.
+- If a memory and calendar event describe the same thing, use the calendar for timing and the memory for context only.
+- Be precise with dates: "today", "tomorrow", "Monday" must be accurate relative to ${today}.`;
+
       const todayStart = new TZDate(tzNow.getFullYear(), tzNow.getMonth(), tzNow.getDate(), timezone);
       const yesterdayStart = sub(todayStart, { days: 1 });
       const yesterdayEnd = todayStart;
@@ -50,6 +57,7 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
         `Today is ${today}. It is currently ${timeOfDay}. All times are in ${tzLong} (${timezone}, ${tzAbbr}).`,
         '',
         memoryContext,
+        memoryPriorityContext,
         '',
         calendarContext,
         '',
@@ -72,6 +80,8 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
         '- Highlight important upcoming events within the next 3 days.',
         '  It is okay to remind about the same event across multiple briefings, but vary how you phrase it.',
         '- If there are any US holidays coming up, you can let the user know about them even though they may not celebrate that particular one.',
+        '- **Date precision is critical**: A calendar event for "Mother\'s Day" starting at midnight does NOT mean both today AND tomorrow are Mother\'s Day. Check the actual date range of each event.',
+        '- **Avoid duplication**: If you mention a calendar event, do NOT separately mention a memory about the same topic unless it adds genuinely new context.',
         '- Use 2-3 short paragraphs total, max 150 words.',
         '- Use a single bullet list only for 3+ calendar events; otherwise weave them into sentences.',
         '- If no calendar events exist, do not mention the calendar at all.',

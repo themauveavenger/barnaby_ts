@@ -21,7 +21,7 @@ export type AgentServices = {
 export default fp(async function agentPlugin(fastify: FastifyInstance) {
   const authStorage = AuthStorage.create();
   const modelRegistry = ModelRegistry.create(authStorage);
-  const model = getModel("opencode-go", "minimax-m2.7");
+  const model = getModel("opencode-go", "kimi-k2.5");
 
   const resourceLoader = new DefaultResourceLoader({
     cwd: process.cwd(),

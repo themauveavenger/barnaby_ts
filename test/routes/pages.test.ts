@@ -91,7 +91,7 @@ describe('Memories Page', () => {
       headers: { authorization: authHeader },
       payload: {
         content: 'Buy milk',
-        category: 'purchase',
+        category: 'todo',
       },
     });
 
@@ -107,7 +107,7 @@ describe('Memories Page', () => {
 
     const response = await app.inject({
       method: 'GET',
-      url: '/?category=purchase',
+      url: '/?category=todo',
       headers: { authorization: authHeader },
     });
 
@@ -266,12 +266,12 @@ describe('Memories Page', () => {
     expect(response.payload).toContain('Dismiss');
   });
 
-  it('should display action buttons for purchase memories without actions', async () => {
+  it('should display action buttons for todo memories without actions', async () => {
     await app.inject({
       method: 'POST',
       url: '/memories',
       headers: { authorization: authHeader },
-      payload: { content: 'Buy milk', category: 'purchase' },
+      payload: { content: 'Buy milk', category: 'todo' },
     });
 
     const response = await app.inject({
@@ -281,7 +281,7 @@ describe('Memories Page', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.payload).toContain('Bought');
+    expect(response.payload).toContain('Complete');
     expect(response.payload).toContain('Dismiss');
   });
 

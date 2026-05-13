@@ -282,7 +282,6 @@ describe('telegram-commands', () => {
       const prompt = mockSession.prompt.mock.calls[0][0];
       expect(prompt).toContain('"todo"');
       expect(prompt).toContain('"appointment"');
-      expect(prompt).toContain('"purchase"');
       expect(prompt).toContain('"note"');
       expect(prompt).toContain('permanent');
       expect(prompt).toContain('core');
