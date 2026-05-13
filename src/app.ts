@@ -15,7 +15,7 @@ import schedulerPlugin from './plugins/scheduler.js';
 import agentPlugin from './plugins/agent/index.js';
 import { registerBriefingJob } from './services/briefing.js';
 import { registerAfternoonUpdateJob } from './services/afternoon-update.js';
-import registerTelegramCommands from './services/telegram-commands.js';
+import registerHandlers from './services/telegram/index.js';
 import briefingRepositoryPlugin from './plugins/briefing-repository.js';
 import briefingRoutes from './routes/briefing/index.js';
 import memoryRoutes from './routes/memories/index.js';
@@ -75,7 +75,7 @@ export async function buildApp() {
   await app.register(schedulerPlugin);
 
   app.addHook('onReady', () => {
-    registerTelegramCommands(app);
+    registerHandlers(app);
     registerBriefingJob(app);
     registerAfternoonUpdateJob(app);
   });

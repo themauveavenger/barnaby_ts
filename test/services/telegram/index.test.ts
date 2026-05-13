@@ -1,0 +1,35 @@
+import { describe, it, expect, vi } from 'vitest';
+import registerHandlers from '../../../src/services/telegram/index.js';
+
+function createMockBot() {
+  return {
+    command: vi.fn(),
+    on: vi.fn(),
+  };
+}
+
+function createMockFastify(bot: ReturnType<typeof createMockBot>) {
+  return {
+    telegramBot: bot,
+  } as any;
+}
+
+describe('registerHandlers', () => {
+  it('registers /remember command handler', () => {
+    const bot = createMockBot();
+    const fastify = createMockFastify(bot);
+
+    registerHandlers(fastify);
+
+    expect(bot.command).toHaveBeenCalledWith('remember', expect.any(Function));
+  });
+
+  it('registers message:text handler', () => {
+    const bot = createMockBot();
+    const fastify = createMockFastify(bot);
+
+    registerHandlers(fastify);
+
+    expect(bot.on).toHaveBeenCalledWith('message:text', expect.any(Function));
+  });
+});
