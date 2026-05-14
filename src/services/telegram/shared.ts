@@ -9,7 +9,7 @@ export function isAllowedChat(chatId: number): boolean {
 
 export async function withTimeout<T>(
   session: AgentSession,
-  fn: () => Promise<T>,
+  fn: () => Promise<T>
 ): Promise<{ result: T; wasTimeout: false } | { result: undefined; wasTimeout: true }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), SESSION_TIMEOUT_MS);
@@ -18,18 +18,22 @@ export async function withTimeout<T>(
   session.setAutoRetryEnabled(false);
   controller.signal.addEventListener('abort', () => {
     wasTimeout = true;
-    session.abort().catch(() => {});
+    session.abort().catch(() => {
+      void 0;
+    });
   });
 
   try {
     const result = await fn();
     return { result, wasTimeout: false };
-  } catch (error) {
+  }
+  catch (error) {
     if (wasTimeout) {
       return { result: undefined, wasTimeout: true };
     }
     throw error;
-  } finally {
+  }
+  finally {
     clearTimeout(timeoutId);
     session.dispose();
   }

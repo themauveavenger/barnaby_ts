@@ -2,12 +2,12 @@ import fp from 'fastify-plugin';
 import type { FastifyInstance } from 'fastify';
 import Database from 'better-sqlite3';
 
-export type ColumnInfo = {
+export interface ColumnInfo {
   name: string;
   type: string;
   notnull: number;
   dflt_value: string | null;
-};
+}
 
 export default fp(async function databasePlugin(fastify: FastifyInstance) {
   const dbPath = process.env.DATABASE_PATH || ':memory:';
@@ -56,8 +56,8 @@ export default fp(async function databasePlugin(fastify: FastifyInstance) {
   `);
 
   // Migration: add permanent column to existing databases
-  const columns = db.pragma('table_info(memories)') as Array<ColumnInfo>;
-  const hasPermanent = columns.some((c) => c.name === 'permanent');
+  const columns = db.pragma('table_info(memories)') as ColumnInfo[];
+  const hasPermanent = columns.some(c => c.name === 'permanent');
   if (!hasPermanent) {
     db.exec('ALTER TABLE memories ADD COLUMN permanent INTEGER NOT NULL DEFAULT 0');
   }

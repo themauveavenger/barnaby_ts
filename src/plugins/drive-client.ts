@@ -1,21 +1,21 @@
 import { type drive_v3, google } from 'googleapis';
 import type { OAuth2Client } from 'google-auth-library';
 
-export type DriveFile = {
+export interface DriveFile {
   id: string;
   name: string;
   modifiedTime: string | null;
-};
+}
 
-export type DriveDoc = {
+export interface DriveDoc {
   name: string;
   content: string;
-};
+}
 
-export type DriveClient = {
+export interface DriveClient {
   listDocs(query?: string, maxResults?: number): Promise<DriveFile[]>;
   readDoc(docId: string): Promise<DriveDoc>;
-};
+}
 
 const DOCS_MIME_TYPE = 'application/vnd.google-apps.document';
 const MAX_EXPORT_BYTES = 50 * 1024;
@@ -32,7 +32,7 @@ export function createDriveClientFromDrive(drive: drive_v3.Drive): DriveClient {
 
       const conditions: string[] = [`mimeType = '${DOCS_MIME_TYPE}'`];
       if (query) {
-        const escaped = query.replace(/'/g, "\\'");
+        const escaped = query.replace(/'/g, '\\\'');
         conditions.push(`name contains '${escaped}'`);
       }
 
@@ -42,37 +42,37 @@ export function createDriveClientFromDrive(drive: drive_v3.Drive): DriveClient {
         q,
         pageSize,
         fields: 'files(id, name, modifiedTime)',
-        orderBy: 'modifiedTime desc',
+        orderBy: 'modifiedTime desc'
       });
 
       return (res.data.files ?? [])
         .filter((f): f is drive_v3.Schema$File & { id: string; name: string } =>
-          typeof f.id === 'string' && typeof f.name === 'string',
+          typeof f.id === 'string' && typeof f.name === 'string'
         )
         .map((file): DriveFile => ({
           id: file.id,
           name: file.name,
-          modifiedTime: file.modifiedTime ?? null,
+          modifiedTime: file.modifiedTime ?? null
         }));
     },
 
     async readDoc(docId: string): Promise<DriveDoc> {
       const meta = await drive.files.get({
         fileId: docId,
-        fields: 'id, name, mimeType',
+        fields: 'id, name, mimeType'
       });
 
       const name = meta.data.name ?? 'Untitled';
 
       if (meta.data.mimeType !== DOCS_MIME_TYPE) {
         throw new Error(
-          `File "${name}" is not a Google Doc (mimeType: ${meta.data.mimeType}). Only Google Docs can be read.`,
+          `File "${name}" is not a Google Doc (mimeType: ${meta.data.mimeType}). Only Google Docs can be read.`
         );
       }
 
       const exportRes = await drive.files.export({
         fileId: docId,
-        mimeType: 'text/plain',
+        mimeType: 'text/plain'
       });
 
       const rawContent = typeof exportRes.data === 'string'
@@ -81,10 +81,10 @@ export function createDriveClientFromDrive(drive: drive_v3.Drive): DriveClient {
 
       const content = rawContent.length > MAX_EXPORT_BYTES
         ? rawContent.slice(0, MAX_EXPORT_BYTES)
-            + `\n\n[Document truncated: ${rawContent.length} characters total. Showing first ${MAX_EXPORT_BYTES} characters.]`
+        + `\n\n[Document truncated: ${rawContent.length} characters total. Showing first ${MAX_EXPORT_BYTES} characters.]`
         : rawContent;
 
       return { name, content };
-    },
+    }
   };
 }

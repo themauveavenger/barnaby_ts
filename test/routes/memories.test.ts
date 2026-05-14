@@ -18,7 +18,7 @@ describe('Memories API', () => {
     it('should reject unauthenticated requests', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/memories',
+        url: '/memories'
       });
       expect(response.statusCode).toBe(401);
     });
@@ -28,7 +28,7 @@ describe('Memories API', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/memories',
-        headers: { authorization: badAuth },
+        headers: { authorization: badAuth }
       });
       expect(response.statusCode).toBe(401);
     });
@@ -43,8 +43,8 @@ describe('Memories API', () => {
         payload: {
           content: 'Dentist at 2pm',
           category: 'appointment',
-          tags: ['health', 'reminder'],
-        },
+          tags: ['health', 'reminder']
+        }
       });
 
       expect(response.statusCode).toBe(201);
@@ -66,8 +66,8 @@ describe('Memories API', () => {
         payload: {
           content: 'Buy milk',
           category: 'todo',
-          tags: ['Shop', 'shop', 'SHOP'],
-        },
+          tags: ['Shop', 'shop', 'SHOP']
+        }
       });
 
       expect(response.statusCode).toBe(201);
@@ -83,8 +83,8 @@ describe('Memories API', () => {
         payload: {
           content: 'I prefer dark mode',
           category: 'note',
-          permanent: true,
-        },
+          permanent: true
+        }
       });
 
       expect(response.statusCode).toBe(201);
@@ -100,8 +100,8 @@ describe('Memories API', () => {
         headers: { authorization: authHeader },
         payload: {
           content: `Test ${category}`,
-          category,
-        },
+          category
+        }
       });
 
       expect(response.statusCode).toBe(201);
@@ -116,8 +116,8 @@ describe('Memories API', () => {
         headers: { authorization: authHeader },
         payload: {
           content: 'Test',
-          category: 'invalid',
-        },
+          category: 'invalid'
+        }
       });
 
       expect(response.statusCode).toBe(400);
@@ -129,8 +129,8 @@ describe('Memories API', () => {
         url: '/memories',
         headers: { authorization: authHeader },
         payload: {
-          category: 'note',
-        },
+          category: 'note'
+        }
       });
 
       expect(response.statusCode).toBe(400);
@@ -146,8 +146,8 @@ describe('Memories API', () => {
         payload: {
           content: 'Original content',
           category: 'note',
-          tags: ['test'],
-        },
+          tags: ['test']
+        }
       });
       const created = createRes.json();
 
@@ -155,7 +155,7 @@ describe('Memories API', () => {
         method: 'PATCH',
         url: `/memories/${created.id}`,
         headers: { authorization: authHeader },
-        payload: { content: 'Updated content' },
+        payload: { content: 'Updated content' }
       });
 
       expect(response.statusCode).toBe(200);
@@ -171,8 +171,8 @@ describe('Memories API', () => {
         headers: { authorization: authHeader },
         payload: {
           content: 'Keep this content',
-          category: 'note',
-        },
+          category: 'note'
+        }
       });
       const created = createRes.json();
 
@@ -180,7 +180,7 @@ describe('Memories API', () => {
         method: 'PATCH',
         url: `/memories/${created.id}`,
         headers: { authorization: authHeader },
-        payload: { tags: ['new-tag', 'another'] },
+        payload: { tags: ['new-tag', 'another'] }
       });
 
       expect(response.statusCode).toBe(200);
@@ -197,8 +197,8 @@ describe('Memories API', () => {
         payload: {
           content: 'Original',
           category: 'note',
-          tags: ['old'],
-        },
+          tags: ['old']
+        }
       });
       const created = createRes.json();
 
@@ -206,7 +206,7 @@ describe('Memories API', () => {
         method: 'PATCH',
         url: `/memories/${created.id}`,
         headers: { authorization: authHeader },
-        payload: { content: 'Updated', tags: ['new'] },
+        payload: { content: 'Updated', tags: ['new'] }
       });
 
       expect(response.statusCode).toBe(200);
@@ -223,8 +223,8 @@ describe('Memories API', () => {
         payload: {
           content: 'Tag test',
           category: 'note',
-          tags: ['old1', 'old2'],
-        },
+          tags: ['old1', 'old2']
+        }
       });
       const created = createRes.json();
 
@@ -232,7 +232,7 @@ describe('Memories API', () => {
         method: 'PATCH',
         url: `/memories/${created.id}`,
         headers: { authorization: authHeader },
-        payload: { tags: ['replacement'] },
+        payload: { tags: ['replacement'] }
       });
 
       expect(response.statusCode).toBe(200);
@@ -247,8 +247,8 @@ describe('Memories API', () => {
         headers: { authorization: authHeader },
         payload: {
           content: 'Dedup test',
-          category: 'note',
-        },
+          category: 'note'
+        }
       });
       const created = createRes.json();
 
@@ -256,7 +256,7 @@ describe('Memories API', () => {
         method: 'PATCH',
         url: `/memories/${created.id}`,
         headers: { authorization: authHeader },
-        payload: { tags: ['Foo', 'foo', 'FOO'] },
+        payload: { tags: ['Foo', 'foo', 'FOO'] }
       });
 
       expect(response.statusCode).toBe(200);
@@ -271,8 +271,8 @@ describe('Memories API', () => {
         headers: { authorization: authHeader },
         payload: {
           content: 'Original',
-          category: 'note',
-        },
+          category: 'note'
+        }
       });
       const created = createRes.json();
 
@@ -280,7 +280,7 @@ describe('Memories API', () => {
         method: 'PATCH',
         url: `/memories/${created.id}`,
         headers: { authorization: authHeader },
-        payload: { content: '  Trimmed  ' },
+        payload: { content: '  Trimmed  ' }
       });
 
       expect(response.statusCode).toBe(200);
@@ -295,8 +295,8 @@ describe('Memories API', () => {
         payload: {
           content: 'Clear tags test',
           category: 'note',
-          tags: ['remove-me'],
-        },
+          tags: ['remove-me']
+        }
       });
       const created = createRes.json();
 
@@ -304,7 +304,7 @@ describe('Memories API', () => {
         method: 'PATCH',
         url: `/memories/${created.id}`,
         headers: { authorization: authHeader },
-        payload: { tags: [] },
+        payload: { tags: [] }
       });
 
       expect(response.statusCode).toBe(200);
@@ -316,7 +316,7 @@ describe('Memories API', () => {
         method: 'PATCH',
         url: '/memories/00000000-0000-0000-0000-000000000000',
         headers: { authorization: authHeader },
-        payload: { content: 'Does not exist' },
+        payload: { content: 'Does not exist' }
       });
 
       expect(response.statusCode).toBe(404);
@@ -327,7 +327,7 @@ describe('Memories API', () => {
         method: 'POST',
         url: '/memories',
         headers: { authorization: authHeader },
-        payload: { content: 'No fields', category: 'note' },
+        payload: { content: 'No fields', category: 'note' }
       });
       const created = createRes.json();
 
@@ -335,7 +335,7 @@ describe('Memories API', () => {
         method: 'PATCH',
         url: `/memories/${created.id}`,
         headers: { authorization: authHeader },
-        payload: {},
+        payload: {}
       });
 
       expect(response.statusCode).toBe(400);
@@ -346,7 +346,7 @@ describe('Memories API', () => {
         method: 'PATCH',
         url: '/memories/not-a-uuid',
         headers: { authorization: authHeader },
-        payload: { content: 'Bad ID' },
+        payload: { content: 'Bad ID' }
       });
 
       expect(response.statusCode).toBe(400);
@@ -357,7 +357,7 @@ describe('Memories API', () => {
         method: 'POST',
         url: '/memories',
         headers: { authorization: authHeader },
-        payload: { content: 'Short', category: 'note' },
+        payload: { content: 'Short', category: 'note' }
       });
       const created = createRes.json();
 
@@ -365,7 +365,7 @@ describe('Memories API', () => {
         method: 'PATCH',
         url: `/memories/${created.id}`,
         headers: { authorization: authHeader },
-        payload: { content: 'x'.repeat(2001) },
+        payload: { content: 'x'.repeat(2001) }
       });
 
       expect(response.statusCode).toBe(400);
@@ -377,7 +377,7 @@ describe('Memories API', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/memories?page=1&limit=10',
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       expect(response.statusCode).toBe(200);
@@ -395,14 +395,14 @@ describe('Memories API', () => {
         headers: { authorization: authHeader },
         payload: {
           content: 'Category filter test',
-          category: 'todo',
-        },
+          category: 'todo'
+        }
       });
 
       const response = await app.inject({
         method: 'GET',
         url: '/memories?category=todo',
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       expect(response.statusCode).toBe(200);
@@ -415,13 +415,13 @@ describe('Memories API', () => {
         method: 'POST',
         url: '/memories',
         headers: { authorization: authHeader },
-        payload: { content: `Filter ${category}`, category },
+        payload: { content: `Filter ${category}`, category }
       });
 
       const response = await app.inject({
         method: 'GET',
         url: `/memories?category=${category}`,
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       expect(response.statusCode).toBe(200);
@@ -433,7 +433,7 @@ describe('Memories API', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/memories?category=invalid',
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       expect(response.statusCode).toBe(400);
@@ -448,15 +448,15 @@ describe('Memories API', () => {
         headers: { authorization: authHeader },
         payload: {
           content: 'Delete me',
-          category: 'note',
-        },
+          category: 'note'
+        }
       });
       const created = createRes.json();
 
       const deleteRes = await app.inject({
         method: 'DELETE',
         url: `/memories/${created.id}`,
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       expect(deleteRes.statusCode).toBe(204);
@@ -468,7 +468,7 @@ describe('Memories API', () => {
       const response = await app.inject({
         method: 'DELETE',
         url: '/memories/00000000-0000-0000-0000-000000000000',
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       expect(response.statusCode).toBe(404);
@@ -482,15 +482,15 @@ describe('Memories API', () => {
         payload: {
           content: 'Tag cleanup test',
           category: 'note',
-          tags: ['cleanup-test'],
-        },
+          tags: ['cleanup-test']
+        }
       });
       const created = createRes.json();
 
       await app.inject({
         method: 'DELETE',
         url: `/memories/${created.id}`,
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       // Verify memory_tags rows are gone (would cause 404 above, but let's be explicit)
@@ -511,8 +511,8 @@ describe('Memories API', () => {
         payload: {
           content: 'Permanent preference',
           category: 'note',
-          permanent: true,
-        },
+          permanent: true
+        }
       });
       const permanent = permRes.json();
 
@@ -523,8 +523,8 @@ describe('Memories API', () => {
         headers: { authorization: authHeader },
         payload: {
           content: 'Recent event',
-          category: 'note',
-        },
+          category: 'note'
+        }
       });
       const recent = recentRes.json();
 
@@ -535,8 +535,8 @@ describe('Memories API', () => {
         headers: { authorization: authHeader },
         payload: {
           content: 'Old event',
-          category: 'note',
-        },
+          category: 'note'
+        }
       });
       const old = oldRes.json();
       app.db
@@ -546,7 +546,7 @@ describe('Memories API', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/memories/context',
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       expect(response.statusCode).toBe(200);
@@ -559,7 +559,7 @@ describe('Memories API', () => {
     it('should reject unauthenticated requests', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/memories/context',
+        url: '/memories/context'
       });
       expect(response.statusCode).toBe(401);
     });
@@ -571,7 +571,7 @@ describe('Memories API', () => {
         method: 'POST',
         url: '/memories',
         headers: { authorization: authHeader },
-        payload: { content: 'Buy milk', category: 'todo' },
+        payload: { content: 'Buy milk', category: 'todo' }
       });
       const created = createRes.json();
 
@@ -579,7 +579,7 @@ describe('Memories API', () => {
         method: 'POST',
         url: `/memories/${created.id}/actions`,
         headers: { authorization: authHeader },
-        payload: { action: 'completed' },
+        payload: { action: 'completed' }
       });
 
       expect(actionRes.statusCode).toBe(201);
@@ -594,7 +594,7 @@ describe('Memories API', () => {
         method: 'POST',
         url: '/memories',
         headers: { authorization: authHeader },
-        payload: { content: 'Call dentist', category: 'todo' },
+        payload: { content: 'Call dentist', category: 'todo' }
       });
       const created = createRes.json();
 
@@ -602,7 +602,7 @@ describe('Memories API', () => {
         method: 'POST',
         url: `/memories/${created.id}/actions`,
         headers: { authorization: authHeader },
-        payload: { action: 'dismissed' },
+        payload: { action: 'dismissed' }
       });
 
       expect(actionRes.statusCode).toBe(201);
@@ -614,7 +614,7 @@ describe('Memories API', () => {
         method: 'POST',
         url: '/memories/00000000-0000-0000-0000-000000000000/actions',
         headers: { authorization: authHeader },
-        payload: { action: 'completed' },
+        payload: { action: 'completed' }
       });
 
       expect(actionRes.statusCode).toBe(404);
@@ -625,7 +625,7 @@ describe('Memories API', () => {
         method: 'POST',
         url: '/memories',
         headers: { authorization: authHeader },
-        payload: { content: 'Test', category: 'note' },
+        payload: { content: 'Test', category: 'note' }
       });
       const created = createRes.json();
 
@@ -633,7 +633,7 @@ describe('Memories API', () => {
         method: 'POST',
         url: `/memories/${created.id}/actions`,
         headers: { authorization: authHeader },
-        payload: { action: 'invalid' },
+        payload: { action: 'invalid' }
       });
 
       expect(actionRes.statusCode).toBe(400);
@@ -644,7 +644,7 @@ describe('Memories API', () => {
         method: 'POST',
         url: '/memories',
         headers: { authorization: authHeader },
-        payload: { content: 'Test', category: 'note' },
+        payload: { content: 'Test', category: 'note' }
       });
       const created = createRes.json();
 
@@ -652,7 +652,7 @@ describe('Memories API', () => {
         method: 'POST',
         url: `/memories/${created.id}/actions`,
         headers: { authorization: authHeader },
-        payload: {},
+        payload: {}
       });
 
       expect(actionRes.statusCode).toBe(400);
@@ -663,7 +663,7 @@ describe('Memories API', () => {
         method: 'POST',
         url: '/memories',
         headers: { authorization: authHeader },
-        payload: { content: 'Duplicate test', category: 'todo' },
+        payload: { content: 'Duplicate test', category: 'todo' }
       });
       const created = createRes.json();
 
@@ -671,14 +671,14 @@ describe('Memories API', () => {
         method: 'POST',
         url: `/memories/${created.id}/actions`,
         headers: { authorization: authHeader },
-        payload: { action: 'completed' },
+        payload: { action: 'completed' }
       });
 
       const secondRes = await app.inject({
         method: 'POST',
         url: `/memories/${created.id}/actions`,
         headers: { authorization: authHeader },
-        payload: { action: 'completed' },
+        payload: { action: 'completed' }
       });
 
       expect(secondRes.statusCode).toBe(500);
@@ -691,7 +691,7 @@ describe('Memories API', () => {
         method: 'POST',
         url: '/memories',
         headers: { authorization: authHeader },
-        payload: { content: 'Undo test', category: 'todo' },
+        payload: { content: 'Undo test', category: 'todo' }
       });
       const created = createRes.json();
 
@@ -699,14 +699,14 @@ describe('Memories API', () => {
         method: 'POST',
         url: `/memories/${created.id}/actions`,
         headers: { authorization: authHeader },
-        payload: { action: 'completed' },
+        payload: { action: 'completed' }
       });
       const action = actionRes.json();
 
       const deleteRes = await app.inject({
         method: 'DELETE',
         url: `/memories/${created.id}/actions/${action.id}`,
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       expect(deleteRes.statusCode).toBe(204);
@@ -716,7 +716,7 @@ describe('Memories API', () => {
       const deleteRes = await app.inject({
         method: 'DELETE',
         url: '/memories/00000000-0000-0000-0000-000000000000/actions/00000000-0000-0000-0000-000000000000',
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       expect(deleteRes.statusCode).toBe(404);
@@ -727,7 +727,7 @@ describe('Memories API', () => {
         method: 'POST',
         url: '/memories',
         headers: { authorization: authHeader },
-        payload: { content: 'Restored todo', category: 'todo' },
+        payload: { content: 'Restored todo', category: 'todo' }
       });
       const created = createRes.json();
 
@@ -735,7 +735,7 @@ describe('Memories API', () => {
         method: 'POST',
         url: `/memories/${created.id}/actions`,
         headers: { authorization: authHeader },
-        payload: { action: 'completed' },
+        payload: { action: 'completed' }
       });
       const action = actionRes.json();
 
@@ -743,7 +743,7 @@ describe('Memories API', () => {
       const contextBefore = await app.inject({
         method: 'GET',
         url: '/memories/context',
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
       expect(contextBefore.json().recent.every((m: { id: string }) => m.id !== created.id)).toBe(true);
 
@@ -751,14 +751,14 @@ describe('Memories API', () => {
       await app.inject({
         method: 'DELETE',
         url: `/memories/${created.id}/actions/${action.id}`,
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       // Verify memory is back in context
       const contextAfter = await app.inject({
         method: 'GET',
         url: '/memories/context',
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
       expect(contextAfter.json().recent.some((m: { id: string }) => m.id === created.id)).toBe(true);
     });

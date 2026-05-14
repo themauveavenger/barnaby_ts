@@ -1,11 +1,11 @@
 import fp from 'fastify-plugin';
 import type { FastifyInstance } from 'fastify';
-import { Bot, type Context } from 'grammy';
+import { Bot } from 'grammy';
 import { autoRetry } from '@grammyjs/auto-retry';
 
-export type TelegramClient = {
+export interface TelegramClient {
   sendMessage(chatId: number, text: string): Promise<void>;
-};
+}
 
 const MAX_MESSAGE_LENGTH = 4096;
 
@@ -39,7 +39,8 @@ export default fp(async function telegramClientPlugin(fastify: FastifyInstance) 
   fastify.addHook('onClose', async () => {
     try {
       await bot.stop();
-    } catch (err) {
+    }
+    catch (err) {
       fastify.log.error(err, 'Telegram bot failed to stop');
     }
   });
@@ -50,7 +51,7 @@ export default fp(async function telegramClientPlugin(fastify: FastifyInstance) 
         ? text.slice(0, MAX_MESSAGE_LENGTH - 3) + '...'
         : text;
       await bot.api.sendMessage(chatId, payload);
-    },
+    }
   };
 
   fastify.decorate('telegramClient', client);

@@ -2,22 +2,22 @@ import fp from 'fastify-plugin';
 import type { FastifyInstance } from 'fastify';
 import type { Database } from 'better-sqlite3';
 
-export type Briefing = {
+export interface Briefing {
   id: string;
   content: string;
   triggeredAt: string; // ISO 8601
   triggerType: 'scheduled' | 'manual';
-};
+}
 
-export type CreateBriefingBody = {
+export interface CreateBriefingBody {
   content: string;
   triggerType: 'scheduled' | 'manual';
-};
+}
 
-export type ListBriefingsQuery = {
+export interface ListBriefingsQuery {
   page?: number;
   limit?: number;
-};
+}
 
 export interface BriefingRepository {
   create(data: CreateBriefingBody): Briefing;
@@ -27,19 +27,19 @@ export interface BriefingRepository {
   delete(id: string): boolean;
 }
 
-type BriefingRow = {
+interface BriefingRow {
   id: string;
   content: string;
   triggered_at: number;
   trigger_type: 'scheduled' | 'manual';
-};
+}
 
 function rowToBriefing(row: BriefingRow): Briefing {
   return {
     id: row.id,
     content: row.content,
     triggeredAt: new Date(row.triggered_at).toISOString(),
-    triggerType: row.trigger_type,
+    triggerType: row.trigger_type
   };
 }
 
@@ -74,7 +74,7 @@ export function createBriefingRepository(db: Database): BriefingRepository {
         .prepare('SELECT * FROM briefings ORDER BY triggered_at DESC, rowid DESC')
         .all() as BriefingRow[];
 
-      return rows.map((row) => rowToBriefing(row));
+      return rows.map(row => rowToBriefing(row));
     },
 
     findAllPaginated(query: ListBriefingsQuery) {
@@ -89,13 +89,13 @@ export function createBriefingRepository(db: Database): BriefingRepository {
         .prepare('SELECT * FROM briefings ORDER BY triggered_at DESC, rowid DESC LIMIT ? OFFSET ?')
         .all(limit, offset) as BriefingRow[];
 
-      return { data: rows.map((row) => rowToBriefing(row)), total };
+      return { data: rows.map(row => rowToBriefing(row)), total };
     },
 
     delete(id: string) {
       const result = db.prepare('DELETE FROM briefings WHERE id = ?').run(id);
       return result.changes > 0;
-    },
+    }
   };
 }
 

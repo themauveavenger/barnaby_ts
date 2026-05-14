@@ -4,9 +4,9 @@ import { TZDate, tzName } from '@date-fns/tz';
 import { add, format } from 'date-fns';
 import { getTimeOfDay, buildMemoryContext, createAgentAndDeliver } from './telegram-utils.js';
 
-export type AfternoonUpdateService = {
+export interface AfternoonUpdateService {
   sendUpdate(signal?: AbortSignal): Promise<void>;
-};
+}
 
 export function createAfternoonUpdateService(fastify: FastifyInstance): AfternoonUpdateService {
   return {
@@ -33,7 +33,7 @@ export function createAfternoonUpdateService(fastify: FastifyInstance): Afternoo
       const tzLong = tzName(timezone, now, 'longGeneric');
 
       const calendarContext = fastify.calendarIds.length > 0
-        ? `Available calendars:\n${fastify.calendarIds.map((id) => `- ${id}`).join('\n')}`
+        ? `Available calendars:\n${fastify.calendarIds.map(id => `- ${id}`).join('\n')}`
         : '';
 
       const prompt = [
@@ -65,8 +65,8 @@ export function createAfternoonUpdateService(fastify: FastifyInstance): Afternoo
         '- End with one brief, encouraging closing line.',
         '',
         'TONE: Casual, warm, and efficient. Write like a helpful friend.',
-        previousContext,
-      ].filter((s) => s !== '').join('\n');
+        previousContext
+      ].filter(s => s !== '').join('\n');
 
       fastify.log.debug({ prompt }, 'Built afternoon update prompt');
 
@@ -74,9 +74,9 @@ export function createAfternoonUpdateService(fastify: FastifyInstance): Afternoo
         fastify,
         tools: ['calendar_list'],
         prompt,
-        signal,
+        signal
       });
-    },
+    }
   };
 }
 

@@ -1,7 +1,7 @@
 import Fastify, { type FastifyRequest, type FastifyLoggerOptions } from 'fastify';
 import type { LoggerOptions as PinoLoggerOptions } from 'pino';
 import basicAuth from '@fastify/basic-auth';
-import fStatic from "@fastify/static";
+import fStatic from '@fastify/static';
 import view from '@fastify/view';
 import handlebars from 'handlebars';
 import errorHandlerPlugin from './plugins/error-handler.js';
@@ -29,17 +29,17 @@ function getLoggerConfig(): LoggerConfig {
     level: process.env.LOG_LEVEL || 'info',
     redact: {
       paths: ['err.stack'],
-      remove: true,
+      remove: true
     },
     serializers: {
-      req: (request) => ({
+      req: request => ({
         method: request.method,
         url: request.url,
         path: request.routeOptions.url,
         query: request.query,
-        ip: request.ip,
-      }),
-    },
+        ip: request.ip
+      })
+    }
   };
 }
 
@@ -48,7 +48,7 @@ function getCalendarIds(): string[] {
   if (!raw || raw.trim() === '') {
     throw new Error('CALENDAR_IDS is required. Set it to a comma-separated list of Google Calendar IDs.');
   }
-  return raw.split(',').map((id) => id.trim()).filter(Boolean);
+  return raw.split(',').map(id => id.trim()).filter(Boolean);
 }
 
 export async function buildApp() {
@@ -58,8 +58,8 @@ export async function buildApp() {
   app.decorate('timezone', process.env.TIMEZONE || 'America/New_York');
 
   await app.register(fStatic, {
-    root: new URL("../public", import.meta.url).pathname,
-    prefix: "/"
+    root: new URL('../public', import.meta.url).pathname,
+    prefix: '/'
   });
 
   await app.register(errorHandlerPlugin);
@@ -86,7 +86,7 @@ export async function buildApp() {
     root: new URL('./templates', import.meta.url).pathname,
     layout: 'layout.hbs',
     viewExt: 'hbs',
-    propertyName: 'view',
+    propertyName: 'view'
   });
 
   await app.register(basicAuth, {
@@ -97,7 +97,7 @@ export async function buildApp() {
         throw new Error('Unauthorized');
       }
     },
-    authenticate: { realm: 'barnaby' },
+    authenticate: { realm: 'barnaby' }
   });
 
   app.addHook('onRequest', (request, reply, done) => {
@@ -112,7 +112,7 @@ export async function buildApp() {
     request.log = request.log.child({
       path: request.routeOptions.url ?? request.url,
       query: request.query,
-      ip: request.ip,
+      ip: request.ip
     });
   });
 
@@ -123,10 +123,12 @@ export async function buildApp() {
       if (result[key] !== undefined) {
         if (Array.isArray(result[key])) {
           result[key].push(value);
-        } else {
+        }
+        else {
           result[key] = [result[key], value];
         }
-      } else {
+      }
+      else {
         result[key] = value;
       }
     }

@@ -9,17 +9,17 @@ export const createMemorySchema = {
       content: { type: 'string', minLength: 1, maxLength: 2000 },
       category: {
         type: 'string',
-        enum: [...MEMORY_CATEGORY_NAMES],
+        enum: [...MEMORY_CATEGORY_NAMES]
       },
       permanent: { type: 'boolean', default: false },
       tags: {
         type: 'array',
         items: { type: 'string', minLength: 1 },
-        default: [],
-      },
+        default: []
+      }
     },
-    required: ['content', 'category'],
-  },
+    required: ['content', 'category']
+  }
 };
 
 export const listMemoriesSchema = {
@@ -28,22 +28,22 @@ export const listMemoriesSchema = {
     properties: {
       category: {
         type: 'string',
-        enum: [...MEMORY_CATEGORY_NAMES],
+        enum: [...MEMORY_CATEGORY_NAMES]
       },
       tags: { type: 'string' },
       page: { type: 'integer', minimum: 1, default: 1 },
-      limit: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
-    },
-  },
+      limit: { type: 'integer', minimum: 1, maximum: 100, default: 20 }
+    }
+  }
 };
 
 export const updateMemorySchema = {
   params: {
     type: 'object',
     properties: {
-      id: { type: 'string', format: 'uuid' },
+      id: { type: 'string', format: 'uuid' }
     },
-    required: ['id'],
+    required: ['id']
   },
   body: {
     type: 'object',
@@ -51,40 +51,40 @@ export const updateMemorySchema = {
       content: { type: 'string', minLength: 1, maxLength: 2000 },
       tags: {
         type: 'array',
-        items: { type: 'string', minLength: 1 },
-      },
-    },
-  },
+        items: { type: 'string', minLength: 1 }
+      }
+    }
+  }
 };
 
 export const deleteMemorySchema = {
   params: {
     type: 'object',
     properties: {
-      id: { type: 'string', format: 'uuid' },
+      id: { type: 'string', format: 'uuid' }
     },
-    required: ['id'],
-  },
+    required: ['id']
+  }
 };
 
 export const createActionSchema = {
   params: {
     type: 'object',
     properties: {
-      id: { type: 'string', format: 'uuid' },
+      id: { type: 'string', format: 'uuid' }
     },
-    required: ['id'],
+    required: ['id']
   },
   body: {
     type: 'object',
     properties: {
       action: {
         type: 'string',
-        enum: ['completed', 'dismissed'],
-      },
+        enum: ['completed', 'dismissed']
+      }
     },
-    required: ['action'],
-  },
+    required: ['action']
+  }
 };
 
 export const deleteActionSchema = {
@@ -92,8 +92,8 @@ export const deleteActionSchema = {
     type: 'object',
     properties: {
       id: { type: 'string', format: 'uuid' },
-      actionId: { type: 'string', format: 'uuid' },
+      actionId: { type: 'string', format: 'uuid' }
     },
-    required: ['id', 'actionId'],
-  },
+    required: ['id', 'actionId']
+  }
 };

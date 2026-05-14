@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import { isAllowedChat, withTimeout, SESSION_TIMEOUT_MS } from '../../../src/services/telegram/shared.js';
 
 describe('telegram/shared', () => {
@@ -36,7 +37,7 @@ describe('telegram/shared', () => {
           rejectPromise?.(new Error('Aborted'));
           return Promise.resolve();
         }),
-        dispose: vi.fn(),
+        dispose: vi.fn()
       };
 
       const fn = async () => {
@@ -45,7 +46,7 @@ describe('telegram/shared', () => {
         });
       };
 
-      const promise = withTimeout(mockSession as any, fn);
+      const promise = withTimeout(mockSession as unknown as AgentSession, fn);
 
       vi.advanceTimersByTime(SESSION_TIMEOUT_MS + 10);
 
@@ -62,10 +63,10 @@ describe('telegram/shared', () => {
       const mockSession = {
         setAutoRetryEnabled: vi.fn(),
         abort: vi.fn().mockResolvedValue(undefined),
-        dispose: vi.fn(),
+        dispose: vi.fn()
       };
 
-      const result = await withTimeout(mockSession as any, async () => 'hello');
+      const result = await withTimeout(mockSession as unknown as AgentSession, async () => 'hello');
 
       expect(result).toEqual({ result: 'hello', wasTimeout: false });
       expect(mockSession.dispose).toHaveBeenCalled();
@@ -75,13 +76,13 @@ describe('telegram/shared', () => {
       const mockSession = {
         setAutoRetryEnabled: vi.fn(),
         abort: vi.fn().mockResolvedValue(undefined),
-        dispose: vi.fn(),
+        dispose: vi.fn()
       };
 
       await expect(
-        withTimeout(mockSession as any, async () => {
+        withTimeout(mockSession as unknown as AgentSession, async () => {
           throw new Error('fail');
-        }),
+        })
       ).rejects.toThrow('fail');
 
       expect(mockSession.dispose).toHaveBeenCalled();
@@ -91,10 +92,10 @@ describe('telegram/shared', () => {
       const mockSession = {
         setAutoRetryEnabled: vi.fn(),
         abort: vi.fn().mockResolvedValue(undefined),
-        dispose: vi.fn(),
+        dispose: vi.fn()
       };
 
-      await withTimeout(mockSession as any, async () => 'ok');
+      await withTimeout(mockSession as unknown as AgentSession, async () => 'ok');
 
       expect(mockSession.setAutoRetryEnabled).toHaveBeenCalledWith(false);
     });

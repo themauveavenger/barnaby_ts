@@ -23,13 +23,13 @@ function formatDate(isoString: string): string {
   return `${weekday} ${month} ${day}${year} ${hours}:${minutes}${ampm}`;
 }
 
-type CategorySelectOption = {
+interface CategorySelectOption {
   name: string;
   label: string;
   selected: boolean;
-};
+}
 
-type MemoryViewModel = {
+interface MemoryViewModel {
   id: string;
   content: string;
   category: string;
@@ -38,11 +38,11 @@ type MemoryViewModel = {
   createdAt: string;
   formattedDate: string;
   actionLabel: string | null;
-  actions: Array<{ id: string; action: string; formattedDate: string }>;
+  actions: { id: string; action: string; formattedDate: string }[];
   editUrl: string;
-};
+}
 
-type MemoriesViewModel = {
+interface MemoriesViewModel {
   memories: MemoryViewModel[];
   filters: {
     category: string;
@@ -59,9 +59,9 @@ type MemoriesViewModel = {
     previousUrl: string;
     nextUrl: string;
   };
-};
+}
 
-type NewMemoryViewModel = {
+interface NewMemoryViewModel {
   error?: string;
   form: {
     content: string;
@@ -70,9 +70,9 @@ type NewMemoryViewModel = {
     tags: string;
     categories: CategorySelectOption[];
   };
-};
+}
 
-type EditMemoryViewModel = {
+interface EditMemoryViewModel {
   id: string;
   content: string;
   category: string;
@@ -80,14 +80,14 @@ type EditMemoryViewModel = {
   tags: string;
   permanent: boolean;
   returnUrl: string;
-};
+}
 
-type MemoryFormData = {
+interface MemoryFormData {
   content?: unknown;
   category?: unknown;
   permanent?: unknown;
   tags?: unknown;
-};
+}
 
 function buildFilterUrl(query: ListMemoriesQuery): string {
   const params = new URLSearchParams();
@@ -101,7 +101,7 @@ function buildFilterUrl(query: ListMemoriesQuery): string {
 
 function buildViewModel(
   fastify: FastifyInstance,
-  query: ListMemoriesQuery,
+  query: ListMemoriesQuery
 ): MemoriesViewModel {
   const page = Math.max(1, query.page || 1);
   const limit = Math.min(100, Math.max(1, query.limit || 20));
@@ -110,7 +110,7 @@ function buildViewModel(
     page,
     limit,
     category: query.category,
-    tags: query.tags,
+    tags: query.tags
   };
 
   const { data, total } = fastify.memoryRepository.findAll(repoQuery);
@@ -126,11 +126,9 @@ function buildViewModel(
     return '/?' + params.toString();
   };
 
-  const filterUrl = buildFilterUrl(query);
-
-  const memoryIds = data.map((m) => m.id);
+  const memoryIds = data.map(m => m.id);
   const actionsMap = fastify.memoryActionRepository.findByMemoryIds(memoryIds);
-  const categoryMap = new Map(MEMORY_CATEGORIES.map((c) => [c.name, c]));
+  const categoryMap = new Map(MEMORY_CATEGORIES.map(c => [c.name, c]));
 
   const memories = data.map((memory) => {
     const editParams = new URLSearchParams();
@@ -143,14 +141,14 @@ function buildViewModel(
       ...memory,
       formattedDate: formatDate(memory.createdAt),
       actionLabel: categoryMap.get(memory.category)?.actionLabel ?? null,
-      actions: (actionsMap.get(memory.id) || []).map((a) => ({
+      actions: (actionsMap.get(memory.id) || []).map(a => ({
         id: a.id,
         action: a.action,
-        formattedDate: formatDate(a.createdAt),
+        formattedDate: formatDate(a.createdAt)
       })),
       editUrl: editParamsStr
         ? `/memories/${memory.id}?${editParamsStr}`
-        : `/memories/${memory.id}`,
+        : `/memories/${memory.id}`
     };
   });
 
@@ -158,12 +156,12 @@ function buildViewModel(
     memories,
     filters: {
       category: repoQuery.category || '',
-      categories: MEMORY_CATEGORIES.map((c) => ({
+      categories: MEMORY_CATEGORIES.map(c => ({
         name: c.name,
         label: c.label,
-        selected: repoQuery.category === c.name,
+        selected: repoQuery.category === c.name
       })),
-      tags: repoQuery.tags || '',
+      tags: repoQuery.tags || ''
     },
     pagination: {
       page,
@@ -173,8 +171,8 @@ function buildViewModel(
       hasPrevious: page > 1,
       hasNext: page < totalPages,
       previousUrl: buildUrl(page - 1),
-      nextUrl: buildUrl(page + 1),
-    },
+      nextUrl: buildUrl(page + 1)
+    }
   };
 }
 
@@ -184,11 +182,11 @@ function buildEmptyForm(): NewMemoryViewModel['form'] {
     category: '',
     permanent: false,
     tags: '',
-    categories: MEMORY_CATEGORIES.map((c) => ({
+    categories: MEMORY_CATEGORIES.map(c => ({
       name: c.name,
       label: c.label,
-      selected: false,
-    })),
+      selected: false
+    }))
   };
 }
 
@@ -204,11 +202,11 @@ function buildFormFromSubmission(data: MemoryFormData): NewMemoryViewModel['form
     category: typeof data.category === 'string' ? data.category : '',
     permanent: data.permanent === true,
     tags: tagsValue,
-    categories: MEMORY_CATEGORIES.map((c) => ({
+    categories: MEMORY_CATEGORIES.map(c => ({
       name: c.name,
       label: c.label,
-      selected: data.category === c.name,
-    })),
+      selected: data.category === c.name
+    }))
   };
 }
 
@@ -220,7 +218,7 @@ export default async function pageRoutes(fastify: FastifyInstance) {
 
   fastify.get('/memories/new', async (request: FastifyRequest, reply: FastifyReply) => {
     const viewModel: NewMemoryViewModel = {
-      form: buildEmptyForm(),
+      form: buildEmptyForm()
     };
     return reply.view('memories/new', viewModel);
   });
@@ -236,15 +234,15 @@ export default async function pageRoutes(fastify: FastifyInstance) {
       if (typeof body.tags === 'string') {
         body.tags = body.tags
           .split(',')
-          .map((t) => t.trim())
+          .map(t => t.trim())
           .filter(Boolean);
       }
-    },
+    }
   }, async (request: FastifyRequest<{ Body: CreateMemoryBody }>, reply: FastifyReply) => {
     if (request.validationError) {
       const viewModel: NewMemoryViewModel = {
         error: request.validationError.message,
-        form: buildFormFromSubmission(request.body as MemoryFormData),
+        form: buildFormFromSubmission(request.body as MemoryFormData)
       };
       return reply.view('memories/new', viewModel);
     }
@@ -260,7 +258,7 @@ export default async function pageRoutes(fastify: FastifyInstance) {
       throw new NotFoundError('Memory not found');
     }
 
-    const categoryMap = new Map(MEMORY_CATEGORIES.map((c) => [c.name, c]));
+    const categoryMap = new Map(MEMORY_CATEGORIES.map(c => [c.name, c]));
     const returnUrl = buildFilterUrl(request.query);
 
     const viewModel: EditMemoryViewModel = {
@@ -270,17 +268,17 @@ export default async function pageRoutes(fastify: FastifyInstance) {
       categoryLabel: categoryMap.get(memory.category)?.label ?? memory.category,
       tags: memory.tags.join(', '),
       permanent: memory.permanent,
-      returnUrl,
+      returnUrl
     };
 
     return reply.view('memories/edit', viewModel);
   });
 
   // Action form submission (complete/dismiss a memory)
-  type ActionFormData = {
+  interface ActionFormData {
     memoryId?: unknown;
     actionType?: unknown;
-  };
+  }
 
   fastify.post('/actions', async (request: FastifyRequest<{ Body: ActionFormData }>, reply: FastifyReply) => {
     const { memoryId, actionType } = request.body as ActionFormData;

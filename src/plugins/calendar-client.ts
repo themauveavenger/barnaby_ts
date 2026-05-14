@@ -2,13 +2,13 @@ import fp from 'fastify-plugin';
 import type { FastifyInstance } from 'fastify';
 import { type calendar_v3, google } from 'googleapis';
 
-export type CalendarEvent = Pick<calendar_v3.Schema$Event, "id" | "summary" | "start" | "end" | "description">;
+export type CalendarEvent = Pick<calendar_v3.Schema$Event, 'id' | 'summary' | 'start' | 'end' | 'description'>;
 
-export type CalendarClient = {
+export interface CalendarClient {
   listEvents(calendarId: string, timeMin: string, timeMax: string): Promise<CalendarEvent[]>;
   createEvent(calendarId: string, event: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent>;
   updateEvent(calendarId: string, eventId: string, event: Partial<CalendarEvent>): Promise<CalendarEvent>;
-};
+}
 
 export default fp(async function calendarClientPlugin(fastify: FastifyInstance) {
   const auth = fastify.googleAuth.oauth2Client;
@@ -22,10 +22,11 @@ export default fp(async function calendarClientPlugin(fastify: FastifyInstance) 
           timeMin,
           timeMax,
           singleEvents: true,
-          orderBy: 'startTime',
+          orderBy: 'startTime'
         });
         return res.data.items || [];
-      } catch (error) {
+      }
+      catch (error) {
         fastify.log.error(error, 'Failed to list calendar events');
         throw error;
       }
@@ -35,10 +36,11 @@ export default fp(async function calendarClientPlugin(fastify: FastifyInstance) 
       try {
         const res = await calendar.events.insert({
           calendarId,
-          requestBody: event,
+          requestBody: event
         });
         return res.data;
-      } catch (error) {
+      }
+      catch (error) {
         fastify.log.error(error, 'Failed to create calendar event');
         throw error;
       }
@@ -49,14 +51,15 @@ export default fp(async function calendarClientPlugin(fastify: FastifyInstance) 
         const res = await calendar.events.patch({
           calendarId,
           eventId,
-          requestBody: event,
+          requestBody: event
         });
         return res.data;
-      } catch (error) {
+      }
+      catch (error) {
         fastify.log.error(error, 'Failed to update calendar event');
         throw error;
       }
-    },
+    }
   };
 
   fastify.decorate('calendarClient', client);

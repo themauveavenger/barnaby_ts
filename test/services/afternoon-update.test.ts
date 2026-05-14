@@ -5,8 +5,8 @@ import { createAfternoonUpdateService, registerAfternoonUpdateJob } from '../../
 vi.mock('@earendil-works/pi-coding-agent', () => ({
   createAgentSession: vi.fn(),
   SessionManager: {
-    inMemory: vi.fn(() => ({})),
-  },
+    inMemory: vi.fn(() => ({}))
+  }
 }));
 
 import { createAgentSession } from '@earendil-works/pi-coding-agent';
@@ -18,7 +18,7 @@ function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
     dispose: vi.fn(),
     setAutoRetryEnabled: vi.fn(),
     abort: vi.fn().mockResolvedValue(undefined),
-    ...overrides,
+    ...overrides
   };
 }
 
@@ -28,7 +28,7 @@ function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyIns
     findLatest: vi.fn().mockReturnValue(null),
     findAll: vi.fn().mockReturnValue([]),
     findAllPaginated: vi.fn().mockReturnValue({ data: [], total: 0 }),
-    delete: vi.fn().mockReturnValue(false),
+    delete: vi.fn().mockReturnValue(false)
   };
 
   const mockMemoryRepo = {
@@ -39,7 +39,7 @@ function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyIns
     findForContext: vi.fn().mockReturnValue({ permanent: [], recent: [] }),
     findRecent: vi.fn().mockReturnValue([]),
     findResolvedRecent: vi.fn().mockReturnValue([]),
-    findByTags: vi.fn().mockReturnValue([]),
+    findByTags: vi.fn().mockReturnValue([])
   };
 
   return {
@@ -47,25 +47,25 @@ function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyIns
       authStorage: {},
       modelRegistry: {},
       model: {},
-      resourceLoader: {},
+      resourceLoader: {}
     },
     calendarIds: ['test@example.com', 'family@group.calendar.google.com'],
     timezone: 'America/New_York',
     telegramClient: {
-      sendMessage: vi.fn().mockResolvedValue(undefined),
+      sendMessage: vi.fn().mockResolvedValue(undefined)
     },
     memoryRepository: mockMemoryRepo,
     briefingRepository: mockBriefingRepo,
     scheduler: {
-      addCronJob: vi.fn(),
+      addCronJob: vi.fn()
     },
     log: {
       info: vi.fn(),
       warn: vi.fn(),
       error: vi.fn(),
-      debug: vi.fn(),
+      debug: vi.fn()
     },
-    ...overrides,
+    ...overrides
   } as unknown as FastifyInstance;
 }
 
@@ -90,8 +90,8 @@ describe('afternoon update service', () => {
 
       expect(createAgentSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          tools: ['calendar_list'],
-        }),
+          tools: ['calendar_list']
+        })
       );
 
       // Should NOT include weather tool
@@ -100,7 +100,7 @@ describe('afternoon update service', () => {
 
       expect(fastify.telegramClient.sendMessage).toHaveBeenCalledWith(
         12345,
-        'Good afternoon! You have a meeting at 3pm.',
+        'Good afternoon! You have a meeting at 3pm.'
       );
 
       // Afternoon updates should NOT be saved to repo
@@ -146,14 +146,14 @@ describe('afternoon update service', () => {
         id: 'prev-1',
         content: 'Morning briefing: You have a dentist appointment today.',
         triggeredAt: new Date(Date.now() - 86400000).toISOString(),
-        triggerType: 'scheduled' as const,
+        triggerType: 'scheduled' as const
       };
 
       const fastify = createMockFastify({
         briefingRepository: {
           ...createMockFastify().briefingRepository,
-          findLatest: vi.fn().mockReturnValue(previousBriefing),
-        },
+          findLatest: vi.fn().mockReturnValue(previousBriefing)
+        }
       });
 
       const service = createAfternoonUpdateService(fastify);
@@ -185,8 +185,8 @@ describe('afternoon update service', () => {
           ...createMockFastify().memoryRepository,
           findByTags: vi.fn().mockReturnValue([{ content: 'I am vegetarian' }]),
           findRecent: vi.fn().mockReturnValue([{ content: 'Pick up dry cleaning' }]),
-          findResolvedRecent: vi.fn().mockReturnValue([]),
-        },
+          findResolvedRecent: vi.fn().mockReturnValue([])
+        }
       });
 
       const service = createAfternoonUpdateService(fastify);
@@ -212,7 +212,8 @@ describe('afternoon update service', () => {
 
       try {
         await service.sendUpdate(controller.signal);
-      } catch {
+      }
+      catch {
         // May throw due to abort
       }
 

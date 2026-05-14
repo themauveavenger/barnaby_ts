@@ -31,7 +31,7 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
       modelRegistry,
       resourceLoader,
       sessionManager: SessionManager.inMemory(),
-      tools: ['memory_list', 'memory_resolve'],
+      tools: ['memory_list', 'memory_resolve']
     });
 
     sessionCreated = true;
@@ -43,10 +43,10 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
       '',
       `The user asks: "${text}"`,
       '',
-      'Answer concisely and naturally. Use the memory_list tool to search for relevant information if needed. ' +
-        'You can only search and read memories — you cannot create new ones. ' +
-        'If you find relevant memories, reference them directly. ' +
-        'If nothing relevant comes up, say so honestly rather than making things up.',
+      'Answer concisely and naturally. Use the memory_list tool to search for relevant information if needed. '
+      + 'You can only search and read memories — you cannot create new ones. '
+      + 'If you find relevant memories, reference them directly. '
+      + 'If nothing relevant comes up, say so honestly rather than making things up.'
     ].join('\n');
 
     const { result: responseText, wasTimeout } = await withTimeout(session, async () => {
@@ -56,15 +56,18 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
 
     if (wasTimeout) {
       await ctx.reply('That took too long — please try again.');
-    } else {
-      await ctx.reply(responseText ?? "I couldn't come up with a response. Try again?");
     }
-  } catch (error) {
+    else {
+      await ctx.reply(responseText ?? 'I couldn\'t come up with a response. Try again?');
+    }
+  }
+  catch (error) {
     fastify.log.error({ err: error, chatId, text }, 'Failed to process Telegram chat message');
 
     if (!sessionCreated) {
-      await ctx.reply("Couldn't start a session — please try again.");
-    } else {
+      await ctx.reply('Couldn\'t start a session — please try again.');
+    }
+    else {
       await ctx.reply('Something went wrong — please try again.');
     }
   }

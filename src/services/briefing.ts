@@ -4,9 +4,9 @@ import { TZDate, tzName } from '@date-fns/tz';
 import { add, format, sub } from 'date-fns';
 import { getTimeOfDay, buildMemoryContext, createAgentAndDeliver } from './telegram-utils.js';
 
-export type BriefingService = {
+export interface BriefingService {
   sendBriefing(options?: { triggerType?: 'scheduled' | 'manual' }, signal?: AbortSignal): Promise<void>;
-};
+}
 
 export function createBriefingService(fastify: FastifyInstance): BriefingService {
   return {
@@ -44,7 +44,7 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
       const tzLong = tzName(timezone, now, 'longGeneric');
 
       const calendarContext = fastify.calendarIds.length > 0
-        ? `Available calendars:\n${fastify.calendarIds.map((id) => `- ${id}`).join('\n')}`
+        ? `Available calendars:\n${fastify.calendarIds.map(id => `- ${id}`).join('\n')}`
         : '';
 
       const weatherLat = process.env.WEATHER_LATITUDE;
@@ -94,8 +94,8 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
         '- End with one brief, encouraging closing line.',
         '',
         'TONE: Casual, warm, and efficient. Avoid robotic lists. Write like a helpful friend.',
-        previousContext,
-      ].filter((s) => s !== '').join('\n');
+        previousContext
+      ].filter(s => s !== '').join('\n');
 
       fastify.log.debug({ prompt }, 'Built briefing prompt');
 
@@ -104,9 +104,9 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
         tools: ['calendar_list', 'get_weather_forecast'],
         prompt,
         signal,
-        saveToRepo: { triggerType },
+        saveToRepo: { triggerType }
       });
-    },
+    }
   };
 }
 

@@ -5,40 +5,40 @@ import { MEMORY_CATEGORY_NAMES, type MemoryCategory } from './memory-categories.
 
 export type MemoryActionType = 'completed' | 'dismissed';
 
-export type Memory = {
+export interface Memory {
   id: string;
   content: string;
   category: MemoryCategory;
   tags: string[];
   permanent: boolean;
   createdAt: string; // ISO 8601
-};
+}
 
-export type MemoryAction = {
+export interface MemoryAction {
   id: string;
   memoryId: string;
   action: MemoryActionType;
   createdAt: string; // ISO 8601
-};
+}
 
-export type CreateMemoryBody = {
+export interface CreateMemoryBody {
   content: string;
   category: MemoryCategory;
   tags?: string[];
   permanent?: boolean;
-};
+}
 
-export type UpdateMemoryBody = {
+export interface UpdateMemoryBody {
   content?: string;
   tags?: string[];
-};
+}
 
-export type ListMemoriesQuery = {
+export interface ListMemoriesQuery {
   category?: string;
   tags?: string;
   page?: number;
   limit?: number;
-};
+}
 
 export type ResolvedMemory = Memory & {
   action: MemoryActionType;
@@ -63,14 +63,14 @@ export interface MemoryActionRepository {
   delete(id: string): boolean;
 }
 
-type MemoryRow = {
+interface MemoryRow {
   id: string;
   content: string;
   category: MemoryCategory;
   permanent: number;
   created_at: number;
   tag_names: string | null;
-};
+}
 
 type ResolvedMemoryRow = MemoryRow & {
   action: MemoryActionType;
@@ -84,7 +84,7 @@ function rowToMemory(row: MemoryRow): Memory {
     category: row.category,
     tags: row.tag_names ? row.tag_names.split(',') : [],
     permanent: Boolean(row.permanent),
-    createdAt: new Date(row.created_at).toISOString(),
+    createdAt: new Date(row.created_at).toISOString()
   };
 }
 
@@ -92,7 +92,7 @@ function rowToResolvedMemory(row: ResolvedMemoryRow): ResolvedMemory {
   return {
     ...rowToMemory(row),
     action: row.action,
-    actionCreatedAt: new Date(row.action_created_at).toISOString(),
+    actionCreatedAt: new Date(row.action_created_at).toISOString()
   };
 }
 
@@ -153,7 +153,7 @@ export function createMemoryActionRepository(db: Database): MemoryActionReposito
         id,
         memoryId,
         action,
-        createdAt: new Date(createdAt).toISOString(),
+        createdAt: new Date(createdAt).toISOString()
       };
     },
 
@@ -164,14 +164,14 @@ export function createMemoryActionRepository(db: Database): MemoryActionReposito
       const placeholders = memoryIds.map(() => '?').join(',');
       const rows = db.prepare(
         `SELECT id, memory_id, action, created_at FROM memory_actions WHERE memory_id IN (${placeholders})`
-      ).all(...memoryIds) as Array<{ id: string; memory_id: string; action: MemoryActionType; created_at: number }>;
+      ).all(...memoryIds) as { id: string; memory_id: string; action: MemoryActionType; created_at: number }[];
 
       for (const row of rows) {
         const action: MemoryAction = {
           id: row.id,
           memoryId: row.memory_id,
           action: row.action,
-          createdAt: new Date(row.created_at).toISOString(),
+          createdAt: new Date(row.created_at).toISOString()
         };
         const existing = map.get(row.memory_id) || [];
         existing.push(action);
@@ -184,7 +184,7 @@ export function createMemoryActionRepository(db: Database): MemoryActionReposito
     delete(id) {
       const result = db.prepare('DELETE FROM memory_actions WHERE id = ?').run(id);
       return result.changes > 0;
-    },
+    }
   };
 }
 
@@ -202,9 +202,9 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       const tags = [
         ...new Set(
           (data.tags || [])
-            .map((t) => t.toLowerCase().trim())
+            .map(t => t.toLowerCase().trim())
             .filter(Boolean)
-        ),
+        )
       ];
 
       const insertMemory = db.prepare(
@@ -259,7 +259,7 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       if (query.tags) {
         const tagList = query.tags
           .split(',')
-          .map((t) => t.trim().toLowerCase())
+          .map(t => t.trim().toLowerCase())
           .filter(Boolean);
         if (tagList.length > 0) {
           const placeholders = tagList.map(() => '?').join(',');
@@ -296,7 +296,7 @@ export function createMemoryRepository(db: Database): MemoryRepository {
 
       const rows = db.prepare(dataSql).all(...params, limit, offset) as MemoryRow[];
 
-      const data = rows.map((row) => rowToMemory(row));
+      const data = rows.map(row => rowToMemory(row));
 
       return { data, total };
     },
@@ -320,28 +320,28 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       const recentRows = findActiveRecentRows(db, effectiveDays);
 
       return {
-        permanent: permanentRows.map((row) => rowToMemory(row)),
-        recent: recentRows.map((row) => rowToMemory(row)),
+        permanent: permanentRows.map(row => rowToMemory(row)),
+        recent: recentRows.map(row => rowToMemory(row))
       };
     },
 
     findRecent(days) {
       const rows = findActiveRecentRows(db, days);
-      return rows.map((row) => rowToMemory(row));
+      return rows.map(row => rowToMemory(row));
     },
 
     findResolvedRecent(days) {
       const rows = findResolvedRecentRows(db, days);
-      return rows.map((row) => rowToResolvedMemory(row));
+      return rows.map(row => rowToResolvedMemory(row));
     },
 
     findByTags(tags, options = {}) {
       const normalizedTags = [
         ...new Set(
           tags
-            .map((t) => t.toLowerCase().trim())
+            .map(t => t.toLowerCase().trim())
             .filter(Boolean)
-        ),
+        )
       ];
       if (normalizedTags.length === 0) return [];
 
@@ -371,7 +371,7 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       const params = [...normalizedTags, normalizedTags.length];
       const rows = db.prepare(sql).all(...params) as MemoryRow[];
 
-      return rows.map((row) => rowToMemory(row));
+      return rows.map(row => rowToMemory(row));
     },
 
     update(id, data) {
@@ -396,9 +396,9 @@ export function createMemoryRepository(db: Database): MemoryRepository {
           const normalizedTags = [
             ...new Set(
               data.tags
-                .map((t) => t.toLowerCase().trim())
+                .map(t => t.toLowerCase().trim())
                 .filter(Boolean)
-            ),
+            )
           ];
 
           deleteMemoryTags.run(id);
@@ -417,7 +417,7 @@ export function createMemoryRepository(db: Database): MemoryRepository {
     delete(id) {
       const result = db.prepare('DELETE FROM memories WHERE id = ?').run(id);
       return result.changes > 0;
-    },
+    }
   };
 }
 

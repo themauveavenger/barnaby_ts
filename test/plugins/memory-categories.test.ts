@@ -3,19 +3,19 @@ import { MEMORY_CATEGORIES, MEMORY_CATEGORY_NAMES, type MemoryCategory } from '.
 
 describe('memory-categories', () => {
   it('should contain the three expected categories', () => {
-    const names = MEMORY_CATEGORIES.map((c) => c.name);
+    const names = MEMORY_CATEGORIES.map(c => c.name);
     expect(names).toEqual(['appointment', 'note', 'todo']);
   });
 
   it('should have correct labels', () => {
-    const labels = MEMORY_CATEGORIES.map((c) => c.label);
+    const labels = MEMORY_CATEGORIES.map(c => c.label);
     expect(labels).toEqual(['Appointment', 'Note', 'Todo']);
   });
 
   it('should assign actionLabel only to todo', () => {
     const withActions = MEMORY_CATEGORIES
-      .filter((c) => c.actionLabel !== null)
-      .map((c) => c.name);
+      .filter(c => c.actionLabel !== null)
+      .map(c => c.name);
     expect(withActions).toEqual(['todo']);
   });
 

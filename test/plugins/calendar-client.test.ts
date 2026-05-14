@@ -13,10 +13,10 @@ vi.mock('googleapis', () => ({
       events: {
         list: mockList,
         insert: mockInsert,
-        patch: mockPatch,
-      },
-    })),
-  },
+        patch: mockPatch
+      }
+    }))
+  }
 }));
 
 describe('calendar-client plugin', () => {
@@ -49,7 +49,7 @@ describe('calendar-client plugin', () => {
 
   it('should list events via the Google Calendar API', async () => {
     mockList.mockResolvedValueOnce({
-      data: { items: [{ id: '1', summary: 'Test Event' }] },
+      data: { items: [{ id: '1', summary: 'Test Event' }] }
     });
 
     const events = await app.calendarClient.listEvents('primary', '2026-01-01T00:00:00Z', '2026-01-02T00:00:00Z');
@@ -60,27 +60,27 @@ describe('calendar-client plugin', () => {
         timeMin: '2026-01-01T00:00:00Z',
         timeMax: '2026-01-02T00:00:00Z',
         singleEvents: true,
-        orderBy: 'startTime',
+        orderBy: 'startTime'
       })
     );
   });
 
   it('should create an event via the Google Calendar API', async () => {
     mockInsert.mockResolvedValueOnce({
-      data: { id: '2', summary: 'New Event' },
+      data: { id: '2', summary: 'New Event' }
     });
 
     const event = await app.calendarClient.createEvent('primary', {
       summary: 'New Event',
       start: { dateTime: '2026-01-01T10:00:00Z' },
-      end: { dateTime: '2026-01-01T11:00:00Z' },
+      end: { dateTime: '2026-01-01T11:00:00Z' }
     });
     expect(event).toEqual({ id: '2', summary: 'New Event' });
   });
 
   it('should update an event via the Google Calendar API', async () => {
     mockPatch.mockResolvedValueOnce({
-      data: { id: '3', summary: 'Updated Event' },
+      data: { id: '3', summary: 'Updated Event' }
     });
 
     const event = await app.calendarClient.updateEvent('primary', '3', { summary: 'Updated Event' });

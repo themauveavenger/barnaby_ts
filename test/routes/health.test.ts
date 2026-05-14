@@ -15,7 +15,7 @@ describe('Health endpoint', () => {
   it('should return ok status without authentication', async () => {
     const response = await app.inject({
       method: 'GET',
-      url: '/health',
+      url: '/health'
     });
 
     expect(response.statusCode).toBe(200);

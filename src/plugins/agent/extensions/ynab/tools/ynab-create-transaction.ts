@@ -1,8 +1,7 @@
-import type { FastifyInstance } from "fastify";
-import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
-import { Type } from "typebox";
-import currency from "currency.js";
-import type * as ynab from "ynab";
+import type { FastifyInstance } from 'fastify';
+import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
+import { Type } from 'typebox';
+import currency from 'currency.js';
 import {
   formatMilliunits,
   getYnabErrorMessage,
@@ -10,39 +9,39 @@ import {
   resolveAccountId,
   resolveCategoryId,
   resolvePayeeId,
-  validateAndResolveSplits,
-} from "../utils.js";
+  validateAndResolveSplits
+} from '../utils.js';
 import {
   formatCreateTransactionResponse,
   formatCreateTransferResponse,
-  formatCreateSplitResponse,
-} from "../formatters.js";
+  formatCreateSplitResponse
+} from '../formatters.js';
 
 const paramsSchema = Type.Object({
-  budgetId: Type.String({ description: "The UUID of the YNAB budget" }),
-  account: Type.String({ description: "Exact account name as it appears in YNAB" }),
-  payee: Type.Optional(Type.String({ description: "Exact payee name. Required unless transferToAccount is provided." })),
-  transferToAccount: Type.Optional(Type.String({ description: "Exact name of target account for a transfer. Mutually exclusive with payee and splits." })),
-  amount: Type.Number({ description: "Amount in dollars. Negative for outflow, positive for inflow." }),
-  date: Type.String({ description: "Transaction date (YYYY-MM-DD)" }),
-  category: Type.Optional(Type.String({ description: "Category name. Ignored for splits and transfers." })),
-  memo: Type.Optional(Type.String({ description: "Optional memo/note" })),
+  budgetId: Type.String({ description: 'The UUID of the YNAB budget' }),
+  account: Type.String({ description: 'Exact account name as it appears in YNAB' }),
+  payee: Type.Optional(Type.String({ description: 'Exact payee name. Required unless transferToAccount is provided.' })),
+  transferToAccount: Type.Optional(Type.String({ description: 'Exact name of target account for a transfer. Mutually exclusive with payee and splits.' })),
+  amount: Type.Number({ description: 'Amount in dollars. Negative for outflow, positive for inflow.' }),
+  date: Type.String({ description: 'Transaction date (YYYY-MM-DD)' }),
+  category: Type.Optional(Type.String({ description: 'Category name. Ignored for splits and transfers.' })),
+  memo: Type.Optional(Type.String({ description: 'Optional memo/note' })),
   splits: Type.Optional(Type.Array(
     Type.Object({
-      category: Type.String({ description: "Category name for this split" }),
-      amount: Type.Union([Type.Number(), Type.Null()], { description: "Amount in dollars, or null to calculate from remainder" }),
-      memo: Type.Optional(Type.String({ description: "Optional memo for this split" })),
+      category: Type.String({ description: 'Category name for this split' }),
+      amount: Type.Union([Type.Number(), Type.Null()], { description: 'Amount in dollars, or null to calculate from remainder' }),
+      memo: Type.Optional(Type.String({ description: 'Optional memo for this split' }))
     }),
-    { description: "Splits to divide the transaction. Mutually exclusive with transferToAccount. At least 2 splits, at most one null amount." }
-  )),
+    { description: 'Splits to divide the transaction. Mutually exclusive with transferToAccount. At least 2 splits, at most one null amount.' }
+  ))
 });
 
 export default function createTool(fastify: FastifyInstance): ToolDefinition<typeof paramsSchema> {
   return {
-    name: "ynab_create_transaction",
-    label: "Create YNAB Transaction",
+    name: 'ynab_create_transaction',
+    label: 'Create YNAB Transaction',
     description:
-      "Creates a new transaction in a YNAB budget. Supports regular transactions, transfers between accounts, and split transactions.",
+      'Creates a new transaction in a YNAB budget. Supports regular transactions, transfers between accounts, and split transactions.',
     parameters: paramsSchema,
     async execute(_toolCallId, params) {
       try {
@@ -50,11 +49,11 @@ export default function createTool(fastify: FastifyInstance): ToolDefinition<typ
           return {
             content: [
               {
-                type: "text" as const,
-                text: "Error: Cannot create transaction. Either 'payee' or 'transferToAccount' must be provided.",
-              },
+                type: 'text' as const,
+                text: 'Error: Cannot create transaction. Either \'payee\' or \'transferToAccount\' must be provided.'
+              }
             ],
-            details: {},
+            details: {}
           };
         }
 
@@ -62,11 +61,11 @@ export default function createTool(fastify: FastifyInstance): ToolDefinition<typ
           return {
             content: [
               {
-                type: "text" as const,
-                text: "Error: Cannot create transaction. Split transactions cannot be transfers. Provide either 'transferToAccount' or 'splits', not both.",
-              },
+                type: 'text' as const,
+                text: 'Error: Cannot create transaction. Split transactions cannot be transfers. Provide either \'transferToAccount\' or \'splits\', not both.'
+              }
             ],
-            details: {},
+            details: {}
           };
         }
 
@@ -77,11 +76,11 @@ export default function createTool(fastify: FastifyInstance): ToolDefinition<typ
           return {
             content: [
               {
-                type: "text" as const,
-                text: `Error: Account "${params.account}" not found. Verify the exact name as it appears in YNAB.`,
-              },
+                type: 'text' as const,
+                text: `Error: Account "${params.account}" not found. Verify the exact name as it appears in YNAB.`
+              }
             ],
-            details: {},
+            details: {}
           };
         }
 
@@ -97,11 +96,11 @@ export default function createTool(fastify: FastifyInstance): ToolDefinition<typ
             return {
               content: [
                 {
-                  type: "text" as const,
-                  text: `Error: Account "${params.transferToAccount}" not found. Verify the exact name as it appears in YNAB.`,
-                },
+                  type: 'text' as const,
+                  text: `Error: Account "${params.transferToAccount}" not found. Verify the exact name as it appears in YNAB.`
+                }
               ],
-              details: {},
+              details: {}
             };
           }
 
@@ -111,25 +110,26 @@ export default function createTool(fastify: FastifyInstance): ToolDefinition<typ
             return {
               content: [
                 {
-                  type: "text" as const,
-                  text: `Error: Account "${params.transferToAccount}" does not support transfers.`,
-                },
+                  type: 'text' as const,
+                  text: `Error: Account "${params.transferToAccount}" does not support transfers.`
+                }
               ],
-              details: {},
+              details: {}
             };
           }
           payeeId = targetAccount.transfer_payee_id;
-        } else if (params.payee) {
+        }
+        else if (params.payee) {
           const resolvedPayeeId = await resolvePayeeId(ynabAPI, params.budgetId, params.payee);
           if (!resolvedPayeeId) {
             return {
               content: [
                 {
-                  type: "text" as const,
-                  text: `Error: Payee "${params.payee}" not found. Verify the exact name as it appears in YNAB.`,
-                },
+                  type: 'text' as const,
+                  text: `Error: Payee "${params.payee}" not found. Verify the exact name as it appears in YNAB.`
+                }
               ],
-              details: {},
+              details: {}
             };
           }
           payeeId = resolvedPayeeId;
@@ -139,21 +139,21 @@ export default function createTool(fastify: FastifyInstance): ToolDefinition<typ
         const amountFormatted = formatMilliunits(amountMilliunits);
 
         if (params.splits) {
-          const splitInputs = params.splits.map((s) => ({
+          const splitInputs = params.splits.map(s => ({
             category: s.category,
             amount: s.amount === null ? null : currency(s.amount),
-            memo: s.memo,
+            memo: s.memo
           }));
           const result = await validateAndResolveSplits(ynabAPI, params.budgetId, currency(params.amount), splitInputs);
           if (result.errors.length > 0) {
             return {
               content: [
                 {
-                  type: "text" as const,
-                  text: `Error: Invalid split amounts.\n${result.errors.join("\n")}`,
-                },
+                  type: 'text' as const,
+                  text: `Error: Invalid split amounts.\n${result.errors.join('\n')}`
+                }
               ],
-              details: {},
+              details: {}
             };
           }
           const subtransactions = result.subtransactions;
@@ -166,24 +166,24 @@ export default function createTool(fastify: FastifyInstance): ToolDefinition<typ
               amount: amountMilliunits,
               date: params.date,
               memo: params.memo ?? undefined,
-              subtransactions,
-            },
+              subtransactions
+            }
           });
 
           const splitLines = params.splits.map((split, i) => ({
             category: split.category,
-            amount: formatMilliunits(subtransactions[i].amount),
+            amount: formatMilliunits(subtransactions[i].amount)
           }));
           const text = formatCreateSplitResponse(
             params.account,
             params.date,
             amountFormatted,
-            params.payee ?? "(none)",
+            params.payee ?? '(none)',
             splitLines
           );
           return {
-            content: [{ type: "text" as const, text }],
-            details: {},
+            content: [{ type: 'text' as const, text }],
+            details: {}
           };
         }
 
@@ -194,11 +194,11 @@ export default function createTool(fastify: FastifyInstance): ToolDefinition<typ
             return {
               content: [
                 {
-                  type: "text" as const,
-                  text: `Error: Category "${params.category}" not found. Verify the exact name as it appears in YNAB.`,
-                },
+                  type: 'text' as const,
+                  text: `Error: Category "${params.category}" not found. Verify the exact name as it appears in YNAB.`
+                }
               ],
-              details: {},
+              details: {}
             };
           }
           categoryId = resolvedCategoryId;
@@ -211,8 +211,8 @@ export default function createTool(fastify: FastifyInstance): ToolDefinition<typ
             category_id: categoryId ?? undefined,
             amount: amountMilliunits,
             date: params.date,
-            memo: params.memo ?? undefined,
-          },
+            memo: params.memo ?? undefined
+          }
         });
 
         if (isTransfer && targetAccountName) {
@@ -223,8 +223,8 @@ export default function createTool(fastify: FastifyInstance): ToolDefinition<typ
             amountFormatted
           );
           return {
-            content: [{ type: "text" as const, text }],
-            details: {},
+            content: [{ type: 'text' as const, text }],
+            details: {}
           };
         }
 
@@ -232,28 +232,29 @@ export default function createTool(fastify: FastifyInstance): ToolDefinition<typ
           params.account,
           params.date,
           amountFormatted,
-          params.payee ?? "(none)",
+          params.payee ?? '(none)',
           params.category ?? null,
           params.memo ?? null
         );
         return {
-          content: [{ type: "text" as const, text }],
-          details: {},
+          content: [{ type: 'text' as const, text }],
+          details: {}
         };
-      } catch (error) {
+      }
+      catch (error) {
         const message = isYnabNotFoundError(error)
           ? `Budget "${params.budgetId}" not found. Verify the budget ID.`
           : getYnabErrorMessage(error);
         return {
           content: [
             {
-              type: "text" as const,
-              text: `Error: Failed to create transaction in YNAB.\n${message}`,
-            },
+              type: 'text' as const,
+              text: `Error: Failed to create transaction in YNAB.\n${message}`
+            }
           ],
-          details: {},
+          details: {}
         };
       }
-    },
+    }
   };
 }

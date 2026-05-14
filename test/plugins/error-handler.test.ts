@@ -24,7 +24,7 @@ describe('error handler plugin', () => {
   it('should format NotFoundError as 404', async () => {
     const response = await app.inject({
       method: 'GET',
-      url: '/not-found',
+      url: '/not-found'
     });
 
     expect(response.statusCode).toBe(404);

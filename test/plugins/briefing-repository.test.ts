@@ -25,7 +25,7 @@ describe('briefing repository', () => {
   it('should create a briefing and return it', () => {
     const briefing = repo.create({
       content: 'Test briefing content',
-      triggerType: 'scheduled',
+      triggerType: 'scheduled'
     });
 
     expect(briefing.id).toBeDefined();

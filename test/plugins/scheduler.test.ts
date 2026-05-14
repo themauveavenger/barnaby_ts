@@ -1,8 +1,6 @@
-import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import Fastify from 'fastify';
 import schedulerPlugin from '../../src/plugins/scheduler.js';
-
-
 
 describe('scheduler plugin', () => {
   let app: Awaited<ReturnType<typeof Fastify>>;

@@ -17,7 +17,7 @@ describe('Memories Page', () => {
   it('should reject unauthenticated requests', async () => {
     const response = await app.inject({
       method: 'GET',
-      url: '/',
+      url: '/'
     });
     expect(response.statusCode).toBe(401);
   });
@@ -30,14 +30,14 @@ describe('Memories Page', () => {
       payload: {
         content: 'Test memory',
         category: 'note',
-        tags: ['test'],
-      },
+        tags: ['test']
+      }
     });
 
     const response = await app.inject({
       method: 'GET',
       url: '/',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -50,10 +50,8 @@ describe('Memories Page', () => {
     const weekday = now.toLocaleDateString('en-US', { weekday: 'long' });
     const month = now.toLocaleDateString('en-US', { month: 'long' });
     const day = now.getDate();
-    let hours = now.getHours();
-    const ampm = hours >= 12 ? 'pm' : 'am';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
+    const rawHours = now.getHours();
+    const ampm = rawHours >= 12 ? 'pm' : 'am';
     const formattedDatePrefix = `${weekday} ${month} ${day}`;
     expect(response.payload).toContain(formattedDatePrefix);
     expect(response.payload).toContain(ampm);
@@ -67,15 +65,15 @@ describe('Memories Page', () => {
         headers: { authorization: authHeader },
         payload: {
           content: `Memory ${i}`,
-          category: 'note',
-        },
+          category: 'note'
+        }
       });
     }
 
     const response = await app.inject({
       method: 'GET',
       url: '/?page=2&limit=10',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -91,8 +89,8 @@ describe('Memories Page', () => {
       headers: { authorization: authHeader },
       payload: {
         content: 'Buy milk',
-        category: 'todo',
-      },
+        category: 'todo'
+      }
     });
 
     await app.inject({
@@ -101,14 +99,14 @@ describe('Memories Page', () => {
       headers: { authorization: authHeader },
       payload: {
         content: 'Read book',
-        category: 'note',
-      },
+        category: 'note'
+      }
     });
 
     const response = await app.inject({
       method: 'GET',
       url: '/?category=todo',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -124,8 +122,8 @@ describe('Memories Page', () => {
       payload: {
         content: 'Tagged memory',
         category: 'note',
-        tags: ['test'],
-      },
+        tags: ['test']
+      }
     });
 
     await app.inject({
@@ -134,14 +132,14 @@ describe('Memories Page', () => {
       headers: { authorization: authHeader },
       payload: {
         content: 'Untagged memory',
-        category: 'note',
-      },
+        category: 'note'
+      }
     });
 
     const response = await app.inject({
       method: 'GET',
       url: '/?tags=test',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -153,7 +151,7 @@ describe('Memories Page', () => {
     const response = await app.inject({
       method: 'GET',
       url: '/?category=invalid',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
     expect(response.statusCode).toBe(400);
   });
@@ -162,7 +160,7 @@ describe('Memories Page', () => {
     const response = await app.inject({
       method: 'GET',
       url: '/',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -173,7 +171,7 @@ describe('Memories Page', () => {
     const response = await app.inject({
       method: 'GET',
       url: '/',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -184,7 +182,7 @@ describe('Memories Page', () => {
     const response = await app.inject({
       method: 'GET',
       url: '/',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -197,13 +195,13 @@ describe('Memories Page', () => {
       method: 'POST',
       url: '/memories',
       headers: { authorization: authHeader },
-      payload: { content: 'Editable memory', category: 'note' },
+      payload: { content: 'Editable memory', category: 'note' }
     });
 
     const response = await app.inject({
       method: 'GET',
       url: '/',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -215,14 +213,14 @@ describe('Memories Page', () => {
       method: 'POST',
       url: '/memories',
       headers: { authorization: authHeader },
-      payload: { content: 'Anchor test', category: 'note' },
+      payload: { content: 'Anchor test', category: 'note' }
     });
     const created = createRes.json();
 
     const response = await app.inject({
       method: 'GET',
       url: '/',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -234,13 +232,13 @@ describe('Memories Page', () => {
       method: 'POST',
       url: '/memories',
       headers: { authorization: authHeader },
-      payload: { content: 'Table test', category: 'note' },
+      payload: { content: 'Table test', category: 'note' }
     });
 
     const response = await app.inject({
       method: 'GET',
       url: '/',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -252,13 +250,13 @@ describe('Memories Page', () => {
       method: 'POST',
       url: '/memories',
       headers: { authorization: authHeader },
-      payload: { content: 'Buy milk', category: 'todo' },
+      payload: { content: 'Buy milk', category: 'todo' }
     });
 
     const response = await app.inject({
       method: 'GET',
       url: '/',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -271,13 +269,13 @@ describe('Memories Page', () => {
       method: 'POST',
       url: '/memories',
       headers: { authorization: authHeader },
-      payload: { content: 'Buy milk', category: 'todo' },
+      payload: { content: 'Buy milk', category: 'todo' }
     });
 
     const response = await app.inject({
       method: 'GET',
       url: '/',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -290,13 +288,13 @@ describe('Memories Page', () => {
       method: 'POST',
       url: '/memories',
       headers: { authorization: authHeader },
-      payload: { content: 'Random thought', category: 'note' },
+      payload: { content: 'Random thought', category: 'note' }
     });
 
     const response = await app.inject({
       method: 'GET',
       url: '/',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -309,13 +307,13 @@ describe('Memories Page', () => {
       method: 'POST',
       url: '/memories',
       headers: { authorization: authHeader },
-      payload: { content: 'Dentist at 2pm', category: 'appointment' },
+      payload: { content: 'Dentist at 2pm', category: 'appointment' }
     });
 
     const response = await app.inject({
       method: 'GET',
       url: '/',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -329,7 +327,7 @@ describe('Memories Page', () => {
       method: 'POST',
       url: '/memories',
       headers: { authorization: authHeader },
-      payload: { content: 'Buy groceries', category: 'todo' },
+      payload: { content: 'Buy groceries', category: 'todo' }
     });
     const created = createRes.json();
 
@@ -337,13 +335,13 @@ describe('Memories Page', () => {
       method: 'POST',
       url: `/memories/${created.id}/actions`,
       headers: { authorization: authHeader },
-      payload: { action: 'completed' },
+      payload: { action: 'completed' }
     });
 
     const response = await app.inject({
       method: 'GET',
       url: '/',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -355,7 +353,7 @@ describe('Memories Page', () => {
       method: 'POST',
       url: '/memories',
       headers: { authorization: authHeader },
-      payload: { content: 'Call dentist', category: 'todo' },
+      payload: { content: 'Call dentist', category: 'todo' }
     });
     const created = createRes.json();
 
@@ -363,10 +361,10 @@ describe('Memories Page', () => {
       method: 'POST',
       url: '/actions',
       headers: {
-        authorization: authHeader,
-        'content-type': 'application/x-www-form-urlencoded',
+        'authorization': authHeader,
+        'content-type': 'application/x-www-form-urlencoded'
       },
-      payload: `memoryId=${created.id}&actionType=completed`,
+      payload: `memoryId=${created.id}&actionType=completed`
     });
 
     expect(response.statusCode).toBe(302);
@@ -376,7 +374,7 @@ describe('Memories Page', () => {
     const page = await app.inject({
       method: 'GET',
       url: '/',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
     expect(page.payload).toContain('Completed');
   });
@@ -397,7 +395,7 @@ describe('New Memory Page', () => {
   it('should reject unauthenticated requests', async () => {
     const response = await app.inject({
       method: 'GET',
-      url: '/memories/new',
+      url: '/memories/new'
     });
     expect(response.statusCode).toBe(401);
   });
@@ -406,7 +404,7 @@ describe('New Memory Page', () => {
     const response = await app.inject({
       method: 'GET',
       url: '/memories/new',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -421,7 +419,7 @@ describe('New Memory Page', () => {
     const response = await app.inject({
       method: 'GET',
       url: '/memories/new',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -435,7 +433,7 @@ describe('New Memory Page', () => {
     const response = await app.inject({
       method: 'GET',
       url: '/memories/new',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -447,10 +445,10 @@ describe('New Memory Page', () => {
       method: 'POST',
       url: '/memories/new',
       headers: {
-        authorization: authHeader,
-        'content-type': 'application/x-www-form-urlencoded',
+        'authorization': authHeader,
+        'content-type': 'application/x-www-form-urlencoded'
       },
-      payload: 'content=Form+memory&category=note&tags=test%2C+tag',
+      payload: 'content=Form+memory&category=note&tags=test%2C+tag'
     });
 
     expect(response.statusCode).toBe(302);
@@ -459,7 +457,7 @@ describe('New Memory Page', () => {
     const getResponse = await app.inject({
       method: 'GET',
       url: '/',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
     expect(getResponse.payload).toContain('Form memory');
   });
@@ -469,10 +467,10 @@ describe('New Memory Page', () => {
       method: 'POST',
       url: '/memories/new',
       headers: {
-        authorization: authHeader,
-        'content-type': 'application/x-www-form-urlencoded',
+        'authorization': authHeader,
+        'content-type': 'application/x-www-form-urlencoded'
       },
-      payload: 'content=&category=note&tags=test',
+      payload: 'content=&category=note&tags=test'
     });
 
     expect(response.statusCode).toBe(200);
@@ -485,10 +483,10 @@ describe('New Memory Page', () => {
       method: 'POST',
       url: '/memories/new',
       headers: {
-        authorization: authHeader,
-        'content-type': 'application/x-www-form-urlencoded',
+        'authorization': authHeader,
+        'content-type': 'application/x-www-form-urlencoded'
       },
-      payload: 'content=Bad+category&category=invalid&tags=test',
+      payload: 'content=Bad+category&category=invalid&tags=test'
     });
 
     expect(response.statusCode).toBe(200);
@@ -501,10 +499,10 @@ describe('New Memory Page', () => {
       method: 'POST',
       url: '/memories/new',
       headers: {
-        authorization: authHeader,
-        'content-type': 'application/x-www-form-urlencoded',
+        'authorization': authHeader,
+        'content-type': 'application/x-www-form-urlencoded'
       },
-      payload: 'content=My+content&category=invalid&permanent=on&tags=fun%2C+games',
+      payload: 'content=My+content&category=invalid&permanent=on&tags=fun%2C+games'
     });
 
     expect(response.statusCode).toBe(200);
@@ -529,7 +527,7 @@ describe('Edit Memory Page', () => {
   it('should reject unauthenticated requests', async () => {
     const response = await app.inject({
       method: 'GET',
-      url: '/memories/00000000-0000-0000-0000-000000000000',
+      url: '/memories/00000000-0000-0000-0000-000000000000'
     });
     expect(response.statusCode).toBe(401);
   });
@@ -539,14 +537,14 @@ describe('Edit Memory Page', () => {
       method: 'POST',
       url: '/memories',
       headers: { authorization: authHeader },
-      payload: { content: 'Edit me', category: 'note', tags: ['test'] },
+      payload: { content: 'Edit me', category: 'note', tags: ['test'] }
     });
     const created = createRes.json();
 
     const response = await app.inject({
       method: 'GET',
       url: `/memories/${created.id}`,
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -562,14 +560,14 @@ describe('Edit Memory Page', () => {
       method: 'POST',
       url: '/memories',
       headers: { authorization: authHeader },
-      payload: { content: 'Categorized', category: 'todo' },
+      payload: { content: 'Categorized', category: 'todo' }
     });
     const created = createRes.json();
 
     const response = await app.inject({
       method: 'GET',
       url: `/memories/${created.id}`,
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -582,14 +580,14 @@ describe('Edit Memory Page', () => {
       method: 'POST',
       url: '/memories',
       headers: { authorization: authHeader },
-      payload: { content: 'Permanent one', category: 'note', permanent: true },
+      payload: { content: 'Permanent one', category: 'note', permanent: true }
     });
     const created = createRes.json();
 
     const response = await app.inject({
       method: 'GET',
       url: `/memories/${created.id}`,
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -600,7 +598,7 @@ describe('Edit Memory Page', () => {
     const response = await app.inject({
       method: 'GET',
       url: '/memories/00000000-0000-0000-0000-000000000000',
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(404);
@@ -611,14 +609,14 @@ describe('Edit Memory Page', () => {
       method: 'POST',
       url: '/memories',
       headers: { authorization: authHeader },
-      payload: { content: 'Return test', category: 'note' },
+      payload: { content: 'Return test', category: 'note' }
     });
     const created = createRes.json();
 
     const response = await app.inject({
       method: 'GET',
       url: `/memories/${created.id}`,
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -630,14 +628,14 @@ describe('Edit Memory Page', () => {
       method: 'POST',
       url: '/memories',
       headers: { authorization: authHeader },
-      payload: { content: 'Filter test', category: 'todo' },
+      payload: { content: 'Filter test', category: 'todo' }
     });
     const created = createRes.json();
 
     const response = await app.inject({
       method: 'GET',
       url: `/memories/${created.id}?category=todo&page=2`,
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -650,14 +648,14 @@ describe('Edit Memory Page', () => {
       method: 'POST',
       url: '/memories',
       headers: { authorization: authHeader },
-      payload: { content: 'JS test', category: 'note' },
+      payload: { content: 'JS test', category: 'note' }
     });
     const created = createRes.json();
 
     const response = await app.inject({
       method: 'GET',
       url: `/memories/${created.id}`,
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);
@@ -669,14 +667,14 @@ describe('Edit Memory Page', () => {
       method: 'POST',
       url: '/memories',
       headers: { authorization: authHeader },
-      payload: { content: 'Button test', category: 'note' },
+      payload: { content: 'Button test', category: 'note' }
     });
     const created = createRes.json();
 
     const response = await app.inject({
       method: 'GET',
       url: `/memories/${created.id}`,
-      headers: { authorization: authHeader },
+      headers: { authorization: authHeader }
     });
 
     expect(response.statusCode).toBe(200);

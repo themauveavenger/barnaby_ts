@@ -26,7 +26,7 @@ describe('repository plugin', () => {
     const created = app.memoryRepository.create({
       content: 'Test memory',
       category: 'note',
-      tags: ['test'],
+      tags: ['test']
     });
 
     expect(created.content).toBe('Test memory');
@@ -46,7 +46,7 @@ describe('repository plugin', () => {
     const created = app.memoryRepository.create({
       content: 'Permanent memory',
       category: 'note',
-      permanent: true,
+      permanent: true
     });
 
     expect(created.permanent).toBe(true);
@@ -59,7 +59,7 @@ describe('repository plugin', () => {
     const created = app.memoryRepository.create({
       content: 'Dupes',
       category: 'todo',
-      tags: ['work', 'WORK', 'work'],
+      tags: ['work', 'WORK', 'work']
     });
 
     expect(created.tags).toEqual(['work']);
@@ -68,7 +68,7 @@ describe('repository plugin', () => {
   it('should delete a memory', () => {
     const created = app.memoryRepository.create({
       content: 'To delete',
-      category: 'note',
+      category: 'note'
     });
 
     const deleted = app.memoryRepository.delete(created.id);
@@ -83,7 +83,7 @@ describe('repository plugin', () => {
       const created = app.memoryRepository.create({
         content: 'Original content',
         category: 'note',
-        tags: ['keep-me'],
+        tags: ['keep-me']
       });
 
       const updated = app.memoryRepository.update(created.id, { content: 'Updated content' });
@@ -95,7 +95,7 @@ describe('repository plugin', () => {
     it('should update tags only', () => {
       const created = app.memoryRepository.create({
         content: 'Keep this content',
-        category: 'note',
+        category: 'note'
       });
 
       const updated = app.memoryRepository.update(created.id, { tags: ['new-tag'] });
@@ -107,7 +107,7 @@ describe('repository plugin', () => {
       const created = app.memoryRepository.create({
         content: 'Original',
         category: 'note',
-        tags: ['old'],
+        tags: ['old']
       });
 
       const updated = app.memoryRepository.update(created.id, { content: 'Updated', tags: ['new'] });
@@ -119,7 +119,7 @@ describe('repository plugin', () => {
       const created = app.memoryRepository.create({
         content: 'Tag replace',
         category: 'note',
-        tags: ['old1', 'old2'],
+        tags: ['old1', 'old2']
       });
 
       const updated = app.memoryRepository.update(created.id, { tags: ['replacement'] });
@@ -129,7 +129,7 @@ describe('repository plugin', () => {
     it('should normalize and deduplicate tags on update', () => {
       const created = app.memoryRepository.create({
         content: 'Dedup update',
-        category: 'note',
+        category: 'note'
       });
 
       const updated = app.memoryRepository.update(created.id, { tags: ['Foo', 'foo', 'FOO'] });
@@ -139,7 +139,7 @@ describe('repository plugin', () => {
     it('should trim content whitespace on update', () => {
       const created = app.memoryRepository.create({
         content: 'Original',
-        category: 'note',
+        category: 'note'
       });
 
       const updated = app.memoryRepository.update(created.id, { content: '  Trimmed  ' });
@@ -150,7 +150,7 @@ describe('repository plugin', () => {
       const created = app.memoryRepository.create({
         content: 'Clear my tags',
         category: 'note',
-        tags: ['remove-me'],
+        tags: ['remove-me']
       });
 
       const updated = app.memoryRepository.update(created.id, { tags: [] });
@@ -168,18 +168,18 @@ describe('repository plugin', () => {
     const permanent = app.memoryRepository.create({
       content: 'I like dark mode',
       category: 'note',
-      permanent: true,
+      permanent: true
     });
 
     const recent = app.memoryRepository.create({
       content: 'Recent thing',
-      category: 'note',
+      category: 'note'
     });
 
     // Make an old memory by updating created_at directly
     const old = app.memoryRepository.create({
       content: 'Old thing',
-      category: 'note',
+      category: 'note'
     });
     app.db
       .prepare('UPDATE memories SET created_at = ? WHERE id = ?')
@@ -198,20 +198,20 @@ describe('repository plugin', () => {
       content: 'My partner is Alex',
       category: 'note',
       permanent: true,
-      tags: ['core', 'family'],
+      tags: ['core', 'family']
     });
 
     const coreFood = app.memoryRepository.create({
       content: 'I am vegetarian',
       category: 'note',
       permanent: true,
-      tags: ['core', 'food'],
+      tags: ['core', 'food']
     });
 
     const nonCore = app.memoryRepository.create({
       content: 'Just a regular note',
       category: 'note',
-      tags: ['work'],
+      tags: ['work']
     });
 
     const results = app.memoryRepository.findByTags(['core', 'family'], { permanentOnly: true });
@@ -231,7 +231,7 @@ describe('repository plugin', () => {
       content: 'Temporary core memory',
       category: 'note',
       permanent: false,
-      tags: ['core'],
+      tags: ['core']
     });
 
     const withPermanent = app.memoryRepository.findByTags(['core'], { permanentOnly: true });
@@ -249,12 +249,12 @@ describe('repository plugin', () => {
   it('should find recent memories within given days', () => {
     const recent = app.memoryRepository.create({
       content: 'Recent note',
-      category: 'note',
+      category: 'note'
     });
 
     const old = app.memoryRepository.create({
       content: 'Old note',
-      category: 'note',
+      category: 'note'
     });
     app.db
       .prepare('UPDATE memories SET created_at = ? WHERE id = ?')
@@ -269,7 +269,7 @@ describe('repository plugin', () => {
     const permanent = app.memoryRepository.create({
       content: 'Permanent note',
       category: 'note',
-      permanent: true,
+      permanent: true
     });
 
     const results = app.memoryRepository.findRecent(7);
@@ -280,7 +280,7 @@ describe('repository plugin', () => {
     const older = app.memoryRepository.create({
       content: 'Older memory',
       category: 'note',
-      tags: ['chronology'],
+      tags: ['chronology']
     });
 
     // Small delay to ensure different created_at
@@ -290,7 +290,7 @@ describe('repository plugin', () => {
     const newer = app.memoryRepository.create({
       content: 'Newer memory',
       category: 'note',
-      tags: ['chronology'],
+      tags: ['chronology']
     });
 
     const results = app.memoryRepository.findByTags(['chronology']);
@@ -301,7 +301,7 @@ describe('repository plugin', () => {
     const memory = app.memoryRepository.create({
       content: 'Case test',
       category: 'note',
-      tags: ['case'],
+      tags: ['case']
     });
 
     const results = app.memoryRepository.findByTags(['CASE', 'case', 'Case']);
@@ -313,7 +313,7 @@ describe('repository plugin', () => {
       content: 'I am vegetarian',
       category: 'note',
       permanent: true,
-      tags: ['core', 'food'],
+      tags: ['core', 'food']
     });
 
     const results = app.memoryRepository.findByTags(['core'], { permanentOnly: true });
@@ -326,7 +326,7 @@ describe('repository plugin', () => {
     it('should create a completed action on a memory', () => {
       const memory = app.memoryRepository.create({
         content: 'Buy milk',
-        category: 'todo',
+        category: 'todo'
       });
 
       const action = app.memoryActionRepository.create(memory.id, 'completed');
@@ -339,7 +339,7 @@ describe('repository plugin', () => {
     it('should create a dismissed action on a memory', () => {
       const memory = app.memoryRepository.create({
         content: 'Call dentist',
-        category: 'todo',
+        category: 'todo'
       });
 
       const action = app.memoryActionRepository.create(memory.id, 'dismissed');
@@ -428,12 +428,12 @@ describe('repository plugin', () => {
     it('should exclude memories with actions from findForContext', () => {
       const active = app.memoryRepository.create({
         content: 'Active todo',
-        category: 'todo',
+        category: 'todo'
       });
 
       const completed = app.memoryRepository.create({
         content: 'Completed todo',
-        category: 'todo',
+        category: 'todo'
       });
 
       app.memoryActionRepository.create(completed.id, 'completed');
@@ -446,12 +446,12 @@ describe('repository plugin', () => {
     it('should exclude dismissed memories from findForContext recent', () => {
       const active = app.memoryRepository.create({
         content: 'Active task',
-        category: 'todo',
+        category: 'todo'
       });
 
       const dismissed = app.memoryRepository.create({
         content: 'Dismissed task',
-        category: 'todo',
+        category: 'todo'
       });
 
       app.memoryActionRepository.create(dismissed.id, 'dismissed');
@@ -465,7 +465,7 @@ describe('repository plugin', () => {
       const permanent = app.memoryRepository.create({
         content: 'Permanent note',
         category: 'note',
-        permanent: true,
+        permanent: true
       });
 
       app.memoryActionRepository.create(permanent.id, 'completed');
@@ -479,7 +479,7 @@ describe('repository plugin', () => {
     it('should return memories with completed actions', () => {
       const memory = app.memoryRepository.create({
         content: 'Buy groceries',
-        category: 'todo',
+        category: 'todo'
       });
 
       app.memoryActionRepository.create(memory.id, 'completed');
@@ -495,7 +495,7 @@ describe('repository plugin', () => {
     it('should return memories with dismissed actions', () => {
       const memory = app.memoryRepository.create({
         content: 'Call dentist dismissed action test',
-        category: 'todo',
+        category: 'todo'
       });
 
       app.memoryActionRepository.create(memory.id, 'dismissed');
@@ -509,7 +509,7 @@ describe('repository plugin', () => {
     it('should not return memories without actions', () => {
       const memory = app.memoryRepository.create({
         content: 'Active todo for resolved test',
-        category: 'todo',
+        category: 'todo'
       });
 
       const resolved = app.memoryRepository.findResolvedRecent(7);
@@ -520,7 +520,7 @@ describe('repository plugin', () => {
     it('should not return old resolved memories outside the time window', () => {
       const memory = app.memoryRepository.create({
         content: 'Old completed outside window',
-        category: 'todo',
+        category: 'todo'
       });
 
       app.memoryActionRepository.create(memory.id, 'completed');
@@ -540,12 +540,12 @@ describe('repository plugin', () => {
     it('should exclude completed memories from findRecent', () => {
       const active = app.memoryRepository.create({
         content: 'Active note',
-        category: 'note',
+        category: 'note'
       });
 
       const completed = app.memoryRepository.create({
         content: 'Completed todo',
-        category: 'todo',
+        category: 'todo'
       });
 
       app.memoryActionRepository.create(completed.id, 'completed');

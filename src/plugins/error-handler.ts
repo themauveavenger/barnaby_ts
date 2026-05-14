@@ -26,7 +26,7 @@ export default fp(async function errorHandlerPlugin(fastify: FastifyInstance) {
         return reply.code(400).send({
           statusCode: 400,
           error: 'Bad Request',
-          message: error.message,
+          message: error.message
         });
       }
 
@@ -34,7 +34,7 @@ export default fp(async function errorHandlerPlugin(fastify: FastifyInstance) {
         return reply.code(401).send({
           statusCode: 401,
           error: 'Unauthorized',
-          message: error.message,
+          message: error.message
         });
       }
     }
@@ -43,14 +43,14 @@ export default fp(async function errorHandlerPlugin(fastify: FastifyInstance) {
       return reply.code(404).send({
         statusCode: 404,
         error: 'Not Found',
-        message: error.message,
+        message: error.message
       });
     }
 
     return reply.code(500).send({
       statusCode: 500,
       error: 'Internal Server Error',
-      message: 'Something went wrong',
+      message: 'Something went wrong'
     });
   });
 });

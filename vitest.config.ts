@@ -5,5 +5,5 @@ export default defineConfig({
     pool: 'forks',
     environment: 'node',
     silent: true
-  },
+  }
 });

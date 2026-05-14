@@ -21,7 +21,8 @@ describe('google-auth plugin', () => {
       expect(app.googleAuth.oauth2Client).toBeDefined();
 
       await app.close();
-    } finally {
+    }
+    finally {
       process.env.GOOGLE_CLIENT_ID = originalClientId;
       process.env.GOOGLE_CLIENT_SECRET = originalClientSecret;
       process.env.GOOGLE_REFRESH_TOKEN = originalRefreshToken;
@@ -40,7 +41,8 @@ describe('google-auth plugin', () => {
     try {
       const app = Fastify({ logger: false });
       await expect(app.register(googleAuthPlugin)).rejects.toThrow('Missing Google OAuth credentials');
-    } finally {
+    }
+    finally {
       process.env.GOOGLE_CLIENT_ID = originalClientId;
       process.env.GOOGLE_CLIENT_SECRET = originalClientSecret;
       process.env.GOOGLE_REFRESH_TOKEN = originalRefreshToken;

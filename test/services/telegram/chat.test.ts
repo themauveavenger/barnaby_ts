@@ -3,65 +3,63 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('@earendil-works/pi-coding-agent', () => ({
   createAgentSession: vi.fn(),
   SessionManager: {
-    inMemory: vi.fn(() => ({})),
-  },
+    inMemory: vi.fn(() => ({}))
+  }
 }));
 
 vi.mock('../../../src/services/telegram/shared.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../src/services/telegram/shared.js')>();
   return {
     ...actual,
-    withTimeout: vi.fn(actual.withTimeout),
+    withTimeout: vi.fn(actual.withTimeout)
   };
 });
 
 import { createAgentSession } from '@earendil-works/pi-coding-agent';
 import type { Context } from 'grammy';
-import { SESSION_TIMEOUT_MS, withTimeout } from '../../../src/services/telegram/shared.js';
+import { withTimeout } from '../../../src/services/telegram/shared.js';
 import { handleChat } from '../../../src/services/telegram/chat.js';
 
-function createMockSession(returnText: string = 'Iris likes maple donuts!') {
+function createMockSession(returnText = 'Iris likes maple donuts!') {
   return {
     prompt: vi.fn().mockResolvedValue(undefined),
     getLastAssistantText: vi.fn().mockReturnValue(returnText),
     dispose: vi.fn(),
     setAutoRetryEnabled: vi.fn(),
-    abort: vi.fn().mockResolvedValue(undefined),
+    abort: vi.fn().mockResolvedValue(undefined)
   };
 }
 
-
-
-function createMockContext(text: string = 'what type of donut did Iris like?', chatId: number = 12345) {
+function createMockContext(text = 'what type of donut did Iris like?', chatId = 12345) {
   return {
     chat: { id: chatId },
     msg: { text },
     reply: vi.fn().mockResolvedValue(undefined),
     react: vi.fn().mockResolvedValue(undefined),
-    replyWithChatAction: vi.fn().mockResolvedValue(undefined),
+    replyWithChatAction: vi.fn().mockResolvedValue(undefined)
   } as unknown as Context;
 }
 
-function createMockFastify(memoryContext = '') {
+function createMockFastify(_memoryContext = '') {
   return {
     agent: {
       authStorage: {},
       modelRegistry: {},
       model: {},
-      resourceLoader: {},
+      resourceLoader: {}
     },
     memoryRepository: {
       findByTags: vi.fn().mockReturnValue([]),
       findRecent: vi.fn().mockReturnValue([]),
-      findResolvedRecent: vi.fn().mockReturnValue([]),
+      findResolvedRecent: vi.fn().mockReturnValue([])
     },
     memoryActionRepository: {},
     log: {
       info: vi.fn(),
       error: vi.fn(),
       debug: vi.fn(),
-      warn: vi.fn(),
-    },
+      warn: vi.fn()
+    }
   } as any;
 }
 
@@ -86,8 +84,8 @@ describe('handleChat', () => {
 
     expect(createAgentSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        tools: ['memory_list', 'memory_resolve'],
-      }),
+        tools: ['memory_list', 'memory_resolve']
+      })
     );
   });
 
@@ -119,7 +117,7 @@ describe('handleChat', () => {
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
 
-    expect(ctx.reply).toHaveBeenCalledWith("I couldn't come up with a response. Try again?");
+    expect(ctx.reply).toHaveBeenCalledWith('I couldn\'t come up with a response. Try again?');
   });
 
   it('includes user message in prompt', async () => {
@@ -149,10 +147,10 @@ describe('handleChat', () => {
     (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
     fastify.memoryRepository.findByTags.mockReturnValue([
-      { content: 'Shellfish allergy', tags: ['core', 'health'], permanent: true },
+      { content: 'Shellfish allergy', tags: ['core', 'health'], permanent: true }
     ]);
     fastify.memoryRepository.findRecent.mockReturnValue([
-      { content: 'Dentist appointment on Thursday', tags: ['appointment'], permanent: false },
+      { content: 'Dentist appointment on Thursday', tags: ['appointment'], permanent: false }
     ]);
 
     const ctx = createMockContext();
@@ -217,7 +215,7 @@ describe('handleChat', () => {
       msg: {},
       reply: vi.fn().mockResolvedValue(undefined),
       react: vi.fn().mockResolvedValue(undefined),
-      replyWithChatAction: vi.fn().mockResolvedValue(undefined),
+      replyWithChatAction: vi.fn().mockResolvedValue(undefined)
     } as unknown as Context;
 
     await handleChat(ctx, fastify);
@@ -231,7 +229,7 @@ describe('handleChat', () => {
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
 
-    expect(ctx.reply).toHaveBeenCalledWith("Couldn't start a session — please try again.");
+    expect(ctx.reply).toHaveBeenCalledWith('Couldn\'t start a session — please try again.');
     expect(fastify.log.error).toHaveBeenCalled();
   });
 

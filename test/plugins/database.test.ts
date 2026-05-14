@@ -25,8 +25,8 @@ describe('database plugin', () => {
   });
 
   it('should have memories table with permanent column', () => {
-    const columns = app.db.pragma('table_info(memories)') as Array<ColumnInfo>;
-    const permanent = columns.find((c) => c.name === 'permanent');
+    const columns = app.db.pragma('table_info(memories)') as ColumnInfo[];
+    const permanent = columns.find(c => c.name === 'permanent');
     expect(permanent).toBeDefined();
     expect(permanent!.type).toBe('INTEGER');
     expect(permanent!.notnull).toBe(1);
@@ -34,8 +34,8 @@ describe('database plugin', () => {
   });
 
   it('should pre-populate default tags on startup', () => {
-    const rows = app.db.prepare('SELECT name FROM tags ORDER BY name').all() as Array<{ name: string }>;
-    const names = rows.map((r) => r.name);
+    const rows = app.db.prepare('SELECT name FROM tags ORDER BY name').all() as { name: string }[];
+    const names = rows.map(r => r.name);
 
     expect(names).toContain('core');
     expect(names).toContain('identity');
@@ -74,8 +74,8 @@ describe('database plugin', () => {
     await migrateApp.register(databasePlugin);
     await migrateApp.ready();
 
-    const columns = migrateApp.db.pragma('table_info(memories)') as Array<ColumnInfo>;
-    const permanent = columns.find((c) => c.name === 'permanent');
+    const columns = migrateApp.db.pragma('table_info(memories)') as ColumnInfo[];
+    const permanent = columns.find(c => c.name === 'permanent');
     expect(permanent).toBeDefined();
     expect(permanent!.type).toBe('INTEGER');
     expect(permanent!.notnull).toBe(1);
@@ -85,7 +85,8 @@ describe('database plugin', () => {
 
     if (prevDbPath === undefined) {
       delete process.env.DATABASE_PATH;
-    } else {
+    }
+    else {
       process.env.DATABASE_PATH = prevDbPath;
     }
     fs.unlinkSync(tmpDb);
@@ -93,7 +94,7 @@ describe('database plugin', () => {
 
   it('should have a memories CHECK constraint that matches MEMORY_CATEGORY_NAMES', () => {
     const { sql } = app.db
-      .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'memories'")
+      .prepare('SELECT sql FROM sqlite_master WHERE type = \'table\' AND name = \'memories\'')
       .get() as { sql: string };
 
     const match = sql.match(/CHECK\s*\(\s*category\s+IN\s*\(([^)]+)\)\s*\)/i);
@@ -101,21 +102,21 @@ describe('database plugin', () => {
 
     const constraintCategories = match![1]
       .split(',')
-      .map((s) => s.trim().replace(/^'|'$/g, ''));
+      .map(s => s.trim().replace(/^'|'$/g, ''));
 
     expect(constraintCategories).toEqual([...MEMORY_CATEGORY_NAMES]);
   });
 
   it('should have briefings table with correct columns', () => {
-    const columns = app.db.pragma('table_info(briefings)') as Array<ColumnInfo>;
-    const names = columns.map((c) => c.name);
+    const columns = app.db.pragma('table_info(briefings)') as ColumnInfo[];
+    const names = columns.map(c => c.name);
 
     expect(names).toContain('id');
     expect(names).toContain('content');
     expect(names).toContain('triggered_at');
     expect(names).toContain('trigger_type');
 
-    const triggerType = columns.find((c) => c.name === 'trigger_type');
+    const triggerType = columns.find(c => c.name === 'trigger_type');
     expect(triggerType).toBeDefined();
     expect(triggerType!.type).toBe('TEXT');
     expect(triggerType!.notnull).toBe(1);

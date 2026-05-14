@@ -1,17 +1,18 @@
 import { describe, it, expect, vi } from 'vitest';
+import type { FastifyInstance } from 'fastify';
 import registerHandlers from '../../../src/services/telegram/index.js';
 
 function createMockBot() {
   return {
     command: vi.fn(),
-    on: vi.fn(),
+    on: vi.fn()
   };
 }
 
 function createMockFastify(bot: ReturnType<typeof createMockBot>) {
   return {
-    telegramBot: bot,
-  } as any;
+    telegramBot: bot
+  } as unknown as FastifyInstance;
 }
 
 describe('registerHandlers', () => {

@@ -7,8 +7,8 @@ import type { Memory, ResolvedMemory } from '../../src/plugins/repository.js';
 vi.mock('@earendil-works/pi-coding-agent', () => ({
   createAgentSession: vi.fn(),
   SessionManager: {
-    inMemory: vi.fn(() => ({})),
-  },
+    inMemory: vi.fn(() => ({}))
+  }
 }));
 
 import { createAgentSession } from '@earendil-works/pi-coding-agent';
@@ -20,7 +20,7 @@ function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
     dispose: vi.fn(),
     setAutoRetryEnabled: vi.fn(),
     abort: vi.fn().mockResolvedValue(undefined),
-    ...overrides,
+    ...overrides
   };
 }
 
@@ -30,7 +30,7 @@ function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyIns
     findLatest: vi.fn().mockReturnValue(null),
     findAll: vi.fn().mockReturnValue([]),
     findAllPaginated: vi.fn().mockReturnValue({ data: [], total: 0 }),
-    delete: vi.fn().mockReturnValue(false),
+    delete: vi.fn().mockReturnValue(false)
   };
 
   const mockMemoryRepo = {
@@ -41,13 +41,13 @@ function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyIns
     findForContext: vi.fn().mockReturnValue({ permanent: [], recent: [] }),
     findRecent: vi.fn().mockReturnValue([]),
     findResolvedRecent: vi.fn().mockReturnValue([]),
-    findByTags: vi.fn().mockReturnValue([]),
+    findByTags: vi.fn().mockReturnValue([])
   };
 
   const mockMemoryActionRepo = {
     create: vi.fn().mockReturnValue({}),
     findByMemoryIds: vi.fn().mockReturnValue(new Map()),
-    delete: vi.fn().mockReturnValue(false),
+    delete: vi.fn().mockReturnValue(false)
   };
 
   return {
@@ -55,26 +55,26 @@ function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyIns
       authStorage: {},
       modelRegistry: {},
       model: {},
-      resourceLoader: {},
+      resourceLoader: {}
     },
     calendarIds: ['test@example.com', 'family@group.calendar.google.com'],
     timezone: 'America/New_York',
     telegramClient: {
-      sendMessage: vi.fn().mockResolvedValue(undefined),
+      sendMessage: vi.fn().mockResolvedValue(undefined)
     },
     memoryRepository: mockMemoryRepo,
     memoryActionRepository: mockMemoryActionRepo,
     briefingRepository: mockBriefingRepo,
     scheduler: {
-      addCronJob: vi.fn(),
+      addCronJob: vi.fn()
     },
     log: {
       info: vi.fn(),
       warn: vi.fn(),
       error: vi.fn(),
-      debug: vi.fn(),
+      debug: vi.fn()
     },
-    ...overrides,
+    ...overrides
   } as unknown as FastifyInstance;
 }
 
@@ -103,7 +103,7 @@ describe('briefing helpers', () => {
     it('formats a list of memories with dashes', () => {
       const memories: Pick<Memory, 'content'>[] = [
         { content: 'Buy milk' },
-        { content: 'Call dentist' },
+        { content: 'Call dentist' }
       ];
       expect(formatMemoryList(memories)).toBe('- Buy milk\n- Call dentist');
     });
@@ -117,7 +117,7 @@ describe('briefing helpers', () => {
     it('formats resolved memories with action and date', () => {
       const memories: ResolvedMemory[] = [
         { content: 'Buy groceries', action: 'completed', actionCreatedAt: '2026-05-05T10:00:00.000Z', id: '1', category: 'todo', tags: [], permanent: false, createdAt: '2026-05-01T00:00:00.000Z' },
-        { content: 'Call dentist', action: 'dismissed', actionCreatedAt: '2026-05-04T08:30:00.000Z', id: '2', category: 'todo', tags: [], permanent: false, createdAt: '2026-05-03T00:00:00.000Z' },
+        { content: 'Call dentist', action: 'dismissed', actionCreatedAt: '2026-05-04T08:30:00.000Z', id: '2', category: 'todo', tags: [], permanent: false, createdAt: '2026-05-03T00:00:00.000Z' }
       ];
       const result = formatResolvedList(memories);
       expect(result).toContain('- Buy groceries (completed');
@@ -142,8 +142,8 @@ describe('briefing helpers', () => {
           ...createMockFastify().memoryRepository,
           findByTags: vi.fn().mockReturnValue([{ content: 'I am vegetarian' }]),
           findRecent: vi.fn().mockReturnValue([]),
-          findResolvedRecent: vi.fn().mockReturnValue([]),
-        },
+          findResolvedRecent: vi.fn().mockReturnValue([])
+        }
       });
       const result = buildMemoryContext(fastify);
       expect(result).toContain('Core memories about the user:');
@@ -156,8 +156,8 @@ describe('briefing helpers', () => {
           ...createMockFastify().memoryRepository,
           findByTags: vi.fn().mockReturnValue([]),
           findRecent: vi.fn().mockReturnValue([{ content: 'Buy milk' }]),
-          findResolvedRecent: vi.fn().mockReturnValue([]),
-        },
+          findResolvedRecent: vi.fn().mockReturnValue([])
+        }
       });
       const result = buildMemoryContext(fastify);
       expect(result).toContain('Recent notes and tasks (last 7 days):');
@@ -171,9 +171,9 @@ describe('briefing helpers', () => {
           findByTags: vi.fn().mockReturnValue([]),
           findRecent: vi.fn().mockReturnValue([]),
           findResolvedRecent: vi.fn().mockReturnValue([
-            { content: 'Buy groceries', action: 'completed', actionCreatedAt: '2026-05-05T10:00:00.000Z', id: '1', category: 'todo', tags: [], permanent: false, createdAt: '2026-05-01T00:00:00.000Z' },
-          ]),
-        },
+            { content: 'Buy groceries', action: 'completed', actionCreatedAt: '2026-05-05T10:00:00.000Z', id: '1', category: 'todo', tags: [], permanent: false, createdAt: '2026-05-01T00:00:00.000Z' }
+          ])
+        }
       });
       const result = buildMemoryContext(fastify);
       expect(result).toContain('Tasks already completed or dismissed');
@@ -187,9 +187,9 @@ describe('briefing helpers', () => {
           findByTags: vi.fn().mockReturnValue([{ content: 'Core fact' }]),
           findRecent: vi.fn().mockReturnValue([{ content: 'Recent note' }]),
           findResolvedRecent: vi.fn().mockReturnValue([
-            { content: 'Done task', action: 'completed', actionCreatedAt: '2026-05-05T10:00:00.000Z', id: '1', category: 'todo', tags: [], permanent: false, createdAt: '2026-05-01T00:00:00.000Z' },
-          ]),
-        },
+            { content: 'Done task', action: 'completed', actionCreatedAt: '2026-05-05T10:00:00.000Z', id: '1', category: 'todo', tags: [], permanent: false, createdAt: '2026-05-01T00:00:00.000Z' }
+          ])
+        }
       });
       const result = buildMemoryContext(fastify);
       expect(result).toContain('Core memories about the user:\n- Core fact');
@@ -216,16 +216,16 @@ describe('briefing helpers', () => {
         fastify,
         tools: ['calendar_list', 'get_weather_forecast'],
         prompt: 'Test prompt',
-        saveToRepo: { triggerType: 'scheduled' },
+        saveToRepo: { triggerType: 'scheduled' }
       });
 
       expect(createAgentSession).toHaveBeenCalledWith(
-        expect.objectContaining({ tools: ['calendar_list', 'get_weather_forecast'] }),
+        expect.objectContaining({ tools: ['calendar_list', 'get_weather_forecast'] })
       );
       expect(fastify.telegramClient.sendMessage).toHaveBeenCalledWith(12345, 'Good morning! You have 2 events today.');
       expect(fastify.briefingRepository.create).toHaveBeenCalledWith({
         content: 'Good morning! You have 2 events today.',
-        triggerType: 'scheduled',
+        triggerType: 'scheduled'
       });
       expect(mockSession.dispose).toHaveBeenCalled();
     });
@@ -238,7 +238,7 @@ describe('briefing helpers', () => {
       await createAgentAndDeliver({
         fastify,
         tools: ['calendar_list'],
-        prompt: 'Test prompt',
+        prompt: 'Test prompt'
       });
 
       expect(fastify.telegramClient.sendMessage).toHaveBeenCalled();
@@ -252,7 +252,7 @@ describe('briefing helpers', () => {
       await expect(createAgentAndDeliver({
         fastify,
         tools: ['calendar_list'],
-        prompt: 'Test prompt',
+        prompt: 'Test prompt'
       })).rejects.toThrow(MissingChatIdError);
 
       expect(createAgentSession).not.toHaveBeenCalled();
@@ -260,7 +260,7 @@ describe('briefing helpers', () => {
 
     it('throws EmptyResponseError when agent returns empty response', async () => {
       const mockSession = createMockSession({
-        getLastAssistantText: vi.fn().mockReturnValue(''),
+        getLastAssistantText: vi.fn().mockReturnValue('')
       });
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -268,7 +268,7 @@ describe('briefing helpers', () => {
       await expect(createAgentAndDeliver({
         fastify,
         tools: ['calendar_list'],
-        prompt: 'Test prompt',
+        prompt: 'Test prompt'
       })).rejects.toThrow(EmptyResponseError);
 
       expect(fastify.telegramClient.sendMessage).not.toHaveBeenCalled();
@@ -278,7 +278,7 @@ describe('briefing helpers', () => {
 
     it('throws EmptyResponseError when agent returns null response', async () => {
       const mockSession = createMockSession({
-        getLastAssistantText: vi.fn().mockReturnValue(null),
+        getLastAssistantText: vi.fn().mockReturnValue(null)
       });
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -286,7 +286,7 @@ describe('briefing helpers', () => {
       await expect(createAgentAndDeliver({
         fastify,
         tools: ['calendar_list'],
-        prompt: 'Test prompt',
+        prompt: 'Test prompt'
       })).rejects.toThrow(EmptyResponseError);
 
       expect(mockSession.dispose).toHaveBeenCalled();
@@ -294,7 +294,7 @@ describe('briefing helpers', () => {
 
     it('throws EmptyResponseError when agent returns whitespace-only response', async () => {
       const mockSession = createMockSession({
-        getLastAssistantText: vi.fn().mockReturnValue('   '),
+        getLastAssistantText: vi.fn().mockReturnValue('   ')
       });
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -302,7 +302,7 @@ describe('briefing helpers', () => {
       await expect(createAgentAndDeliver({
         fastify,
         tools: ['calendar_list'],
-        prompt: 'Test prompt',
+        prompt: 'Test prompt'
       })).rejects.toThrow(EmptyResponseError);
 
       expect(fastify.telegramClient.sendMessage).not.toHaveBeenCalled();
@@ -315,7 +315,7 @@ describe('briefing helpers', () => {
       await expect(createAgentAndDeliver({
         fastify,
         tools: ['calendar_list'],
-        prompt: 'Test prompt',
+        prompt: 'Test prompt'
       })).rejects.toThrow('LLM API down');
 
       expect(fastify.telegramClient.sendMessage).not.toHaveBeenCalled();
@@ -327,15 +327,15 @@ describe('briefing helpers', () => {
 
       const fastify = createMockFastify({
         telegramClient: {
-          sendMessage: vi.fn().mockRejectedValue(new Error('Telegram API down')),
-        },
+          sendMessage: vi.fn().mockRejectedValue(new Error('Telegram API down'))
+        }
       });
 
       await expect(createAgentAndDeliver({
         fastify,
         tools: ['calendar_list'],
         prompt: 'Test prompt',
-        saveToRepo: { triggerType: 'scheduled' },
+        saveToRepo: { triggerType: 'scheduled' }
       })).rejects.toThrow('Telegram API down');
 
       expect(fastify.briefingRepository.create).not.toHaveBeenCalled();
@@ -345,8 +345,8 @@ describe('briefing helpers', () => {
     it('disposes session on abort signal', async () => {
       const mockSession = createMockSession({
         prompt: vi.fn().mockImplementation(async () => {
-          await new Promise((resolve) => setTimeout(resolve, 50));
-        }),
+          await new Promise(resolve => setTimeout(resolve, 50));
+        })
       });
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -359,9 +359,10 @@ describe('briefing helpers', () => {
           fastify,
           tools: ['calendar_list'],
           prompt: 'Test prompt',
-          signal: controller.signal,
+          signal: controller.signal
         });
-      } catch {
+      }
+      catch {
         // Expected to fail when aborted
       }
 
@@ -375,8 +376,8 @@ describe('briefing helpers', () => {
 
       const fastify = createMockFastify({
         telegramClient: {
-          sendMessage: vi.fn().mockRejectedValue(new Error('Telegram down')),
-        },
+          sendMessage: vi.fn().mockRejectedValue(new Error('Telegram down'))
+        }
       });
 
       try {
@@ -384,9 +385,10 @@ describe('briefing helpers', () => {
           fastify,
           tools: ['calendar_list'],
           prompt: 'Test prompt',
-          saveToRepo: { triggerType: 'manual' },
+          saveToRepo: { triggerType: 'manual' }
         });
-      } catch {
+      }
+      catch {
         // Expected
       }
 
@@ -416,8 +418,8 @@ describe('briefing service', () => {
 
       expect(createAgentSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          tools: ['calendar_list', 'get_weather_forecast'],
-        }),
+          tools: ['calendar_list', 'get_weather_forecast']
+        })
       );
 
       expect(fastify.memoryRepository.findByTags).toHaveBeenCalledWith(['core'], { permanentOnly: true });
@@ -445,7 +447,7 @@ describe('briefing service', () => {
 
       expect(fastify.briefingRepository.create).toHaveBeenCalledWith({
         content: 'Good morning! You have 2 events today.',
-        triggerType: 'scheduled',
+        triggerType: 'scheduled'
       });
 
       expect(mockSession.dispose).toHaveBeenCalled();
@@ -471,11 +473,11 @@ describe('briefing service', () => {
           ...createMockFastify().memoryRepository,
           findByTags: vi.fn().mockReturnValue([
             { content: 'The user is vegetarian' },
-            { content: 'The user lives in Portland' },
+            { content: 'The user lives in Portland' }
           ]),
           findRecent: vi.fn().mockReturnValue([]),
-          findResolvedRecent: vi.fn().mockReturnValue([]),
-        },
+          findResolvedRecent: vi.fn().mockReturnValue([])
+        }
       });
 
       const service = createBriefingService(fastify);
@@ -497,10 +499,10 @@ describe('briefing service', () => {
           findByTags: vi.fn().mockReturnValue([]),
           findRecent: vi.fn().mockReturnValue([
             { content: 'Buy milk' },
-            { content: 'Call dentist' },
+            { content: 'Call dentist' }
           ]),
-          findResolvedRecent: vi.fn().mockReturnValue([]),
-        },
+          findResolvedRecent: vi.fn().mockReturnValue([])
+        }
       });
 
       const service = createBriefingService(fastify);
@@ -536,9 +538,9 @@ describe('briefing service', () => {
           findRecent: vi.fn().mockReturnValue([]),
           findResolvedRecent: vi.fn().mockReturnValue([
             { content: 'Buy groceries', action: 'completed', actionCreatedAt: '2026-05-05T10:00:00.000Z' },
-            { content: 'Call dentist', action: 'dismissed', actionCreatedAt: '2026-05-04T08:30:00.000Z' },
-          ]),
-        },
+            { content: 'Call dentist', action: 'dismissed', actionCreatedAt: '2026-05-04T08:30:00.000Z' }
+          ])
+        }
       });
 
       const service = createBriefingService(fastify);
@@ -574,8 +576,8 @@ describe('briefing service', () => {
 
       const fastify = createMockFastify({
         telegramClient: {
-          sendMessage: vi.fn().mockRejectedValue(new Error('Telegram API down')),
-        },
+          sendMessage: vi.fn().mockRejectedValue(new Error('Telegram API down'))
+        }
       });
 
       const service = createBriefingService(fastify);
@@ -590,14 +592,14 @@ describe('briefing service', () => {
         id: 'prev-1',
         content: 'Previous briefing content',
         triggeredAt: new Date(Date.now() - 86400000).toISOString(),
-        triggerType: 'scheduled' as const,
+        triggerType: 'scheduled' as const
       };
 
       const fastify = createMockFastify({
         briefingRepository: {
           ...createMockFastify().briefingRepository,
-          findLatest: vi.fn().mockReturnValue(previousBriefing),
-        },
+          findLatest: vi.fn().mockReturnValue(previousBriefing)
+        }
       });
 
       const service = createBriefingService(fastify);
@@ -612,7 +614,7 @@ describe('briefing service', () => {
 
     it('saves manual briefings with correct trigger type', async () => {
       const mockSession = createMockSession({
-        getLastAssistantText: vi.fn().mockReturnValue('Manual briefing'),
+        getLastAssistantText: vi.fn().mockReturnValue('Manual briefing')
       });
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -622,13 +624,13 @@ describe('briefing service', () => {
 
       expect(fastify.briefingRepository.create).toHaveBeenCalledWith({
         content: 'Manual briefing',
-        triggerType: 'manual',
+        triggerType: 'manual'
       });
     });
 
     it('propagates EmptyResponseError when agent returns empty', async () => {
       const mockSession = createMockSession({
-        getLastAssistantText: vi.fn().mockReturnValue(''),
+        getLastAssistantText: vi.fn().mockReturnValue('')
       });
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 

@@ -13,7 +13,7 @@ export async function createMemory(
 
 export async function updateMemory(
   request: FastifyRequest<{ Params: { id: string }; Body: UpdateMemoryBody }>,
-  reply: FastifyReply
+  _reply: FastifyReply
 ) {
   const { content, tags } = request.body;
   if (content === undefined && tags === undefined) {
@@ -23,7 +23,8 @@ export async function updateMemory(
   try {
     const memory = request.server.memoryRepository.update(request.params.id, request.body);
     return memory;
-  } catch (err) {
+  }
+  catch (err) {
     if (err instanceof Error && err.message.startsWith('Memory not found')) {
       throw new NotFoundError('Memory not found');
     }
@@ -39,7 +40,7 @@ export async function listMemories(
   const limit = request.query.limit || 20;
   return {
     data,
-    pagination: { page, limit, total },
+    pagination: { page, limit, total }
   };
 }
 

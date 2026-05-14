@@ -1,23 +1,23 @@
-import type { ExtensionAPI, ExtensionFactory } from "@earendil-works/pi-coding-agent";
-import type { FastifyInstance } from "fastify";
-import { Type } from "typebox";
-import { format } from "date-fns";
-import { tz, TZDate, tzName } from "@date-fns/tz";
-import type { CalendarEvent } from "../../calendar-client.js";
+import type { ExtensionAPI, ExtensionFactory } from '@earendil-works/pi-coding-agent';
+import type { FastifyInstance } from 'fastify';
+import { Type } from 'typebox';
+import { format } from 'date-fns';
+import { tz, TZDate, tzName } from '@date-fns/tz';
+import type { CalendarEvent } from '../../calendar-client.js';
 
 export function formatEventLine(event: CalendarEvent, timezone: string): string {
   const startTime = event.start?.dateTime ?? undefined;
   const endTime = event.end?.dateTime ?? undefined;
 
-  type FormattedDate = { date: string; time: string };
+  interface FormattedDate { date: string; time: string }
 
   const formatDate = (iso: string): FormattedDate => {
-    const tzAbbr = tzName(timezone, new Date(iso), "short");
-    return { date: format(new TZDate(iso, timezone), "EEE, MMM d", { in: tz(timezone) }), time: format(new TZDate(iso, timezone), "h:mm a", { in: tz(timezone) }) + " " + tzAbbr };
+    const tzAbbr = tzName(timezone, new Date(iso), 'short');
+    return { date: format(new TZDate(iso, timezone), 'EEE, MMM d', { in: tz(timezone) }), time: format(new TZDate(iso, timezone), 'h:mm a', { in: tz(timezone) }) + ' ' + tzAbbr };
   };
 
   if (!startTime && !endTime) {
-    return `- ${event.id} | no time | ${event.summary} | ${event.description ?? ""}`;
+    return `- ${event.id} | no time | ${event.summary} | ${event.description ?? ''}`;
   }
 
   const start = formatDate(startTime!);
@@ -25,81 +25,82 @@ export function formatEventLine(event: CalendarEvent, timezone: string): string 
   const sameDay = start.date === end.date;
   const endStr = sameDay ? end.time : `${end.date}, ${end.time}`;
 
-  return `- ${event.id} | ${start.date}, ${start.time} - ${endStr} | ${event.summary} | ${event.description ?? ""}`;
+  return `- ${event.id} | ${start.date}, ${start.time} - ${endStr} | ${event.summary} | ${event.description ?? ''}`;
 }
 
 export function formatEvents(events: CalendarEvent[], timezone: string): string[] {
-  return events.map((event) => formatEventLine(event, timezone));
+  return events.map(event => formatEventLine(event, timezone));
 }
 
 export function formatCreateResponse(calendarId: string, event: CalendarEvent, timezone: string): string {
   const lines = [
     `Created event "${event.summary}" on Google Calendar ${calendarId}.`,
-    "",
-    formatEventLine(event, timezone),
+    '',
+    formatEventLine(event, timezone)
   ];
-  return lines.join("\n");
+  return lines.join('\n');
 }
 
 export function formatEditResponse(calendarId: string, eventId: string, event: CalendarEvent, timezone: string): string {
   const lines = [
     `Updated event ${eventId} on Google Calendar ${calendarId}.`,
-    "",
-    formatEventLine(event, timezone),
+    '',
+    formatEventLine(event, timezone)
   ];
-  return lines.join("\n");
+  return lines.join('\n');
 }
 
 export default function createCalendarExtension(fastify: FastifyInstance): ExtensionFactory {
   return (pi: ExtensionAPI) => {
     pi.registerTool({
-      name: "calendar_list",
-      label: "List Calendar Events",
-      description: "List events from a Google Calendar within a date range",
+      name: 'calendar_list',
+      label: 'List Calendar Events',
+      description: 'List events from a Google Calendar within a date range',
       parameters: Type.Object({
         calendarId: Type.String({ description: 'Calendar ID or "primary"' }),
-        start: Type.String({ description: "Start date/time in ISO 8601 format" }),
-        end: Type.String({ description: "End date/time in ISO 8601 format" }),
+        start: Type.String({ description: 'Start date/time in ISO 8601 format' }),
+        end: Type.String({ description: 'End date/time in ISO 8601 format' })
       }),
       async execute(_toolCallId, params) {
         try {
           const events = await fastify.calendarClient.listEvents(params.calendarId, params.start, params.end);
           const lines: string[] = [
             `Returned ${events.length} events from the Google Calendar ${params.calendarId} between ${params.start} and ${params.end}.`,
-            "",
+            '',
             `Events`,
-            ...formatEvents(events, fastify.timezone),
+            ...formatEvents(events, fastify.timezone)
           ];
           return {
-            content: [{ type: "text" as const, text: lines.join("\n") }],
-            details: {},
+            content: [{ type: 'text' as const, text: lines.join('\n') }],
+            details: {}
           };
-        } catch (error) {
-          fastify.log.error(error, "Failed to list Google Calendar events");
+        }
+        catch (error) {
+          fastify.log.error(error, 'Failed to list Google Calendar events');
           const message = error instanceof Error ? error.message : String(error);
           return {
             content: [
               {
-                type: "text" as const,
-                text: `Error: Failed to list events from Google Calendar ${params.calendarId} between ${params.start} and ${params.end}.\n${message}`,
-              },
+                type: 'text' as const,
+                text: `Error: Failed to list events from Google Calendar ${params.calendarId} between ${params.start} and ${params.end}.\n${message}`
+              }
             ],
-            details: {},
+            details: {}
           };
         }
-      },
+      }
     });
 
     pi.registerTool({
-      name: "calendar_create",
-      label: "Create Calendar Event",
-      description: "Create a new event on a Google Calendar",
+      name: 'calendar_create',
+      label: 'Create Calendar Event',
+      description: 'Create a new event on a Google Calendar',
       parameters: Type.Object({
         calendarId: Type.String(),
-        summary: Type.String({ description: "Event title" }),
-        start: Type.String({ description: "Start date/time in ISO 8601 format" }),
-        end: Type.String({ description: "End date/time in ISO 8601 format" }),
-        description: Type.Optional(Type.String()),
+        summary: Type.String({ description: 'Event title' }),
+        start: Type.String({ description: 'Start date/time in ISO 8601 format' }),
+        end: Type.String({ description: 'End date/time in ISO 8601 format' }),
+        description: Type.Optional(Type.String())
       }),
       async execute(_toolCallId, params) {
         try {
@@ -107,39 +108,40 @@ export default function createCalendarExtension(fastify: FastifyInstance): Exten
             summary: params.summary,
             start: { dateTime: params.start },
             end: { dateTime: params.end },
-            description: params.description,
+            description: params.description
           });
           return {
-            content: [{ type: "text" as const, text: formatCreateResponse(params.calendarId, event, fastify.timezone) }],
-            details: {},
+            content: [{ type: 'text' as const, text: formatCreateResponse(params.calendarId, event, fastify.timezone) }],
+            details: {}
           };
-        } catch (error) {
-          fastify.log.error(error, "Failed to create Google Calendar event");
+        }
+        catch (error) {
+          fastify.log.error(error, 'Failed to create Google Calendar event');
           const message = error instanceof Error ? error.message : String(error);
           return {
             content: [
               {
-                type: "text" as const,
-                text: `Error: Failed to create event "${params.summary}" on Google Calendar ${params.calendarId}.\n${message}`,
-              },
+                type: 'text' as const,
+                text: `Error: Failed to create event "${params.summary}" on Google Calendar ${params.calendarId}.\n${message}`
+              }
             ],
-            details: {},
+            details: {}
           };
         }
-      },
+      }
     });
 
     pi.registerTool({
-      name: "calendar_edit",
-      label: "Edit Calendar Event",
-      description: "Update an existing event on a Google Calendar",
+      name: 'calendar_edit',
+      label: 'Edit Calendar Event',
+      description: 'Update an existing event on a Google Calendar',
       parameters: Type.Object({
         calendarId: Type.String(),
         eventId: Type.String(),
         summary: Type.Optional(Type.String()),
-        start: Type.Optional(Type.String({ description: "Start date/time in ISO 8601 format" })),
-        end: Type.Optional(Type.String({ description: "End date/time in ISO 8601 format" })),
-        description: Type.Optional(Type.String()),
+        start: Type.Optional(Type.String({ description: 'Start date/time in ISO 8601 format' })),
+        end: Type.Optional(Type.String({ description: 'End date/time in ISO 8601 format' })),
+        description: Type.Optional(Type.String())
       }),
       async execute(_toolCallId, params) {
         try {
@@ -151,23 +153,24 @@ export default function createCalendarExtension(fastify: FastifyInstance): Exten
 
           const event = await fastify.calendarClient.updateEvent(params.calendarId, params.eventId, updates);
           return {
-            content: [{ type: "text" as const, text: formatEditResponse(params.calendarId, params.eventId, event, fastify.timezone) }],
-            details: {},
+            content: [{ type: 'text' as const, text: formatEditResponse(params.calendarId, params.eventId, event, fastify.timezone) }],
+            details: {}
           };
-        } catch (error) {
-          fastify.log.error(error, "Failed to update Google Calendar event");
+        }
+        catch (error) {
+          fastify.log.error(error, 'Failed to update Google Calendar event');
           const message = error instanceof Error ? error.message : String(error);
           return {
             content: [
               {
-                type: "text" as const,
-                text: `Error: Failed to update event ${params.eventId} on Google Calendar ${params.calendarId}.\n${message}`,
-              },
+                type: 'text' as const,
+                text: `Error: Failed to update event ${params.eventId} on Google Calendar ${params.calendarId}.\n${message}`
+              }
             ],
-            details: {},
+            details: {}
           };
         }
-      },
+      }
     });
   };
 }

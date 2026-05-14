@@ -1,30 +1,30 @@
-import type { FastifyInstance } from "fastify";
-import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
-import { Type } from "typebox";
-import type * as ynab from "ynab";
-import { formatMilliunits, getYnabErrorMessage, isYnabNotFoundError, resolveCategoryId, } from "../utils.js";
-import { formatAlreadyApprovedResponse, formatApproveTransactionResponse } from "../formatters.js";
+import type { FastifyInstance } from 'fastify';
+import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
+import { Type } from 'typebox';
+import type * as ynab from 'ynab';
+import { formatMilliunits, getYnabErrorMessage, isYnabNotFoundError, resolveCategoryId } from '../utils.js';
+import { formatAlreadyApprovedResponse, formatApproveTransactionResponse } from '../formatters.js';
 
 const paramsSchema = Type.Object({
-  budgetId: Type.String({ description: "The UUID of the YNAB budget" }),
-  transactionId: Type.String({ description: "The ID of the transaction to approve" }),
+  budgetId: Type.String({ description: 'The UUID of the YNAB budget' }),
+  transactionId: Type.String({ description: 'The ID of the transaction to approve' }),
   category: Type.Optional(
-    Type.String({ description: "Category name to assign. Ignored if the transaction is already a split." })
+    Type.String({ description: 'Category name to assign. Ignored if the transaction is already a split.' })
   ),
-  memo: Type.Optional(Type.String({ description: "Memo/note to set on the transaction" })),
+  memo: Type.Optional(Type.String({ description: 'Memo/note to set on the transaction' })),
   cleared: Type.Optional(
     Type.Boolean({
-      description: "If true, marks as cleared. If false, marks as uncleared. Omit to leave unchanged.",
+      description: 'If true, marks as cleared. If false, marks as uncleared. Omit to leave unchanged.'
     })
-  ),
+  )
 });
 
 export default function createTool({ ynabClient: { api: ynabAPI } }: FastifyInstance): ToolDefinition<typeof paramsSchema> {
   return {
-    name: "ynab_approve_transaction",
-    label: "Approve YNAB Transaction",
+    name: 'ynab_approve_transaction',
+    label: 'Approve YNAB Transaction',
     description:
-      "Approves a transaction in YNAB and optionally updates its category, memo, or cleared status.",
+      'Approves a transaction in YNAB and optionally updates its category, memo, or cleared status.',
     parameters: paramsSchema,
     async execute(_toolCallId, params) {
       try {
@@ -35,16 +35,17 @@ export default function createTool({ ynabClient: { api: ynabAPI } }: FastifyInst
             params.transactionId
           );
           existingTransaction = response.data.transaction;
-        } catch (error) {
+        }
+        catch (error) {
           if (isYnabNotFoundError(error)) {
             return {
               content: [
                 {
-                  type: "text" as const,
-                  text: `Error: Transaction "${params.transactionId}" not found in budget.`,
-                },
+                  type: 'text' as const,
+                  text: `Error: Transaction "${params.transactionId}" not found in budget.`
+                }
               ],
-              details: {},
+              details: {}
             };
           }
           throw error;
@@ -53,18 +54,18 @@ export default function createTool({ ynabClient: { api: ynabAPI } }: FastifyInst
         const wasAlreadyApproved = existingTransaction.approved;
 
         if (
-          params.category &&
-          existingTransaction.subtransactions &&
-          existingTransaction.subtransactions.length > 0
+          params.category
+          && existingTransaction.subtransactions
+          && existingTransaction.subtransactions.length > 0
         ) {
           return {
             content: [
               {
-                type: "text" as const,
-                text: `Error: Cannot assign category to transaction ${params.transactionId}.\nThis is a split transaction. Categories belong to subtransactions.`,
-              },
+                type: 'text' as const,
+                text: `Error: Cannot assign category to transaction ${params.transactionId}.\nThis is a split transaction. Categories belong to subtransactions.`
+              }
             ],
-            details: {},
+            details: {}
           };
         }
 
@@ -79,11 +80,11 @@ export default function createTool({ ynabClient: { api: ynabAPI } }: FastifyInst
             return {
               content: [
                 {
-                  type: "text" as const,
-                  text: `Error: Category "${params.category}" not found. Verify the exact name as it appears in YNAB.`,
-                },
+                  type: 'text' as const,
+                  text: `Error: Category "${params.category}" not found. Verify the exact name as it appears in YNAB.`
+                }
               ],
-              details: {},
+              details: {}
             };
           }
           categoryId = resolvedCategoryId;
@@ -91,7 +92,7 @@ export default function createTool({ ynabClient: { api: ynabAPI } }: FastifyInst
 
         const payload: ynab.SaveTransactionWithIdOrImportId = {
           id: params.transactionId,
-          approved: true,
+          approved: true
         };
 
         if (categoryId !== undefined) {
@@ -101,16 +102,16 @@ export default function createTool({ ynabClient: { api: ynabAPI } }: FastifyInst
           payload.memo = params.memo;
         }
         if (params.cleared !== undefined) {
-          payload.cleared = params.cleared ? "cleared" : "uncleared";
+          payload.cleared = params.cleared ? 'cleared' : 'uncleared';
         }
 
-        const categoryChanged =
-          params.category !== undefined && categoryId !== existingTransaction.category_id;
-        const memoChanged =
-          params.memo !== undefined && params.memo !== (existingTransaction.memo ?? "");
-        const clearedChanged =
-          params.cleared !== undefined &&
-          (params.cleared ? "cleared" : "uncleared") !== existingTransaction.cleared;
+        const categoryChanged
+          = params.category !== undefined && categoryId !== existingTransaction.category_id;
+        const memoChanged
+          = params.memo !== undefined && params.memo !== (existingTransaction.memo ?? '');
+        const clearedChanged
+          = params.cleared !== undefined
+            && (params.cleared ? 'cleared' : 'uncleared') !== existingTransaction.cleared;
         const hasMeaningfulChanges = categoryChanged || memoChanged || clearedChanged;
 
         if (wasAlreadyApproved && !hasMeaningfulChanges) {
@@ -118,18 +119,18 @@ export default function createTool({ ynabClient: { api: ynabAPI } }: FastifyInst
             params.transactionId,
             existingTransaction.date,
             formatMilliunits(existingTransaction.amount),
-            existingTransaction.payee_name ?? "(none)",
+            existingTransaction.payee_name ?? '(none)',
             existingTransaction.category_name ?? null,
             existingTransaction.cleared
           );
           return {
-            content: [{ type: "text" as const, text }],
-            details: {},
+            content: [{ type: 'text' as const, text }],
+            details: {}
           };
         }
 
         await ynabAPI.transactions.updateTransactions(params.budgetId, {
-          transactions: [payload],
+          transactions: [payload]
         });
 
         const finalResponse = await ynabAPI.transactions.getTransactionById(
@@ -142,28 +143,29 @@ export default function createTool({ ynabClient: { api: ynabAPI } }: FastifyInst
           params.transactionId,
           finalTransaction.date,
           formatMilliunits(finalTransaction.amount),
-          finalTransaction.payee_name ?? "(none)",
+          finalTransaction.payee_name ?? '(none)',
           finalTransaction.category_name ?? null,
           finalTransaction.cleared
         );
         return {
-          content: [{ type: "text" as const, text }],
-          details: {},
+          content: [{ type: 'text' as const, text }],
+          details: {}
         };
-      } catch (error) {
+      }
+      catch (error) {
         const message = isYnabNotFoundError(error)
           ? `Budget "${params.budgetId}" not found. Verify the budget ID.`
           : getYnabErrorMessage(error);
         return {
           content: [
             {
-              type: "text" as const,
-              text: `Error: Failed to approve transaction in YNAB.\n${message}`,
-            },
+              type: 'text' as const,
+              text: `Error: Failed to approve transaction in YNAB.\n${message}`
+            }
           ],
-          details: {},
+          details: {}
         };
       }
-    },
+    }
   };
 }

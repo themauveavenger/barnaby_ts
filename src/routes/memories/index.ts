@@ -5,7 +5,7 @@ import {
   listMemoriesSchema,
   deleteMemorySchema,
   createActionSchema,
-  deleteActionSchema,
+  deleteActionSchema
 } from './schemas.js';
 import { createMemory, updateMemory, listMemories, deleteMemory, getContext, createAction, deleteAction } from './handlers.js';
 

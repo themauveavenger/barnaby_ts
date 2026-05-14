@@ -1,18 +1,17 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from 'vitest';
 import { buildTestApp } from '../helper.js';
-import { createAgentSession } from '@earendil-works/pi-coding-agent';
 
 const mockSession = {
   subscribe: vi.fn(),
-  prompt: vi.fn(async (_prompt: string) => {}),
+  prompt: vi.fn(async (_prompt: string) => { void _prompt; }),
   getLastAssistantText: vi.fn(() => 'Manual briefing content'),
   dispose: vi.fn(),
   setAutoRetryEnabled: vi.fn(),
-  abort: vi.fn().mockResolvedValue(undefined),
+  abort: vi.fn().mockResolvedValue(undefined)
 };
 
 const mockResourceLoader = {
-  reload: vi.fn(async () => {}),
+  reload: vi.fn(async () => { void 0; })
 };
 
 vi.mock('@earendil-works/pi-coding-agent', async () => {
@@ -23,7 +22,7 @@ vi.mock('@earendil-works/pi-coding-agent', async () => {
       return mockResourceLoader;
     }),
     createAgentSession: vi.fn(async () => ({ session: mockSession })),
-    SessionManager: { inMemory: vi.fn(() => ({})) },
+    SessionManager: { inMemory: vi.fn(() => ({})) }
   };
 });
 
@@ -31,8 +30,8 @@ vi.mock('@earendil-works/pi-ai', async () => {
   return {
     getModel: vi.fn(() => ({
       id: 'kimi-k2.6',
-      provider: 'opencode-go',
-    })),
+      provider: 'opencode-go'
+    }))
   };
 });
 
@@ -57,7 +56,7 @@ describe('Briefing API', () => {
     it('should reject unauthenticated requests', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/briefing',
+        url: '/briefing'
       });
       expect(response.statusCode).toBe(401);
     });
@@ -66,7 +65,7 @@ describe('Briefing API', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/briefing',
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       expect(response.statusCode).toBe(200);
@@ -79,7 +78,7 @@ describe('Briefing API', () => {
       await app.inject({
         method: 'POST',
         url: '/briefing',
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       const latest = app.briefingRepository.findLatest();
@@ -92,7 +91,7 @@ describe('Briefing API', () => {
     it('should reject unauthenticated requests', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/briefing/afternoon',
+        url: '/briefing/afternoon'
       });
       expect(response.statusCode).toBe(401);
     });
@@ -101,7 +100,7 @@ describe('Briefing API', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/briefing/afternoon',
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       expect(response.statusCode).toBe(200);
@@ -114,7 +113,7 @@ describe('Briefing API', () => {
       await app.inject({
         method: 'POST',
         url: '/briefing/afternoon',
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       const latest = app.briefingRepository.findLatest();
@@ -127,7 +126,7 @@ describe('Briefing API', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/briefing',
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       expect(response.statusCode).toBe(200);
@@ -144,7 +143,7 @@ describe('Briefing API', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/briefing?page=1&limit=10',
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       expect(response.statusCode).toBe(200);
@@ -163,7 +162,7 @@ describe('Briefing API', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/briefing',
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       const body = response.json();
@@ -176,13 +175,13 @@ describe('Briefing API', () => {
     it('should delete a briefing', async () => {
       const briefing = app.briefingRepository.create({
         content: 'Delete me',
-        triggerType: 'manual',
+        triggerType: 'manual'
       });
 
       const response = await app.inject({
         method: 'DELETE',
         url: `/briefing/${briefing.id}`,
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       expect(response.statusCode).toBe(204);
@@ -193,7 +192,7 @@ describe('Briefing API', () => {
       const response = await app.inject({
         method: 'DELETE',
         url: '/briefing/00000000-0000-0000-0000-000000000000',
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       expect(response.statusCode).toBe(404);
@@ -203,7 +202,7 @@ describe('Briefing API', () => {
       const response = await app.inject({
         method: 'DELETE',
         url: '/briefing/not-a-uuid',
-        headers: { authorization: authHeader },
+        headers: { authorization: authHeader }
       });
 
       expect(response.statusCode).toBe(400);

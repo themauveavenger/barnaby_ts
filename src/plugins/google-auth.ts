@@ -2,9 +2,9 @@ import fp from 'fastify-plugin';
 import type { FastifyInstance } from 'fastify';
 import { OAuth2Client } from 'google-auth-library';
 
-export type GoogleAuth = {
+export interface GoogleAuth {
   oauth2Client: OAuth2Client;
-};
+}
 
 export default fp(async function googleAuthPlugin(fastify: FastifyInstance) {
   const clientId = process.env.GOOGLE_CLIENT_ID;

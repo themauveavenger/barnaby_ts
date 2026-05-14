@@ -3,21 +3,21 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('@earendil-works/pi-coding-agent', () => ({
   createAgentSession: vi.fn(),
   SessionManager: {
-    inMemory: vi.fn(() => ({})),
-  },
+    inMemory: vi.fn(() => ({}))
+  }
 }));
 
 vi.mock('../../../src/services/telegram/shared.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../src/services/telegram/shared.js')>();
   return {
     ...actual,
-    withTimeout: vi.fn(actual.withTimeout),
+    withTimeout: vi.fn(actual.withTimeout)
   };
 });
 
 import { createAgentSession } from '@earendil-works/pi-coding-agent';
 import type { Context } from 'grammy';
-import { SESSION_TIMEOUT_MS, withTimeout } from '../../../src/services/telegram/shared.js';
+import { withTimeout } from '../../../src/services/telegram/shared.js';
 import { handleRemember } from '../../../src/services/telegram/remember.js';
 
 function createMockSession() {
@@ -26,11 +26,9 @@ function createMockSession() {
     getLastAssistantText: vi.fn().mockReturnValue('Created todo: "Call the dentist"'),
     dispose: vi.fn(),
     setAutoRetryEnabled: vi.fn(),
-    abort: vi.fn().mockResolvedValue(undefined),
+    abort: vi.fn().mockResolvedValue(undefined)
   };
 }
-
-
 
 function createMockContext(overrides: Partial<{ chatId: number; match: string | undefined }> = {}) {
   return {
@@ -39,7 +37,7 @@ function createMockContext(overrides: Partial<{ chatId: number; match: string | 
     msg: { text: overrides.match ?? '' },
     reply: vi.fn().mockResolvedValue(undefined),
     react: vi.fn().mockResolvedValue(undefined),
-    replyWithChatAction: vi.fn().mockResolvedValue(undefined),
+    replyWithChatAction: vi.fn().mockResolvedValue(undefined)
   } as unknown as Context;
 }
 
@@ -49,14 +47,14 @@ function createMockFastify() {
       authStorage: {},
       modelRegistry: {},
       model: {},
-      resourceLoader: {},
+      resourceLoader: {}
     },
     log: {
       info: vi.fn(),
       error: vi.fn(),
       debug: vi.fn(),
-      warn: vi.fn(),
-    },
+      warn: vi.fn()
+    }
   } as any;
 }
 
@@ -81,8 +79,8 @@ describe('handleRemember', () => {
 
     expect(createAgentSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        tools: ['memory_create', 'memory_list', 'memory_resolve'],
-      }),
+        tools: ['memory_create', 'memory_list', 'memory_resolve']
+      })
     );
 
     const prompt = mockSession.prompt.mock.calls[0][0];
@@ -129,7 +127,7 @@ describe('handleRemember', () => {
     await handleRemember(ctx, fastify);
 
     expect(ctx.react).toHaveBeenCalledWith('🤷');
-    expect(ctx.reply).toHaveBeenCalledWith("Couldn't start a session — please try again.");
+    expect(ctx.reply).toHaveBeenCalledWith('Couldn\'t start a session — please try again.');
     expect(fastify.log.error).toHaveBeenCalled();
   });
 

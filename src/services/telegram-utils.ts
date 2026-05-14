@@ -9,7 +9,7 @@ export function getTimeOfDay(hour: number): string {
 }
 
 export function formatMemoryList(memories: Pick<Memory, 'content'>[]): string {
-  return memories.map((m) => `- ${m.content}`).join('\n');
+  return memories.map(m => `- ${m.content}`).join('\n');
 }
 
 export function formatResolvedList(memories: ResolvedMemory[]): string {
@@ -40,13 +40,13 @@ export function buildMemoryContext(fastify: FastifyInstance): string {
   return [coreContext, recentContext, resolvedContext].filter(Boolean).join('\n\n');
 }
 
-export type DeliverOptions = {
+export interface DeliverOptions {
   fastify: FastifyInstance;
   tools: string[];
   prompt: string;
   signal?: AbortSignal;
   saveToRepo?: { triggerType: 'scheduled' | 'manual' };
-};
+}
 
 export class EmptyResponseError extends Error {
   constructor() {
@@ -79,13 +79,15 @@ export async function createAgentAndDeliver(options: DeliverOptions): Promise<st
     modelRegistry,
     resourceLoader,
     sessionManager: SessionManager.inMemory(),
-    tools,
+    tools
   });
 
   session.setAutoRetryEnabled(false);
 
   const onAbort = () => {
-    session.abort().catch(() => {});
+    session.abort().catch(() => {
+      void 0;
+    });
   };
   signal?.addEventListener('abort', onAbort);
   if (signal?.aborted) {
@@ -105,12 +107,13 @@ export async function createAgentAndDeliver(options: DeliverOptions): Promise<st
     if (saveToRepo) {
       fastify.briefingRepository.create({
         content: responseText,
-        triggerType: saveToRepo.triggerType,
+        triggerType: saveToRepo.triggerType
       });
     }
 
     return responseText;
-  } finally {
+  }
+  finally {
     signal?.removeEventListener('abort', onAbort);
     session.dispose();
   }

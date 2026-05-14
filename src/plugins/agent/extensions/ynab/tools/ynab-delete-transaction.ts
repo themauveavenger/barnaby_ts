@@ -1,20 +1,20 @@
-import type { FastifyInstance } from "fastify";
-import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
-import { Type } from "typebox";
-import type * as ynab from "ynab";
-import { formatMilliunits, getYnabErrorMessage, isYnabNotFoundError } from "../utils.js";
-import { formatDeleteTransactionResponse } from "../formatters.js";
+import type { FastifyInstance } from 'fastify';
+import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
+import { Type } from 'typebox';
+import type * as ynab from 'ynab';
+import { formatMilliunits, getYnabErrorMessage, isYnabNotFoundError } from '../utils.js';
+import { formatDeleteTransactionResponse } from '../formatters.js';
 
 const paramsSchema = Type.Object({
-  budgetId: Type.String({ description: "The UUID of the YNAB budget" }),
-  transactionId: Type.String({ description: "The ID of the transaction to delete" }),
+  budgetId: Type.String({ description: 'The UUID of the YNAB budget' }),
+  transactionId: Type.String({ description: 'The ID of the transaction to delete' })
 });
 
 export default function createTool(fastify: FastifyInstance): ToolDefinition<typeof paramsSchema> {
   return {
-    name: "ynab_delete_transaction",
-    label: "Delete YNAB Transaction",
-    description: "Deletes a transaction from a YNAB budget.",
+    name: 'ynab_delete_transaction',
+    label: 'Delete YNAB Transaction',
+    description: 'Deletes a transaction from a YNAB budget.',
     parameters: paramsSchema,
     async execute(_toolCallId, params) {
       try {
@@ -27,16 +27,17 @@ export default function createTool(fastify: FastifyInstance): ToolDefinition<typ
             params.transactionId
           );
           existingTransaction = response.data.transaction;
-        } catch (error) {
+        }
+        catch (error) {
           if (isYnabNotFoundError(error)) {
             return {
               content: [
                 {
-                  type: "text" as const,
-                  text: `Transaction ${params.transactionId} was already deleted or did not exist.`,
-                },
+                  type: 'text' as const,
+                  text: `Transaction ${params.transactionId} was already deleted or did not exist.`
+                }
               ],
-              details: {},
+              details: {}
             };
           }
           throw error;
@@ -50,28 +51,29 @@ export default function createTool(fastify: FastifyInstance): ToolDefinition<typ
           params.transactionId,
           date,
           formatMilliunits(amount),
-          payee_name ?? "(none)",
+          payee_name ?? '(none)',
           category_name ?? null,
           memo ?? null
         );
         return {
-          content: [{ type: "text" as const, text }],
-          details: {},
+          content: [{ type: 'text' as const, text }],
+          details: {}
         };
-      } catch (error) {
+      }
+      catch (error) {
         const message = isYnabNotFoundError(error)
           ? `Budget "${params.budgetId}" not found or transaction "${params.transactionId}" does not exist. Verify the IDs.`
           : getYnabErrorMessage(error);
         return {
           content: [
             {
-              type: "text" as const,
-              text: `Error: Failed to delete transaction from YNAB.\n${message}`,
-            },
+              type: 'text' as const,
+              text: `Error: Failed to delete transaction from YNAB.\n${message}`
+            }
           ],
-          details: {},
+          details: {}
         };
       }
-    },
+    }
   };
 }

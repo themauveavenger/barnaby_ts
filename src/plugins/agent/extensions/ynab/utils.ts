@@ -1,7 +1,7 @@
-import type * as ynab from "ynab";
-import currency from "currency.js";
-import { subDays, subMonths, differenceInDays, parseISO } from "date-fns";
-import { median, std, mean, sum, min, max } from "mathjs";
+import type * as ynab from 'ynab';
+import currency from 'currency.js';
+import { subDays, subMonths, differenceInDays, parseISO } from 'date-fns';
+import { median, std, mean, sum, min, max } from 'mathjs';
 
 // ---------------------------------------------------------------------------
 // Name resolvers
@@ -14,7 +14,7 @@ export async function resolveAccountId(
 ): Promise<string | null> {
   const response = await ynabAPI.accounts.getAccounts(budgetId);
   const accounts = response.data.accounts;
-  const match = accounts.find((a) => !a.deleted && !a.closed && a.name === name);
+  const match = accounts.find(a => !a.deleted && !a.closed && a.name === name);
   return match?.id ?? null;
 }
 
@@ -24,8 +24,8 @@ export async function resolveCategoryId(
   name: string
 ): Promise<string | null> {
   const response = await ynabAPI.categories.getCategories(budgetId);
-  const categories = response.data.category_groups.flatMap((g) => g.categories);
-  const match = categories.find((c) => !c.deleted && !c.hidden && c.name === name);
+  const categories = response.data.category_groups.flatMap(g => g.categories);
+  const match = categories.find(c => !c.deleted && !c.hidden && c.name === name);
   return match?.id ?? null;
 }
 
@@ -36,7 +36,7 @@ export async function resolvePayeeId(
 ): Promise<string | null> {
   const response = await ynabAPI.payees.getPayees(budgetId);
   const payees = response.data.payees;
-  const match = payees.find((p) => !p.deleted && p.name === name);
+  const match = payees.find(p => !p.deleted && p.name === name);
   return match?.id ?? null;
 }
 
@@ -64,22 +64,23 @@ export async function validateAndResolveSplits(
   const errors: string[] = [];
 
   if (splits.length < 2) {
-    errors.push("A split transaction requires at least 2 splits.");
+    errors.push('A split transaction requires at least 2 splits.');
     return { subtransactions: [], errors };
   }
 
-  const nullCount = splits.filter((s) => s.amount === null).length;
+  const nullCount = splits.filter(s => s.amount === null).length;
   if (nullCount > 1) {
-    errors.push("Only one split may have a null amount (calculated from remainder).");
+    errors.push('Only one split may have a null amount (calculated from remainder).');
   }
 
-  const resolvedCategories: Array<{ id: string; name: string } | null> = [];
+  const resolvedCategories: ({ id: string; name: string } | null)[] = [];
   for (const split of splits) {
     const id = await resolveCategoryId(ynabAPI, budgetId, split.category);
     if (!id) {
       errors.push(`Category "${split.category}" not found.`);
       resolvedCategories.push(null);
-    } else {
+    }
+    else {
       resolvedCategories.push({ id, name: split.category });
     }
   }
@@ -103,10 +104,11 @@ export async function validateAndResolveSplits(
         `Split amounts sum to ${formatAmount(explicitSum)} but total is ${formatAmount(totalAmount)}.`
       );
     }
-  } else if (nullCount === 1) {
+  }
+  else if (nullCount === 1) {
     if (remainder.value === 0) {
       errors.push(
-        "The calculated remainder is 0. Please provide explicit amounts for all splits."
+        'The calculated remainder is 0. Please provide explicit amounts for all splits.'
       );
     }
   }
@@ -125,7 +127,7 @@ export async function validateAndResolveSplits(
     subtransactions.push({
       amount: amountMilliunits,
       category_id: category.id,
-      memo: split.memo ?? null,
+      memo: split.memo ?? null
     });
   }
 
@@ -149,11 +151,11 @@ export function formatAmount(c: currency): string {
 // ---------------------------------------------------------------------------
 
 export function getDefaultSinceDate(): string {
-  return subDays(new Date(), 30).toISOString().split("T")[0];
+  return subDays(new Date(), 30).toISOString().split('T')[0];
 }
 
 export function getDefaultPayeeSinceDate(): string {
-  return subMonths(new Date(), 6).toISOString().split("T")[0];
+  return subMonths(new Date(), 6).toISOString().split('T')[0];
 }
 
 export function daysBetween(a: string, b: string): number {
@@ -204,17 +206,17 @@ export interface PayeeStats {
   frequencyDays: number | null;
   mostCommonCategory: string | null;
   refundCount: number;
-  recentTransactions: Array<{ date: string; amount: number; category_name: string | null }>;
+  recentTransactions: { date: string; amount: number; category_name: string | null }[];
 }
 
 export function buildPayeeStats(
   transactions: ynab.HybridTransaction[]
 ): PayeeStats {
-  const outflows = transactions.filter((t) => t.amount < 0);
-  const inflows = transactions.filter((t) => t.amount > 0);
+  const outflows = transactions.filter(t => t.amount < 0);
+  const inflows = transactions.filter(t => t.amount > 0);
 
-  const outflowAmounts = outflows.map((t) => Math.abs(t.amount));
-  const outflowDates = outflows.map((t) => t.date);
+  const outflowAmounts = outflows.map(t => Math.abs(t.amount));
+  const outflowDates = outflows.map(t => t.date);
 
   const sortedByDate = [...outflows].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -226,20 +228,20 @@ export function buildPayeeStats(
   const medianAmount = outflowAmounts.length > 0 ? (median(outflowAmounts) as number) : 0;
   const minAmount = transactionCount > 0 ? (min(outflowAmounts) as number) : 0;
   const maxAmount = transactionCount > 0 ? (max(outflowAmounts) as number) : 0;
-  const stdDeviation =
-    outflowAmounts.length > 1 ? (std(outflowAmounts, "uncorrected") as number) : 0;
+  const stdDeviation
+    = outflowAmounts.length > 1 ? (std(outflowAmounts, 'uncorrected') as number) : 0;
 
-  const allDates = [...outflowDates, ...inflows.map((t) => t.date)].sort();
-  const firstTransactionDate = allDates[0] ?? "";
-  const lastTransactionDate = allDates[allDates.length - 1] ?? "";
+  const allDates = [...outflowDates, ...inflows.map(t => t.date)].sort();
+  const firstTransactionDate = allDates[0] ?? '';
+  const lastTransactionDate = allDates[allDates.length - 1] ?? '';
 
   const frequencyDays = calculateFrequencyDays(outflowDates);
-  const category = mostCommonCategory(outflows.map((t) => t.category_name));
+  const category = mostCommonCategory(outflows.map(t => t.category_name));
 
-  const recentTransactions = sortedByDate.slice(0, 3).map((t) => ({
+  const recentTransactions = sortedByDate.slice(0, 3).map(t => ({
     date: t.date,
     amount: t.amount,
-    category_name: t.category_name ?? null,
+    category_name: t.category_name ?? null
   }));
 
   return {
@@ -255,7 +257,7 @@ export function buildPayeeStats(
     frequencyDays,
     mostCommonCategory: category,
     refundCount: inflows.length,
-    recentTransactions,
+    recentTransactions
   };
 }
 
@@ -264,19 +266,19 @@ export function buildPayeeStats(
 // ---------------------------------------------------------------------------
 
 const YNAB_ERROR_MESSAGES: Record<string, string> = {
-  "401": "Unauthorized: Invalid or expired access token",
-  "404": "Budget not found: Verify the budget ID",
-  "429": "Rate limit exceeded: YNAB allows 200 requests per hour. Please wait and try again.",
-  "500": "YNAB service error: Please try again later",
-  "503": "YNAB service unavailable: Temporary outage, please try again later",
+  401: 'Unauthorized: Invalid or expired access token',
+  404: 'Budget not found: Verify the budget ID',
+  429: 'Rate limit exceeded: YNAB allows 200 requests per hour. Please wait and try again.',
+  500: 'YNAB service error: Please try again later',
+  503: 'YNAB service unavailable: Temporary outage, please try again later'
 };
 
 export function getYnabErrorMessage(error: unknown): string {
-  if (error && typeof error === "object" && "error" in error) {
+  if (error && typeof error === 'object' && 'error' in error) {
     const ynabError = (error as { error: { id: string; name: string; detail: string } }).error;
     return (
-      YNAB_ERROR_MESSAGES[ynabError.id] ||
-      `YNAB API Error (${ynabError.id}): ${ynabError.detail}`
+      YNAB_ERROR_MESSAGES[ynabError.id]
+      || `YNAB API Error (${ynabError.id}): ${ynabError.detail}`
     );
   }
   return `Unknown error: ${String(error)}`;
@@ -284,11 +286,11 @@ export function getYnabErrorMessage(error: unknown): string {
 
 export function isYnabNotFoundError(error: unknown): boolean {
   return (
-    error !== null &&
-    error !== undefined &&
-    typeof error === "object" &&
-    "error" in error &&
-    typeof (error as { error: { id: string } }).error.id === "string" &&
-    (error as { error: { id: string } }).error.id === "404"
+    error !== null
+    && error !== undefined
+    && typeof error === 'object'
+    && 'error' in error
+    && typeof (error as { error: { id: string } }).error.id === 'string'
+    && (error as { error: { id: string } }).error.id === '404'
   );
 }

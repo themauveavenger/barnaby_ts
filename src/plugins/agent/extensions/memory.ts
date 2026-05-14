@@ -3,12 +3,12 @@ import type { ExtensionAPI, ToolDefinition } from '@earendil-works/pi-coding-age
 import { Type } from 'typebox';
 import {
   MEMORY_CATEGORIES,
-  type MemoryCategory,
+  type MemoryCategory
 } from '../../memory-categories.js';
 import {
   MEMORY_ACTION_TYPES,
   MEMORY_TOOL_PROMPT_SNIPPETS,
-  MEMORY_TOOL_PROMPT_GUIDELINES,
+  MEMORY_TOOL_PROMPT_GUIDELINES
 } from '../../../agent/memory-guidelines.js';
 
 function createMemoryCreateTool(fastify: FastifyInstance): ToolDefinition {
@@ -20,9 +20,9 @@ function createMemoryCreateTool(fastify: FastifyInstance): ToolDefinition {
     promptGuidelines: [...MEMORY_TOOL_PROMPT_GUIDELINES.memory_create],
     parameters: Type.Object({
       content: Type.String({ description: 'The content of the memory. Concise and clear.' }),
-      category: Type.Union(MEMORY_CATEGORIES.map((c) => Type.Literal(c.name)), { description: 'The category of memory' }),
+      category: Type.Union(MEMORY_CATEGORIES.map(c => Type.Literal(c.name)), { description: 'The category of memory' }),
       tags: Type.Optional(Type.Array(Type.String(), { description: 'Tags to attach to the memory' })),
-      permanent: Type.Optional(Type.Boolean({ description: 'Whether this memory should persist indefinitely. Set true for core facts about the user.' })),
+      permanent: Type.Optional(Type.Boolean({ description: 'Whether this memory should persist indefinitely. Set true for core facts about the user.' }))
     }),
     async execute(_toolCallId: string, params: { content: string; category: string; tags?: string[]; permanent?: boolean }) {
       try {
@@ -30,7 +30,7 @@ function createMemoryCreateTool(fastify: FastifyInstance): ToolDefinition {
           content: params.content,
           category: params.category as MemoryCategory,
           tags: params.tags,
-          permanent: params.permanent,
+          permanent: params.permanent
         });
 
         const parts: string[] = [`Created ${memory.category}`];
@@ -44,16 +44,17 @@ function createMemoryCreateTool(fastify: FastifyInstance): ToolDefinition {
 
         return {
           content: [{ type: 'text' as const, text: parts.join(', ') }],
-          details: {},
+          details: {}
         };
-      } catch (error) {
+      }
+      catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return {
           content: [{ type: 'text' as const, text: `Failed to create memory: ${message}` }],
-          details: {},
+          details: {}
         };
       }
-    },
+    }
   };
 }
 
@@ -65,10 +66,10 @@ function createMemoryListTool(fastify: FastifyInstance): ToolDefinition {
     promptSnippet: MEMORY_TOOL_PROMPT_SNIPPETS.memory_list,
     promptGuidelines: [...MEMORY_TOOL_PROMPT_GUIDELINES.memory_list],
     parameters: Type.Object({
-      category: Type.Optional(Type.Union(MEMORY_CATEGORIES.map((c) => Type.Literal(c.name)), { description: 'Filter by category' })),
+      category: Type.Optional(Type.Union(MEMORY_CATEGORIES.map(c => Type.Literal(c.name)), { description: 'Filter by category' })),
       tags: Type.Optional(Type.Array(Type.String(), { description: 'Filter by tags' })),
       recent_days: Type.Optional(Type.Number({ description: 'Only show memories from the last N days. Defaults to all time if omitted.' })),
-      limit: Type.Optional(Type.Number({ description: 'Maximum number of memories to return. Defaults to 10.' })),
+      limit: Type.Optional(Type.Number({ description: 'Maximum number of memories to return. Defaults to 10.' }))
     }),
     async execute(_toolCallId: string, params: { category?: string; tags?: string[]; recent_days?: number; limit?: number }) {
       try {
@@ -78,21 +79,21 @@ function createMemoryListTool(fastify: FastifyInstance): ToolDefinition {
           if (memories.length === 0) {
             return {
               content: [{ type: 'text' as const, text: `No memories from the last ${days} day${days === 1 ? '' : 's'}.` }],
-              details: {},
+              details: {}
             };
           }
-          const lines = memories.map((m) =>
+          const lines = memories.map(m =>
             `${m.id.slice(0, 8)} [${m.category}] ${m.content}${m.permanent ? ' (permanent)' : ''}`
           );
           return {
             content: [{ type: 'text' as const, text: lines.join('\n') }],
-            details: {},
+            details: {}
           };
         }
 
         const query: { category?: string; tags?: string; page: number; limit: number } = {
           page: 1,
-          limit: params.limit ?? 10,
+          limit: params.limit ?? 10
         };
         if (params.category) {
           query.category = params.category;
@@ -105,24 +106,25 @@ function createMemoryListTool(fastify: FastifyInstance): ToolDefinition {
         if (data.length === 0) {
           return {
             content: [{ type: 'text' as const, text: 'No memories found.' }],
-            details: {},
+            details: {}
           };
         }
-        const lines = data.map((m) =>
+        const lines = data.map(m =>
           `${m.id.slice(0, 8)} [${m.category}] ${m.content}${m.permanent ? ' (permanent)' : ''}`
         );
         return {
           content: [{ type: 'text' as const, text: `${lines.join('\n')}\n\n(${total} total, showing ${data.length})` }],
-          details: {},
+          details: {}
         };
-      } catch (error) {
+      }
+      catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return {
           content: [{ type: 'text' as const, text: `Failed to list memories: ${message}` }],
-          details: {},
+          details: {}
         };
       }
-    },
+    }
   };
 }
 
@@ -135,7 +137,7 @@ function createMemoryResolveTool(fastify: FastifyInstance): ToolDefinition {
     promptGuidelines: [...MEMORY_TOOL_PROMPT_GUIDELINES.memory_resolve],
     parameters: Type.Object({
       memory_id: Type.String({ description: 'The ID of the memory to resolve. Use memory_list to find it first.' }),
-      action: Type.Union(MEMORY_ACTION_TYPES.map((a) => Type.Literal(a)), { description: '"completed" for tasks done, "dismissed" for things no longer relevant' }),
+      action: Type.Union(MEMORY_ACTION_TYPES.map(a => Type.Literal(a)), { description: '"completed" for tasks done, "dismissed" for things no longer relevant' })
     }),
     async execute(_toolCallId: string, params: { memory_id: string; action: string }) {
       try {
@@ -143,7 +145,7 @@ function createMemoryResolveTool(fastify: FastifyInstance): ToolDefinition {
         if (!memory) {
           return {
             content: [{ type: 'text' as const, text: `Memory not found: ${params.memory_id}. Use memory_list to find the correct ID.` }],
-            details: {},
+            details: {}
           };
         }
 
@@ -151,16 +153,17 @@ function createMemoryResolveTool(fastify: FastifyInstance): ToolDefinition {
         const verb = params.action === 'completed' ? 'Completed' : 'Dismissed';
         return {
           content: [{ type: 'text' as const, text: `${verb}: [${memory.category}] ${memory.content}` }],
-          details: {},
+          details: {}
         };
-      } catch (error) {
+      }
+      catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return {
           content: [{ type: 'text' as const, text: `Failed to resolve memory: ${message}` }],
-          details: {},
+          details: {}
         };
       }
-    },
+    }
   };
 }
 
