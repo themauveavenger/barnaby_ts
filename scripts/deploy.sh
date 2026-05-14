@@ -130,17 +130,17 @@ ssh -p "${PI_PORT}" "${PI_USER}@${PI_HOST}" bash -s <<REMOTE
   SLEEP_SECS=2
 
   echo "--> Waiting for barnaby to become healthy..."
-  for i in $(seq 1 "$MAX_ATTEMPTS"); do
-    if curl -sf "$HEALTH_URL" > /dev/null 2>&1; then
-      echo "--> Barnaby is healthy (attempt $i)"
+  for i in \$(seq 1 "\${MAX_ATTEMPTS}"); do
+    if curl -sf "\${HEALTH_URL}" > /dev/null 2>&1; then
+      echo "--> Barnaby is healthy (attempt \${i})"
       break
     fi
-    if [ "$i" -eq "$MAX_ATTEMPTS" ]; then
-      echo "ERROR: Barnaby did not become healthy within $((MAX_ATTEMPTS * SLEEP_SECS))s"
+    if [ "\${i}" -eq "\${MAX_ATTEMPTS}" ]; then
+      echo "ERROR: Barnaby did not become healthy within \$((MAX_ATTEMPTS * SLEEP_SECS))s"
       systemctl --user status barnaby --no-pager
       exit 1
     fi
-    sleep "$SLEEP_SECS"
+    sleep "\${SLEEP_SECS}"
   done
 
   echo ""
