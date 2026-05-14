@@ -59,50 +59,6 @@ Delete an action from a memory.
 
 ---
 
-## Chat
-
-### `POST /chat`
-
-Send a message to the LLM. Runs with all tools disabled (safe, read-only chat).
-
-**Body:**
-```json
-{
-  "message": "string"
-}
-```
-
-**Response:**
-```json
-{
-  "response": "string"
-}
-```
-
----
-
-## Calendar
-
-### `POST /calendar/events`
-
-Natural language calendar operations (list, create, edit events). Has access to all registered tools including Google Calendar tools.
-
-**Body:**
-```json
-{
-  "message": "string"
-}
-```
-
-**Response:**
-```json
-{
-  "result": "string"
-}
-```
-
----
-
 ## Briefing
 
 ### `GET /briefing`

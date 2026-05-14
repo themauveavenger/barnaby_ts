@@ -20,9 +20,7 @@ import briefingRepositoryPlugin from './plugins/briefing-repository.js';
 import briefingRoutes from './routes/briefing/index.js';
 import memoryRoutes from './routes/memories/index.js';
 import pageRoutes from './routes/pages/index.js';
-import chatRoutes from './routes/chat/index.js';
 import healthRoutes from './routes/health/index.js';
-import calendarRoutes from './routes/calendar/index.js';
 
 type LoggerConfig = FastifyLoggerOptions & PinoLoggerOptions;
 
@@ -138,8 +136,6 @@ export async function buildApp() {
   await app.register(healthRoutes, { prefix: '/health' });
   await app.register(memoryRoutes, { prefix: '/memories' });
   await app.register(pageRoutes);
-  await app.register(chatRoutes, { prefix: '/chat' });
-  await app.register(calendarRoutes, { prefix: '/calendar' });
   await app.register(briefingRoutes, { prefix: '/briefing' });
 
   return app;
