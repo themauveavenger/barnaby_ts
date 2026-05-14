@@ -33,6 +33,14 @@
 - Do not use supertest. Use Fastify's `inject()` with `vitest` for HTTP assertions.
 - Use the command `npm run test:minimal` defined the package.json file when running tests instead of using `npx vitest`. This keeps output minimal and limited for agent use.
 
+## Shell Scripts & Heredocs
+
+- The deploy script (`scripts/deploy.sh`) uses an **unquoted heredoc** (`<<REMOTE`) to send a script to a remote host via `ssh`. The local shell expands `$VAR` and `${VAR}` before transmission.
+- Variables meant for the **remote shell** must be escaped: `\${VAR}`, `\$VAR`, `\$(cmd)`. Unescaped references are evaluated locally and will either use wrong values or fail under `set -u` with "unbound variable".
+- Variables meant for the **local shell** (e.g. `${PI_HOST}`, `${DOMAIN}`) are intentionally unescaped.
+- When editing code inside an unquoted heredoc, **always check every `$` and `${}`** — if it's a remote variable, escape it with a backslash.
+- A quoted heredoc (`<<'REMOTE'`) would disable all local expansion. This project deliberately uses unquoted to inject local variables, so the escaping discipline is required.
+
 ## Runtime
 
 - Start the dev server with `tsx --env-file=./.env ./src/index.ts`. The `.env` file is gitignored.
