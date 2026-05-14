@@ -21,6 +21,7 @@ import briefingRoutes from './routes/briefing/index.js';
 import memoryRoutes from './routes/memories/index.js';
 import pageRoutes from './routes/pages/index.js';
 import chatRoutes from './routes/chat/index.js';
+import healthRoutes from './routes/health/index.js';
 import calendarRoutes from './routes/calendar/index.js';
 
 type LoggerConfig = FastifyLoggerOptions & PinoLoggerOptions;
@@ -101,7 +102,13 @@ export async function buildApp() {
     authenticate: { realm: 'barnaby' },
   });
 
-  app.addHook('onRequest', app.basicAuth);
+  app.addHook('onRequest', (request, reply, done) => {
+    if (request.url.startsWith('/health')) {
+      done();
+      return;
+    }
+    app.basicAuth(request, reply, done);
+  });
 
   app.addHook('preParsing', async (request) => {
     request.log = request.log.child({
@@ -128,6 +135,7 @@ export async function buildApp() {
     return result;
   });
 
+  await app.register(healthRoutes, { prefix: '/health' });
   await app.register(memoryRoutes, { prefix: '/memories' });
   await app.register(pageRoutes);
   await app.register(chatRoutes, { prefix: '/chat' });
