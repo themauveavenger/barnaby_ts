@@ -27,6 +27,13 @@
 - Prefer `match` over ternary expressions when branching on a nullable value — `.with(null, ...).otherwise(...)` narrows the type in the handler and avoids nested `? :`.
 - Do **not** use `match` for simple two-branch booleans, procedural `let`-mutation inside `if`/`else` blocks, or cases where a plain `if` is clearer. Pattern matching should improve readability, not add indirection.
 
+## Linting
+
+- ESLint 10 with flat config (`eslint.config.js`). Run `npm run lint` to check, `npm run lint:fix` to auto-fix.
+- The config enforces: single quotes, semicolons, no trailing commas, no unused vars (allow `_` prefix), no `any` or `Function` types in source code.
+- Test files (`test/**/*.ts`) are relaxed: `any` and `Function` types are allowed for mock flexibility.
+- Lint must pass with zero errors before any feature work is considered done — alongside `npm run typecheck` and `npm run test:minimal`.
+
 ## Testing
 
 - Prefer end-to-end (e2e) tests over narrow integration tests.
