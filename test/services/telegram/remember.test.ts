@@ -7,8 +7,17 @@ vi.mock('@earendil-works/pi-coding-agent', () => ({
   },
 }));
 
+vi.mock('../../../src/services/telegram/shared.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/services/telegram/shared.js')>();
+  return {
+    ...actual,
+    withTimeout: vi.fn(actual.withTimeout),
+  };
+});
+
 import { createAgentSession } from '@earendil-works/pi-coding-agent';
 import type { Context } from 'grammy';
+import { SESSION_TIMEOUT_MS, withTimeout } from '../../../src/services/telegram/shared.js';
 import { handleRemember } from '../../../src/services/telegram/remember.js';
 
 function createMockSession() {
@@ -20,6 +29,8 @@ function createMockSession() {
     abort: vi.fn().mockResolvedValue(undefined),
   };
 }
+
+
 
 function createMockContext(overrides: Partial<{ chatId: number; match: string | undefined }> = {}) {
   return {
@@ -159,5 +170,18 @@ describe('handleRemember', () => {
     expect(prompt).toContain('"note"');
     expect(prompt).toContain('permanent');
     expect(prompt).toContain('core');
+  });
+
+  it('reacts with shrug and sends timeout message when session times out', async () => {
+    (withTimeout as any).mockResolvedValueOnce({ result: undefined, wasTimeout: true });
+
+    const mockSession = createMockSession();
+    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+
+    const ctx = createMockContext({ match: 'something to remember' });
+    await handleRemember(ctx, fastify);
+
+    expect(ctx.react).toHaveBeenCalledWith('🤷');
+    expect(ctx.reply).toHaveBeenCalledWith('That took too long — please try again.');
   });
 });

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { createBriefingService, registerBriefingJob } from '../../src/services/briefing.js';
-import { getTimeOfDay, formatMemoryList, formatResolvedList, buildMemoryContext, createAgentAndDeliver, MissingChatIdError, EmptyResponseError } from '../../src/services/briefing-helpers.js';
+import { getTimeOfDay, formatMemoryList, formatResolvedList, buildMemoryContext, createAgentAndDeliver, MissingChatIdError, EmptyResponseError } from '../../src/services/telegram-utils.js';
 import type { Memory, ResolvedMemory } from '../../src/plugins/repository.js';
 
 vi.mock('@earendil-works/pi-coding-agent', () => ({

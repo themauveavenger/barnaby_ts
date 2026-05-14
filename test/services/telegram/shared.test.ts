@@ -26,6 +26,38 @@ describe('telegram/shared', () => {
   });
 
   describe('withTimeout', () => {
+    it('returns wasTimeout=true when fn exceeds timeout', async () => {
+      vi.useFakeTimers();
+
+      let rejectPromise: ((reason?: unknown) => void) | undefined;
+      const mockSession = {
+        setAutoRetryEnabled: vi.fn(),
+        abort: vi.fn().mockImplementation(() => {
+          rejectPromise?.(new Error('Aborted'));
+          return Promise.resolve();
+        }),
+        dispose: vi.fn(),
+      };
+
+      const fn = async () => {
+        return new Promise<string>((_, reject) => {
+          rejectPromise = reject;
+        });
+      };
+
+      const promise = withTimeout(mockSession as any, fn);
+
+      vi.advanceTimersByTime(SESSION_TIMEOUT_MS + 10);
+
+      const result = await promise;
+
+      expect(result).toEqual({ result: undefined, wasTimeout: true });
+      expect(mockSession.abort).toHaveBeenCalled();
+      expect(mockSession.dispose).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
     it('resolves with result when fn succeeds', async () => {
       const mockSession = {
         setAutoRetryEnabled: vi.fn(),

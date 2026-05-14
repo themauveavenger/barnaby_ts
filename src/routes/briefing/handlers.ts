@@ -1,7 +1,7 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { createBriefingService } from '../../services/briefing.js';
 import { createAfternoonUpdateService } from '../../services/afternoon-update.js';
-import { MissingChatIdError, EmptyResponseError } from '../../services/briefing-helpers.js';
+import { MissingChatIdError, EmptyResponseError } from '../../services/telegram-utils.js';
 import { NotFoundError } from '../../plugins/error-handler.js';
 import type { ListBriefingsQuery } from '../../plugins/briefing-repository.js';
 

@@ -24,6 +24,11 @@ export async function withTimeout<T>(
   try {
     const result = await fn();
     return { result, wasTimeout: false };
+  } catch (error) {
+    if (wasTimeout) {
+      return { result: undefined, wasTimeout: true };
+    }
+    throw error;
   } finally {
     clearTimeout(timeoutId);
     session.dispose();

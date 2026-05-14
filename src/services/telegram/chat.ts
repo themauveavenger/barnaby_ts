@@ -1,8 +1,7 @@
 import type { Context } from 'grammy';
 import type { FastifyInstance } from 'fastify';
 import { createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
-import { BARNABY_PERSONALITY } from '../../agent/personality.js';
-import { buildMemoryContext } from '../../services/briefing-helpers.js';
+import { buildMemoryContext } from '../../services/telegram-utils.js';
 import { isAllowedChat, withTimeout } from './shared.js';
 
 export async function handleChat(ctx: Context, fastify: FastifyInstance): Promise<void> {
@@ -40,9 +39,7 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
     const memoryContext = buildMemoryContext(fastify);
 
     const prompt = [
-      BARNABY_PERSONALITY,
-      '',
-      ...(memoryContext ? ['', memoryContext] : []),
+      ...(memoryContext ? [memoryContext] : []),
       '',
       `The user asks: "${text}"`,
       '',

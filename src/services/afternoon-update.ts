@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { AsyncTask, CronJob } from 'toad-scheduler';
 import { TZDate, tzName } from '@date-fns/tz';
 import { add, format } from 'date-fns';
-import { getTimeOfDay, buildMemoryContext, createAgentAndDeliver } from './briefing-helpers.js';
+import { getTimeOfDay, buildMemoryContext, createAgentAndDeliver } from './telegram-utils.js';
 
 export type AfternoonUpdateService = {
   sendUpdate(signal?: AbortSignal): Promise<void>;

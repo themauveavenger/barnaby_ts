@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { AsyncTask, CronJob } from 'toad-scheduler';
 import { TZDate, tzName } from '@date-fns/tz';
 import { add, format, sub } from 'date-fns';
-import { getTimeOfDay, buildMemoryContext, createAgentAndDeliver } from './briefing-helpers.js';
+import { getTimeOfDay, buildMemoryContext, createAgentAndDeliver } from './telegram-utils.js';
 
 export type BriefingService = {
   sendBriefing(options?: { triggerType?: 'scheduled' | 'manual' }, signal?: AbortSignal): Promise<void>;

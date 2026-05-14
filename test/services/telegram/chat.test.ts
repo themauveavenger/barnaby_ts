@@ -7,8 +7,17 @@ vi.mock('@earendil-works/pi-coding-agent', () => ({
   },
 }));
 
+vi.mock('../../../src/services/telegram/shared.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/services/telegram/shared.js')>();
+  return {
+    ...actual,
+    withTimeout: vi.fn(actual.withTimeout),
+  };
+});
+
 import { createAgentSession } from '@earendil-works/pi-coding-agent';
 import type { Context } from 'grammy';
+import { SESSION_TIMEOUT_MS, withTimeout } from '../../../src/services/telegram/shared.js';
 import { handleChat } from '../../../src/services/telegram/chat.js';
 
 function createMockSession(returnText: string = 'Iris likes maple donuts!') {
@@ -20,6 +29,8 @@ function createMockSession(returnText: string = 'Iris likes maple donuts!') {
     abort: vi.fn().mockResolvedValue(undefined),
   };
 }
+
+
 
 function createMockContext(text: string = 'what type of donut did Iris like?', chatId: number = 12345) {
   return {
@@ -109,18 +120,6 @@ describe('handleChat', () => {
     await handleChat(ctx, fastify);
 
     expect(ctx.reply).toHaveBeenCalledWith("I couldn't come up with a response. Try again?");
-  });
-
-  it('includes personality in prompt', async () => {
-    const mockSession = createMockSession();
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
-
-    const ctx = createMockContext();
-    await handleChat(ctx, fastify);
-
-    const prompt = mockSession.prompt.mock.calls[0][0];
-    expect(prompt).toContain('Barnaby');
-    expect(prompt).toContain('friendly personal assistant');
   });
 
   it('includes user message in prompt', async () => {
@@ -246,5 +245,17 @@ describe('handleChat', () => {
 
     expect(ctx.reply).toHaveBeenCalledWith('Something went wrong — please try again.');
     expect(fastify.log.error).toHaveBeenCalled();
+  });
+
+  it('replies with timeout message when session times out', async () => {
+    (withTimeout as any).mockResolvedValueOnce({ result: undefined, wasTimeout: true });
+
+    const mockSession = createMockSession();
+    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+
+    const ctx = createMockContext();
+    await handleChat(ctx, fastify);
+
+    expect(ctx.reply).toHaveBeenCalledWith('That took too long — please try again.');
   });
 });
