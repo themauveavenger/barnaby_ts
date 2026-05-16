@@ -40,7 +40,6 @@
     "@fastify/view": "11.1.1",
     "@grammyjs/auto-retry": "2.0.2",
     "better-sqlite3": "12.9.0",
-    "currency.js": "2.0.4",
     "date-fns": "4.1.0",
     "fastify": "5.8.5",
     "fastify-plugin": "5.1.0",
@@ -48,9 +47,8 @@
     "googleapis": "171.4.0",
     "grammy": "1.42.0",
     "handlebars": "4.7.9",
-    "mathjs": "15.2.0",
+    "pi-extension-for-ynab": "github:themauveavenger/pi-extension-for-ynab#v0.1.0",
     "ts-pattern": "5.9.0",
-    "typebox": "1.1.38",
-    "ynab": "4.1.0"
+    "typebox": "1.1.38"
   }
 }

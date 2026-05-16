@@ -9,7 +9,6 @@ import databasePlugin from './plugins/database.js';
 import repositoryPlugin from './plugins/repository.js';
 import googleAuthPlugin from './plugins/google-auth.js';
 import calendarClientPlugin from './plugins/calendar-client.js';
-import ynabClientPlugin from './plugins/ynab-client.js';
 import telegramClientPlugin from './plugins/telegram-client.js';
 import schedulerPlugin from './plugins/scheduler.js';
 import agentPlugin from './plugins/agent/index.js';
@@ -68,7 +67,6 @@ export async function buildApp() {
   await app.register(briefingRepositoryPlugin);
   await app.register(googleAuthPlugin);
   await app.register(calendarClientPlugin);
-  await app.register(ynabClientPlugin);
   await app.register(telegramClientPlugin);
   await app.register(agentPlugin);
   await app.register(schedulerPlugin);

@@ -5,7 +5,7 @@ import { getModel } from '@earendil-works/pi-ai';
 import type { Api, Model } from '@earendil-works/pi-ai';
 import { BARNABY_PERSONALITY } from '../../agent/personality.js';
 import createCalendarExtension from './extensions/google-calendar.js';
-import createYnabExtension from './extensions/ynab/index.js';
+import { createYnabExtension } from 'pi-extension-for-ynab';
 import createTelegramExtension from './extensions/telegram.js';
 import createMemoryExtension from './extensions/memory.js';
 import createWeatherExtension from './extensions/weather.js';
@@ -33,7 +33,7 @@ export default fp(async function agentPlugin(fastify: FastifyInstance) {
     noThemes: true,
     extensionFactories: [
       createCalendarExtension(fastify),
-      createYnabExtension(fastify),
+      createYnabExtension(),
       createTelegramExtension(fastify),
       createMemoryExtension(fastify),
       createWeatherExtension(fastify),

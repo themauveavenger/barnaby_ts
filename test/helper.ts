@@ -7,7 +7,7 @@ export async function buildTestApp() {
   process.env.GOOGLE_CLIENT_ID = 'test-client-id';
   process.env.GOOGLE_CLIENT_SECRET = 'test-client-secret';
   process.env.GOOGLE_REFRESH_TOKEN = 'test-refresh-token';
-  process.env.YNAB_ACCESS_TOKEN = 'test-ynab-token';
+  process.env.YNAB_PERSONAL_ACCESS_TOKEN = 'test-ynab-token';
   process.env.TELEGRAM_BOT_TOKEN = 'test-bot-token';
   process.env.TELEGRAM_CHAT_ID = '123456789';
   process.env.CALENDAR_IDS = 'test@example.com,family@group.calendar.google.com';
