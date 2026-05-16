@@ -102,8 +102,8 @@ describe('telegram/shared', () => {
   });
 
   describe('SESSION_TIMEOUT_MS', () => {
-    it('is 30 seconds', () => {
-      expect(SESSION_TIMEOUT_MS).toBe(30_000);
+    it('is 45 seconds', () => {
+      expect(SESSION_TIMEOUT_MS).toBe(45_000);
     });
   });
 });

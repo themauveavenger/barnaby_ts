@@ -1,6 +1,6 @@
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 
-export const SESSION_TIMEOUT_MS = 30_000;
+export const SESSION_TIMEOUT_MS = 45_000;
 
 export function isAllowedChat(chatId: number): boolean {
   const allowedChatId = Number(process.env.TELEGRAM_CHAT_ID);
@@ -25,7 +25,7 @@ export async function withTimeout<T>(
 
   try {
     const result = await fn();
-    return { result, wasTimeout: false };
+    return { result, wasTimeout };
   }
   catch (error) {
     if (wasTimeout) {
