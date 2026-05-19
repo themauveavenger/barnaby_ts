@@ -43,3 +43,17 @@
 - Variables meant for the **local shell** (e.g. `${PI_HOST}`, `${DOMAIN}`) are intentionally unescaped.
 - When editing code inside an unquoted heredoc, **always check every `$` and `${}`** — if it's a remote variable, escape it with a backslash.
 - A quoted heredoc (`<<'REMOTE'`) would disable all local expansion. This project deliberately uses unquoted to inject local variables, so the escaping discipline is required.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for this repo; use `gh` for issue operations. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+This repo uses the default five canonical triage labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
