@@ -8,6 +8,11 @@ export default function createTelegramExtension(fastify: FastifyInstance): Exten
       name: 'telegram_send_message',
       label: 'Send Telegram Message',
       description: 'Send a message via Telegram',
+      promptSnippet: 'Send a message to the user via Telegram',
+      promptGuidelines: [
+        'Use telegram_send_message to notify the user via Telegram when they explicitly ask to be messaged or notified.',
+        'Do not use telegram_send_message proactively — only send when the user requests a notification or message delivery.'
+      ],
       parameters: Type.Object({
         text: Type.String({ description: 'The message text to send via Telegram' })
       }),

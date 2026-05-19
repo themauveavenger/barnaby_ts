@@ -31,22 +31,22 @@ export const MEMORY_TOOL_PROMPT_SNIPPETS = {
 
 export const MEMORY_TOOL_PROMPT_GUIDELINES = {
   memory_create: [
-    'Use memory_create to save information the user wants to remember',
-    'FIRST: Choose the category based on the content type (todo=task, appointment=scheduled event, note=everything else)',
-    'SECOND: Apply 1-4 relevant tags following the TAGGING RULES above',
-    'THIRD: Set permanent=true + tag "core" only for long-term facts about the user',
-    'Return a brief confirmation listing: what was saved, category, and all tags applied'
+    'Use memory_create to save information the user wants to remember.',
+    'For memory_create, choose the category based on content type (todo=task, appointment=scheduled event, note=everything else).',
+    'For memory_create, apply 1-4 relevant tags following the TAGGING RULES above.',
+    'For memory_create, set permanent=true + tag "core" only for long-term facts about the user.',
+    'After memory_create succeeds, confirm what was saved including category and all tags applied.'
   ],
   memory_list: [
-    'Use memory_list when the user asks what they have to do, what they\'ve noted, or wants to see memories',
-    'Filter by category when the user asks about a specific type (e.g. "todos" → category=todo)',
-    'Filter by tags when the user mentions specific contexts (e.g. "work stuff" → tags=["work"])',
-    'Use recent_days for time-bounded queries (e.g. "what\'s coming up this week")',
-    'When listing results, include each memory\'s ID, category, tags, and content so the user (or you) can reference them later'
+    'Use memory_list when the user asks what they have to do, what they\'ve noted, or wants to see memories.',
+    'For memory_list, filter by category when the user asks about a specific type (e.g. "todos" → category=todo).',
+    'For memory_list, filter by tags when the user mentions specific contexts (e.g. "work stuff" → tags=["work"]).',
+    'For memory_list, use recent_days for time-bounded queries (e.g. "what\'s coming up this week").',
+    'When memory_list returns results, include each memory\'s ID, category, tags, and content so they can be referenced later.'
   ],
   memory_resolve: [
-    'Use memory_resolve to mark a memory as completed or dismissed',
-    'You must provide the exact memory_id — use memory_list first to find it',
-    'Default to "completed" for tasks that were done; use "dismissed" for things the user no longer cares about'
+    'Use memory_resolve to mark a memory as completed or dismissed.',
+    'For memory_resolve, use memory_list first to find the exact memory_id.',
+    'For memory_resolve, default to "completed" for tasks done; use "dismissed" for things no longer relevant.'
   ]
 } as const;

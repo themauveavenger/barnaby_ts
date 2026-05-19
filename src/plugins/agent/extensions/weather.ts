@@ -19,6 +19,11 @@ export default function createWeatherExtension(
       label: 'Get Weather Forecast',
       description:
         'Fetches today\'s weather forecast and air quality for the user\'s fixed location. Returns the weather condition, high/low temperature, approximate time of the daily high, rain expectations with timing, and US Air Quality Index if moderate or worse.',
+      promptSnippet: 'Get today\'s weather forecast and air quality for the user\'s location',
+      promptGuidelines: [
+        'Use get_weather_forecast when the user asks about weather, temperature, rain, or air quality.',
+        'get_weather_forecast takes no parameters — it always returns today\'s forecast for the user\'s configured location.'
+      ],
       parameters: Type.Object({}),
       async execute(_toolCallId, _params) {
         const latitude = process.env.WEATHER_LATITUDE;

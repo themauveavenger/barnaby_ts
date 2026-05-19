@@ -39,7 +39,7 @@ export default fp(async function agentPlugin(fastify: FastifyInstance) {
       createWeatherExtension(fastify),
       createGoogleDriveExtension(fastify)
     ],
-    systemPrompt: BARNABY_PERSONALITY
+    appendSystemPrompt: [BARNABY_PERSONALITY]
   });
   await resourceLoader.reload();
 
