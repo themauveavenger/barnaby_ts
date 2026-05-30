@@ -32,7 +32,7 @@ Create a new memory.
 ```json
 {
   "content": "string (1-2000 chars)",
-  "category": "appointment | note | todo | purchase",
+  "category": "note | todo",
   "permanent": false,
   "tags": ["string"]
 }
@@ -44,7 +44,7 @@ Delete a memory and its associated tags and actions (cascading).
 
 ### `POST /memories/:id/actions`
 
-Create an action on a memory (complete or dismiss a todo/purchase).
+Create an action on a memory (complete or dismiss a todo).
 
 **Body:**
 ```json

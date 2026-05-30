@@ -8,7 +8,6 @@ export const MEMORY_ACTION_TYPES = [
 
 const categoryDescriptions: Record<MemoryCategory, string> = {
   todo: 'a task or thing the user needs to do',
-  appointment: 'a scheduled event, date, or meeting',
   note: 'general information, facts, or reminders (default when unclear)'
 };
 
@@ -32,7 +31,7 @@ export const MEMORY_TOOL_PROMPT_SNIPPETS = {
 export const MEMORY_TOOL_PROMPT_GUIDELINES = {
   memory_create: [
     'Use memory_create to save information the user wants to remember.',
-    'For memory_create, choose the category based on content type (todo=task, appointment=scheduled event, note=everything else).',
+    'For memory_create, choose the category based on content type (todo=task, note=everything else).',
     'For memory_create, apply 1-4 relevant tags following the TAGGING RULES above.',
     'For memory_create, set permanent=true + tag "core" only for long-term facts about the user.',
     'After memory_create succeeds, confirm what was saved including category and all tags applied.'

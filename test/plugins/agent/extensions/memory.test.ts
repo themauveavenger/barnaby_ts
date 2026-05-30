@@ -188,28 +188,28 @@ describe('memory extension', () => {
       // Create some memories first
       const createTool = getTools(extApi).find(t => t.name === 'memory_create')!;
       await createTool.execute('call-1', { content: 'Buy milk', category: 'todo' });
-      await createTool.execute('call-2', { content: 'Dentist at 2pm', category: 'appointment' });
+      await createTool.execute('call-2', { content: 'Dentist at 2pm', category: 'note' });
 
       const tools = getTools(extApi);
       const listTool = tools.find(t => t.name === 'memory_list')!;
       const result = await listTool.execute('call-3', {});
 
       expect(result.content[0].text).toContain('[todo] Buy milk');
-      expect(result.content[0].text).toContain('[appointment] Dentist at 2pm');
+      expect(result.content[0].text).toContain('[note] Dentist at 2pm');
       expect(result.content[0].text).toContain('2 total, showing 2');
     });
 
     it('filters by category', async () => {
       const createTool = getTools(extApi).find(t => t.name === 'memory_create')!;
       await createTool.execute('call-1', { content: 'Buy milk', category: 'todo' });
-      await createTool.execute('call-2', { content: 'Dentist', category: 'appointment' });
+      await createTool.execute('call-2', { content: 'Dentist', category: 'note' });
 
       const tools = getTools(extApi);
       const listTool = tools.find(t => t.name === 'memory_list')!;
       const result = await listTool.execute('call-3', { category: 'todo' });
 
       expect(result.content[0].text).toContain('[todo] Buy milk');
-      expect(result.content[0].text).not.toContain('[appointment]');
+      expect(result.content[0].text).not.toContain('[note]');
     });
 
     it('lists recent memories by days', async () => {

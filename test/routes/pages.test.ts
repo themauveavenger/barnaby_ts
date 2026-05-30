@@ -302,26 +302,6 @@ describe('Memories Page', () => {
     expect(response.payload).not.toContain('Dismiss</button>');
   });
 
-  it('should not display action buttons for appointment memories', async () => {
-    await app.inject({
-      method: 'POST',
-      url: '/memories',
-      headers: { authorization: authHeader },
-      payload: { content: 'Dentist at 2pm', category: 'appointment' }
-    });
-
-    const response = await app.inject({
-      method: 'GET',
-      url: '/',
-      headers: { authorization: authHeader }
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.payload).not.toContain('Complete</button>');
-    expect(response.payload).not.toContain('Bought</button>');
-    expect(response.payload).not.toContain('Dismiss</button>');
-  });
-
   it('should display action status for completed memories', async () => {
     const createRes = await app.inject({
       method: 'POST',

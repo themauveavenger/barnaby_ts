@@ -1,5 +1,4 @@
 export const MEMORY_CATEGORIES = [
-  { name: 'appointment', label: 'Appointment', actionLabel: null },
   { name: 'note', label: 'Note', actionLabel: null },
   { name: 'todo', label: 'Todo', actionLabel: 'Complete' }
 ] as const;

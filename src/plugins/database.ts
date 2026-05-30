@@ -21,7 +21,7 @@ export default fp(async function databasePlugin(fastify: FastifyInstance) {
       id TEXT PRIMARY KEY,
       content TEXT NOT NULL,
       -- Category list must stay in sync with src/plugins/memory-categories.ts
-      category TEXT NOT NULL CHECK (category IN ('appointment', 'note', 'todo')),
+      category TEXT NOT NULL CHECK (category IN ('note', 'todo')),
       permanent INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL
     );
@@ -61,6 +61,9 @@ export default fp(async function databasePlugin(fastify: FastifyInstance) {
   if (!hasPermanent) {
     db.exec('ALTER TABLE memories ADD COLUMN permanent INTEGER NOT NULL DEFAULT 0');
   }
+
+  // Migration: retire 'appointment' category (moved to Google Calendar)
+  db.exec(`UPDATE memories SET category = 'note' WHERE category = 'appointment'`);
 
   // Pre-populate default tags
   db.exec(`

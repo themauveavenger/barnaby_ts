@@ -42,7 +42,7 @@ describe('Memories API', () => {
         headers: { authorization: authHeader },
         payload: {
           content: 'Dentist at 2pm',
-          category: 'appointment',
+          category: 'note',
           tags: ['health', 'reminder']
         }
       });
@@ -50,7 +50,7 @@ describe('Memories API', () => {
       expect(response.statusCode).toBe(201);
       const body = response.json();
       expect(body.content).toBe('Dentist at 2pm');
-      expect(body.category).toBe('appointment');
+      expect(body.category).toBe('note');
       expect(body.tags).toContain('health');
       expect(body.tags).toContain('reminder');
       expect(body.permanent).toBe(false);

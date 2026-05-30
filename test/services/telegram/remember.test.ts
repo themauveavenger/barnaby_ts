@@ -86,7 +86,7 @@ describe('handleRemember', () => {
     const prompt = mockSession.prompt.mock.calls[0][0];
     expect(prompt).toContain('call the dentist on Friday');
     expect(prompt).toContain('todo');
-    expect(prompt).toContain('appointment');
+    expect(prompt).toContain('note');
 
     expect(ctx.react).toHaveBeenCalledWith('👍');
     expect(ctx.reply).not.toHaveBeenCalled();
@@ -164,7 +164,6 @@ describe('handleRemember', () => {
 
     const prompt = mockSession.prompt.mock.calls[0][0];
     expect(prompt).toContain('"todo"');
-    expect(prompt).toContain('"appointment"');
     expect(prompt).toContain('"note"');
     expect(prompt).toContain('permanent');
     expect(prompt).toContain('core');

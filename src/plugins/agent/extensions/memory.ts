@@ -15,7 +15,7 @@ function createMemoryCreateTool(fastify: FastifyInstance): ToolDefinition {
   return {
     name: 'memory_create',
     label: 'Create Memory',
-    description: 'Create a new memory for the user. Memories store notes, tasks, appointments, and purchases.',
+    description: 'Create a new memory for the user. Memories store notes, tasks, and purchases.',
     promptSnippet: MEMORY_TOOL_PROMPT_SNIPPETS.memory_create,
     promptGuidelines: [...MEMORY_TOOL_PROMPT_GUIDELINES.memory_create],
     parameters: Type.Object({
