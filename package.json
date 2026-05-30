@@ -21,18 +21,18 @@
     "@tsconfig/node-ts": "23.6.4",
     "@tsconfig/node24": "24.0.4",
     "@types/better-sqlite3": "7.6.13",
-    "@types/node": "25.9.0",
-    "eslint": "10.4.0",
+    "@types/node": "25.9.1",
+    "eslint": "10.4.1",
     "globals": "17.6.0",
     "tsx": "4.22.3",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.59.4",
-    "vitest": "4.1.6"
+    "typescript-eslint": "8.60.0",
+    "vitest": "4.1.7"
   },
   "dependencies": {
-    "@date-fns/tz": "1.4.1",
-    "@earendil-works/pi-ai": "0.75.3",
-    "@earendil-works/pi-coding-agent": "0.75.3",
+    "@date-fns/tz": "1.5.0",
+    "@earendil-works/pi-ai": "0.78.0",
+    "@earendil-works/pi-coding-agent": "0.78.0",
     "@fastify/basic-auth": "6.2.0",
     "@fastify/helmet": "13.0.2",
     "@fastify/schedule": "6.0.0",
@@ -40,15 +40,15 @@
     "@fastify/view": "11.1.1",
     "@grammyjs/auto-retry": "2.0.2",
     "better-sqlite3": "12.10.0",
-    "date-fns": "4.2.1",
+    "date-fns": "4.4.0",
     "fastify": "5.8.5",
     "fastify-plugin": "5.1.0",
     "google-auth-library": "10.6.2",
-    "googleapis": "171.4.0",
+    "googleapis": "173.0.0",
     "grammy": "1.43.0",
     "handlebars": "4.7.9",
-    "pi-extension-for-ynab": "github:themauveavenger/pi-extension-for-ynab#v0.1.5",
+    "pi-extension-for-ynab": "github:themauveavenger/pi-extension-for-ynab#v0.1.6",
     "ts-pattern": "5.9.0",
-    "typebox": "1.1.38"
+    "typebox": "1.1.39"
   }
 }
