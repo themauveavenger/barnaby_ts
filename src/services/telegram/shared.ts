@@ -1,5 +1,4 @@
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
-import { } from 'ts-pattern';
 
 /**
  * Maximum time (in milliseconds) allowed for an LLM operation before timing out.
