@@ -49,9 +49,13 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
       sessionCreated = true;
 
       const memoryContext = buildMemoryContext(fastify);
+      const calendarContext = fastify.calendarIds.length > 0
+        ? `Available calendars:\n${fastify.calendarIds.map(id => `- ${id}`).join('\n')}`
+        : '';
 
       prompt = [
         ...(memoryContext ? [memoryContext] : []),
+        ...(calendarContext ? [calendarContext] : []),
         '',
         `The user asks: "${text}"`,
         '',

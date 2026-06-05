@@ -55,6 +55,7 @@ function createMockFastify(_memoryContext = '') {
       findResolvedRecent: vi.fn().mockReturnValue([])
     },
     memoryActionRepository: {},
+    calendarIds: [] as string[],
     log: {
       info: vi.fn(),
       error: vi.fn(),
@@ -180,6 +181,34 @@ describe('handleChat', () => {
     const prompt = mockSession.prompt.mock.calls[0][0];
     expect(prompt).not.toContain('Core memories about the user');
     expect(prompt).not.toContain('Recent notes and tasks');
+  });
+
+  it('includes calendar context when calendars are configured', async () => {
+    const mockSession = createMockSession();
+    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+
+    fastify.calendarIds = ['primary', 'family.calendar@gmail.com'];
+
+    const ctx = createMockContext();
+    await handleChat(ctx, fastify);
+
+    const prompt = mockSession.prompt.mock.calls[0][0];
+    expect(prompt).toContain('Available calendars');
+    expect(prompt).toContain('- primary');
+    expect(prompt).toContain('- family.calendar@gmail.com');
+  });
+
+  it('omits calendar context when no calendars are configured', async () => {
+    const mockSession = createMockSession();
+    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+
+    fastify.calendarIds = [];
+
+    const ctx = createMockContext();
+    await handleChat(ctx, fastify);
+
+    const prompt = mockSession.prompt.mock.calls[0][0];
+    expect(prompt).not.toContain('Available calendars');
   });
 
   it('ignores messages from unauthorized chat ID', async () => {

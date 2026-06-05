@@ -18,11 +18,7 @@ const sessions = new LRUCache<number, AgentSession>({
   // need on a cache of at most 10 entries.
   ttlResolution: 0,
   perf: { now: () => Date.now() },
-  dispose: async session => {
-    const r = await session.compact();
-
-    session.dispose();
-  }
+  dispose: session => session.dispose()
 });
 
 export function getSession(chatId: number): AgentSession | undefined {
