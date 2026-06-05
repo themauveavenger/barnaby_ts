@@ -8,8 +8,21 @@ const sessions = new LRUCache<number, AgentSession>({
   ttl: SESSION_TTL_MS,
   updateAgeOnGet: true,
   ttlAutopurge: true,
+  // Disable lru-cache's 1ms TTL-resolution debounce. The debounce caches
+  // the last `perf.now()` value in a closure for 1ms, which makes
+  // subsequent `isStale` checks use the cached value instead of calling
+  // `perf.now()` again. This is fine in production but breaks tests that
+  // switch from real to fake timers in under 1ms: the cached real-time
+  // value sticks around and makes the cache think new entries are
+  // billions of ms old. The debounce is a micro-optimisation we don't
+  // need on a cache of at most 10 entries.
+  ttlResolution: 0,
   perf: { now: () => Date.now() },
-  dispose: session => session.dispose()
+  dispose: async session => {
+    const r = await session.compact();
+
+    session.dispose();
+  }
 });
 
 export function getSession(chatId: number): AgentSession | undefined {

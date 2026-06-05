@@ -35,7 +35,7 @@ A lighter follow-up to the Briefing, delivered later in the day. Surfaces things
 
 ## Telegram
 
-The primary interface for interacting with Barnaby. Regular messages are conversational (Barnaby can search and resolve memories). Slash commands (`/remember`, future `/ynab`, etc.) are focused interactions scoped to a specific domain.
+The primary interface for interacting with Barnaby. Regular messages are conversational with read-only access to memories, calendar events, and Google Docs (Barnaby can search and resolve memories, list upcoming calendar events, and read documents from Drive). Slash commands (`/remember`, future `/ynab`, etc.) are focused interactions scoped to a specific domain.
 
 ## Admin UI
 

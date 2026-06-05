@@ -78,7 +78,7 @@ describe('handleChat', () => {
     vi.clearAllMocks();
   });
 
-  it('creates session with memory_list and memory_resolve tools', async () => {
+  it('creates session with read-only tools for memories, calendar, and drive', async () => {
     const mockSession = createMockSession();
     (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -87,7 +87,7 @@ describe('handleChat', () => {
 
     expect(createAgentSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        tools: ['memory_list', 'memory_resolve']
+        tools: ['calendar_list', 'memory_list', 'memory_resolve', 'drive_read_doc', 'drive_list_docs']
       })
     );
   });
@@ -134,7 +134,7 @@ describe('handleChat', () => {
     expect(prompt).toContain('what type of donut did Iris like?');
   });
 
-  it('includes "you cannot create new memories" instruction in prompt', async () => {
+  it('includes read-only instruction in prompt', async () => {
     const mockSession = createMockSession();
     (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -142,7 +142,7 @@ describe('handleChat', () => {
     await handleChat(ctx, fastify);
 
     const prompt = mockSession.prompt.mock.calls[0][0];
-    expect(prompt).toContain('you cannot create new ones');
+    expect(prompt).toContain('You cannot create any new memories');
   });
 
   it('includes memory context when memories exist', async () => {
@@ -286,7 +286,7 @@ describe('handleChat', () => {
 
     const firstPrompt = mockSession.prompt.mock.calls[0][0];
     expect(firstPrompt).toContain('Answer concisely and naturally');
-    expect(firstPrompt).toContain('you cannot create new ones');
+    expect(firstPrompt).toContain('You cannot create any new memories');
 
     // Second message - reuses session with just user message
     mockSession.getLastAssistantText.mockReturnValue('Second response');
@@ -300,25 +300,29 @@ describe('handleChat', () => {
   it('creates new session for different chat ID', async () => {
     const chatId1 = 12345;
     const chatId2 = 67890;
-    process.env.TELEGRAM_CHAT_ID = '12345,67890'; // Allow both chat IDs
+    vi.stubEnv('TELEGRAM_CHAT_ID', '12345,67890'); // Allow both chat IDs
 
-    const mockSession1 = createMockSession('Response 1');
-    const mockSession2 = createMockSession('Response 2');
-    (createAgentSession as any)
-      .mockResolvedValueOnce({ session: mockSession1 })
-      .mockResolvedValueOnce({ session: mockSession2 });
+    try {
+      const mockSession1 = createMockSession('Response 1');
+      const mockSession2 = createMockSession('Response 2');
+      (createAgentSession as any)
+        .mockResolvedValueOnce({ session: mockSession1 })
+        .mockResolvedValueOnce({ session: mockSession2 });
 
-    // First chat ID
-    const ctx1 = createMockContext('hello from chat 1', chatId1);
-    await handleChat(ctx1, fastify);
+      // First chat ID
+      const ctx1 = createMockContext('hello from chat 1', chatId1);
+      await handleChat(ctx1, fastify);
 
-    // Second chat ID
-    const ctx2 = createMockContext('hello from chat 2', chatId2);
-    await handleChat(ctx2, fastify);
+      // Second chat ID
+      const ctx2 = createMockContext('hello from chat 2', chatId2);
+      await handleChat(ctx2, fastify);
 
-    expect(createAgentSession).toHaveBeenCalledTimes(2);
-    expect(mockSession1.prompt).toHaveBeenCalledTimes(1);
-    expect(mockSession2.prompt).toHaveBeenCalledTimes(1);
+      expect(createAgentSession).toHaveBeenCalledTimes(2);
+      expect(mockSession1.prompt).toHaveBeenCalledTimes(1);
+      expect(mockSession2.prompt).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it('does not call dispose on session after successful prompt', async () => {
@@ -330,5 +334,59 @@ describe('handleChat', () => {
 
     // Session should NOT be disposed - it's managed by the session store
     expect(mockSession.dispose).not.toHaveBeenCalled();
+  });
+
+  it('creates a new session after the cached session has expired', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+    try {
+      const mockSession1 = createMockSession('First response');
+      const mockSession2 = createMockSession('Second response');
+      (createAgentSession as any)
+        .mockResolvedValueOnce({ session: mockSession1 })
+        .mockResolvedValueOnce({ session: mockSession2 });
+
+      // First message — creates and stores a session.
+      await handleChat(createMockContext('hello', 12345), fastify);
+      expect(createAgentSession).toHaveBeenCalledTimes(1);
+      expect(mockSession1.dispose).not.toHaveBeenCalled();
+
+      // Advance past the 15-minute TTL. The session store evicts the
+      // first session and calls dispose on it.
+      vi.advanceTimersByTime(15 * 60 * 1000 + 10);
+
+      // Second message — the cached session is gone, so a new one is
+      // created. The first session's dispose should have fired exactly
+      // once from the eviction.
+      await handleChat(createMockContext('hello again', 12345), fastify);
+      expect(createAgentSession).toHaveBeenCalledTimes(2);
+      expect(mockSession1.dispose).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not reuse a session that has been evicted from the store', async () => {
+    const mockSession1 = createMockSession('First response');
+    const mockSession2 = createMockSession('Second response');
+    (createAgentSession as any)
+      .mockResolvedValueOnce({ session: mockSession1 })
+      .mockResolvedValueOnce({ session: mockSession2 });
+
+    // First message — creates and stores a session.
+    await handleChat(createMockContext('hello', 12345), fastify);
+    expect(createAgentSession).toHaveBeenCalledTimes(1);
+    expect(mockSession1.dispose).not.toHaveBeenCalled();
+
+    // Simulate eviction: the session store drops the session and calls
+    // its dispose callback (the LRU does this on max-size eviction, on
+    // clear(), etc.).
+    clearSessionStore();
+    expect(mockSession1.dispose).toHaveBeenCalledTimes(1);
+
+    // Second message — the cached session is gone, so a new one is
+    // created instead of reusing the disposed one.
+    await handleChat(createMockContext('hello again', 12345), fastify);
+    expect(createAgentSession).toHaveBeenCalledTimes(2);
   });
 });
