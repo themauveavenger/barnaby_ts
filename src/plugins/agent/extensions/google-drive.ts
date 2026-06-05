@@ -54,8 +54,7 @@ export default function createGoogleDriveExtension(
             content: [{ type: 'text' as const, text: lines.join('\n') }],
             details: {}
           };
-        }
-        catch (error) {
+        } catch (error) {
           fastify.log.error(error, 'Failed to list Google Docs');
           const message = error instanceof Error ? error.message : String(error);
           const hint
@@ -97,8 +96,7 @@ export default function createGoogleDriveExtension(
             content: [{ type: 'text' as const, text }],
             details: {}
           };
-        }
-        catch (error) {
+        } catch (error) {
           fastify.log.error(error, 'Failed to read Google Doc');
           const message = error instanceof Error ? error.message : String(error);
           const hint

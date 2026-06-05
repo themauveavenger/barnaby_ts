@@ -25,8 +25,7 @@ export default fp(async function calendarClientPlugin(fastify: FastifyInstance) 
           orderBy: 'startTime'
         });
         return res.data.items || [];
-      }
-      catch (error) {
+      } catch (error) {
         fastify.log.error(error, 'Failed to list calendar events');
         throw error;
       }
@@ -39,8 +38,7 @@ export default fp(async function calendarClientPlugin(fastify: FastifyInstance) 
           requestBody: event
         });
         return res.data;
-      }
-      catch (error) {
+      } catch (error) {
         fastify.log.error(error, 'Failed to create calendar event');
         throw error;
       }
@@ -54,8 +52,7 @@ export default fp(async function calendarClientPlugin(fastify: FastifyInstance) 
           requestBody: event
         });
         return res.data;
-      }
-      catch (error) {
+      } catch (error) {
         fastify.log.error(error, 'Failed to update calendar event');
         throw error;
       }

@@ -212,8 +212,7 @@ describe('afternoon update service', () => {
 
       try {
         await service.sendUpdate(controller.signal);
-      }
-      catch {
+      } catch {
         // May throw due to abort
       }
 

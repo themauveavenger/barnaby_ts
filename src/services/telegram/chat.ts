@@ -32,8 +32,7 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
       // Reuse existing session - just send the user's message
       prompt = text;
       fastify.log.debug({ chatId }, 'Reusing existing session');
-    }
-    else {
+    } else {
       // Create new session with full context
       const { authStorage, modelRegistry, model, resourceLoader } = fastify.agent;
 
@@ -43,7 +42,7 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
         modelRegistry,
         resourceLoader,
         sessionManager: SessionManager.inMemory(),
-        tools: ['calendar_list', 'memory_list', 'memory_resolve', "drive_read_doc", "drive_list_docs"]
+        tools: ['calendar_list', 'memory_list', 'memory_resolve', 'drive_read_doc', 'drive_list_docs']
       });
 
       session = result.session;
@@ -75,18 +74,15 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
 
     if (wasTimeout) {
       await ctx.reply('That took too long — please try again.');
-    }
-    else {
+    } else {
       await ctx.reply(responseText ?? 'I couldn\'t come up with a response. Try again?');
     }
-  }
-  catch (error) {
+  } catch (error) {
     fastify.log.error({ err: error, chatId, text }, 'Failed to process Telegram chat message');
 
     if (!sessionCreated) {
       await ctx.reply('Couldn\'t start a session — please try again.');
-    }
-    else {
+    } else {
       await ctx.reply('Something went wrong — please try again.');
     }
   }

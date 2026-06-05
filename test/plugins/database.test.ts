@@ -85,8 +85,7 @@ describe('database plugin', () => {
 
     if (prevDbPath === undefined) {
       delete process.env.DATABASE_PATH;
-    }
-    else {
+    } else {
       process.env.DATABASE_PATH = prevDbPath;
     }
     fs.unlinkSync(tmpDb);

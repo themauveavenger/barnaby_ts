@@ -112,8 +112,7 @@ export async function createAgentAndDeliver(options: DeliverOptions): Promise<st
     }
 
     return responseText;
-  }
-  finally {
+  } finally {
     signal?.removeEventListener('abort', onAbort);
     session.dispose();
   }

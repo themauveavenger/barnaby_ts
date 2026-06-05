@@ -82,8 +82,7 @@ export function findRainWindows(
     const idx = rainyIndices[i];
     if (idx <= windowEnd + 2) {
       windowEnd = idx;
-    }
-    else {
+    } else {
       windows.push({
         start: hourly.time[windowStart],
         end: hourly.time[windowEnd]
@@ -214,8 +213,7 @@ export function formatWeatherSummary(
   let rainText = '';
   if (precipSum === 0) {
     rainText = ' No rain expected.';
-  }
-  else {
+  } else {
     const windows = findRainWindows(forecast.hourly, targetDate);
     if (windows && windows.length > 0) {
       const windowStrs = windows.map(w =>

@@ -46,8 +46,7 @@ function createMemoryCreateTool(fastify: FastifyInstance): ToolDefinition {
           content: [{ type: 'text' as const, text: parts.join(', ') }],
           details: {}
         };
-      }
-      catch (error) {
+      } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return {
           content: [{ type: 'text' as const, text: `Failed to create memory: ${message}` }],
@@ -116,8 +115,7 @@ function createMemoryListTool(fastify: FastifyInstance): ToolDefinition {
           content: [{ type: 'text' as const, text: `${lines.join('\n')}\n\n(${total} total, showing ${data.length})` }],
           details: {}
         };
-      }
-      catch (error) {
+      } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return {
           content: [{ type: 'text' as const, text: `Failed to list memories: ${message}` }],
@@ -155,8 +153,7 @@ function createMemoryResolveTool(fastify: FastifyInstance): ToolDefinition {
           content: [{ type: 'text' as const, text: `${verb}: [${memory.category}] ${memory.content}` }],
           details: {}
         };
-      }
-      catch (error) {
+      } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return {
           content: [{ type: 'text' as const, text: `Failed to resolve memory: ${message}` }],

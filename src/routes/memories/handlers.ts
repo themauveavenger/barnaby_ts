@@ -23,8 +23,7 @@ export async function updateMemory(
   try {
     const memory = request.server.memoryRepository.update(request.params.id, request.body);
     return memory;
-  }
-  catch (err) {
+  } catch (err) {
     if (err instanceof Error && err.message.startsWith('Memory not found')) {
       throw new NotFoundError('Memory not found');
     }

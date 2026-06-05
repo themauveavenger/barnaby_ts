@@ -39,8 +39,7 @@ export default fp(async function telegramClientPlugin(fastify: FastifyInstance) 
   fastify.addHook('onClose', async () => {
     try {
       await bot.stop();
-    }
-    catch (err) {
+    } catch (err) {
       fastify.log.error(err, 'Telegram bot failed to stop');
     }
   });

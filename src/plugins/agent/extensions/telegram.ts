@@ -32,8 +32,7 @@ export default function createTelegramExtension(fastify: FastifyInstance): Exten
             content: [{ type: 'text' as const, text: 'Message sent successfully' }],
             details: {}
           };
-        }
-        catch (error) {
+        } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           return {
             content: [{ type: 'text' as const, text: `Failed to send message: ${message}` }],

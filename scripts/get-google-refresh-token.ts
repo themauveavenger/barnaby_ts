@@ -53,13 +53,11 @@ const server = http.createServer(async (req, res) => {
     console.log(`GOOGLE_REFRESH_TOKEN=${tokens.refresh_token}`);
     res.writeHead(200);
     res.end('Authorization successful! You can close this tab.');
-  }
-  catch (err) {
+  } catch (err) {
     console.error('Failed to exchange code for tokens:', err);
     res.writeHead(500);
     res.end('Failed to exchange code. Check your terminal.');
-  }
-  finally {
+  } finally {
     server.close();
     process.exit(0);
   }

@@ -14,7 +14,8 @@ export default tseslint.config(
     quotes: 'single',
     semi: true,
     commaDangle: 'never',
-    jsx: false
+    jsx: false,
+    braceStyle: '1tbs'
   }),
 
   {

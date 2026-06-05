@@ -22,8 +22,7 @@ export async function briefingTriggerHandler(
     await service.sendBriefing({ triggerType: 'manual' }, controller.signal);
     clearTimeout(timeoutId);
     return { success: true, message: 'Briefing sent' };
-  }
-  catch (error) {
+  } catch (error) {
     clearTimeout(timeoutId);
     if (controller.signal.aborted) {
       reply.code(504);
@@ -58,8 +57,7 @@ export async function afternoonUpdateTriggerHandler(
     await service.sendUpdate(controller.signal);
     clearTimeout(timeoutId);
     return { success: true, message: 'Afternoon update sent' };
-  }
-  catch (error) {
+  } catch (error) {
     clearTimeout(timeoutId);
     if (controller.signal.aborted) {
       reply.code(504);

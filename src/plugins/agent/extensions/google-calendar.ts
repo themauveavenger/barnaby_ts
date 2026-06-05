@@ -80,8 +80,7 @@ export default function createCalendarExtension(fastify: FastifyInstance): Exten
             content: [{ type: 'text' as const, text: lines.join('\n') }],
             details: {}
           };
-        }
-        catch (error) {
+        } catch (error) {
           fastify.log.error(error, 'Failed to list Google Calendar events');
           const message = error instanceof Error ? error.message : String(error);
           return {
@@ -126,8 +125,7 @@ export default function createCalendarExtension(fastify: FastifyInstance): Exten
             content: [{ type: 'text' as const, text: formatCreateResponse(params.calendarId, event, fastify.timezone) }],
             details: {}
           };
-        }
-        catch (error) {
+        } catch (error) {
           fastify.log.error(error, 'Failed to create Google Calendar event');
           const message = error instanceof Error ? error.message : String(error);
           return {
@@ -174,8 +172,7 @@ export default function createCalendarExtension(fastify: FastifyInstance): Exten
             content: [{ type: 'text' as const, text: formatEditResponse(params.calendarId, params.eventId, event, fastify.timezone) }],
             details: {}
           };
-        }
-        catch (error) {
+        } catch (error) {
           fastify.log.error(error, 'Failed to update Google Calendar event');
           const message = error instanceof Error ? error.message : String(error);
           return {

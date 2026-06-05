@@ -48,23 +48,19 @@ export async function handleRemember(ctx: Context, fastify: FastifyInstance): Pr
       if (wasTimeout) {
         await ctx.react('🤷');
         await ctx.reply('That took too long — please try again.');
-      }
-      else {
+      } else {
         await ctx.react('👍');
       }
-    }
-    finally {
+    } finally {
       session.dispose();
     }
-  }
-  catch (error) {
+  } catch (error) {
     fastify.log.error({ err: error, prompt, text }, 'Failed to process /remember command');
     await ctx.react('🤷');
 
     if (!sessionCreated) {
       await ctx.reply('Couldn\'t start a session — please try again.');
-    }
-    else {
+    } else {
       await ctx.reply('Something went wrong — please try again.');
     }
   }

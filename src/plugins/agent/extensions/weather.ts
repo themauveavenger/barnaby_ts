@@ -91,8 +91,7 @@ export default function createWeatherExtension(
           let airQuality: OpenMeteoAirQualityResponse | null = null;
           if (aqRes.ok) {
             airQuality = (await aqRes.json()) as OpenMeteoAirQualityResponse;
-          }
-          else {
+          } else {
             fastify.log.warn(
               `Air quality API returned ${aqRes.status}; omitting AQI`
             );
@@ -108,8 +107,7 @@ export default function createWeatherExtension(
             content: [{ type: 'text' as const, text }],
             details: {}
           };
-        }
-        catch (error) {
+        } catch (error) {
           fastify.log.error(error, 'Failed to fetch weather forecast');
           const message
             = error instanceof Error ? error.message : String(error);

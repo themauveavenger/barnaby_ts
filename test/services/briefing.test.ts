@@ -361,8 +361,7 @@ describe('briefing helpers', () => {
           prompt: 'Test prompt',
           signal: controller.signal
         });
-      }
-      catch {
+      } catch {
         // Expected to fail when aborted
       }
 
@@ -387,8 +386,7 @@ describe('briefing helpers', () => {
           prompt: 'Test prompt',
           saveToRepo: { triggerType: 'manual' }
         });
-      }
-      catch {
+      } catch {
         // Expected
       }
 
