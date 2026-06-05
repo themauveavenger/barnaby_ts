@@ -40,16 +40,21 @@ export async function handleRemember(ctx: Context, fastify: FastifyInstance): Pr
 
     sessionCreated = true;
 
-    const { wasTimeout } = await withTimeout(session, async () => {
-      await session.prompt(prompt);
-    });
+    try {
+      const { wasTimeout } = await withTimeout(session, async () => {
+        await session.prompt(prompt);
+      });
 
-    if (wasTimeout) {
-      await ctx.react('🤷');
-      await ctx.reply('That took too long — please try again.');
+      if (wasTimeout) {
+        await ctx.react('🤷');
+        await ctx.reply('That took too long — please try again.');
+      }
+      else {
+        await ctx.react('👍');
+      }
     }
-    else {
-      await ctx.react('👍');
+    finally {
+      session.dispose();
     }
   }
   catch (error) {

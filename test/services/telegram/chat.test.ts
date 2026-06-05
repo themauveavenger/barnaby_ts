@@ -19,6 +19,7 @@ import { createAgentSession } from '@earendil-works/pi-coding-agent';
 import type { Context } from 'grammy';
 import { withTimeout } from '../../../src/services/telegram/shared.js';
 import { handleChat } from '../../../src/services/telegram/chat.js';
+import { getSession, clearSessionStore } from '../../../src/services/telegram/session-store.js';
 
 function createMockSession(returnText = 'Iris likes maple donuts!') {
   return {
@@ -69,6 +70,8 @@ describe('handleChat', () => {
   beforeEach(() => {
     process.env.TELEGRAM_CHAT_ID = '12345';
     fastify = createMockFastify();
+    clearSessionStore();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -179,27 +182,6 @@ describe('handleChat', () => {
     expect(prompt).not.toContain('Recent notes and tasks');
   });
 
-  it('disposes session on success', async () => {
-    const mockSession = createMockSession();
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
-
-    const ctx = createMockContext();
-    await handleChat(ctx, fastify);
-
-    expect(mockSession.dispose).toHaveBeenCalled();
-  });
-
-  it('disposes session on error', async () => {
-    const mockSession = createMockSession();
-    mockSession.prompt.mockRejectedValue(new Error('fail'));
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
-
-    const ctx = createMockContext();
-    await handleChat(ctx, fastify);
-
-    expect(mockSession.dispose).toHaveBeenCalled();
-  });
-
   it('ignores messages from unauthorized chat ID', async () => {
     const ctx = createMockContext('hello', 99999);
     await handleChat(ctx, fastify);
@@ -255,5 +237,98 @@ describe('handleChat', () => {
     await handleChat(ctx, fastify);
 
     expect(ctx.reply).toHaveBeenCalledWith('That took too long — please try again.');
+  });
+
+  it('stores session in session store after first message', async () => {
+    const mockSession = createMockSession();
+    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+
+    const chatId = 12345;
+    const ctx = createMockContext('hello', chatId);
+    await handleChat(ctx, fastify);
+
+    const storedSession = getSession(chatId);
+    expect(storedSession).toBe(mockSession);
+  });
+
+  it('reuses existing session for follow-up messages', async () => {
+    const chatId = 12345;
+    const mockSession = createMockSession('First response');
+    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+
+    // First message - creates session
+    const ctx1 = createMockContext('hello', chatId);
+    await handleChat(ctx1, fastify);
+
+    expect(createAgentSession).toHaveBeenCalledTimes(1);
+    expect(mockSession.prompt).toHaveBeenCalledTimes(1);
+
+    // Second message - reuses session
+    mockSession.getLastAssistantText.mockReturnValue('Second response');
+    const ctx2 = createMockContext('tell me more', chatId);
+    await handleChat(ctx2, fastify);
+
+    // Should not create a new session
+    expect(createAgentSession).toHaveBeenCalledTimes(1);
+    // Should prompt the existing session again
+    expect(mockSession.prompt).toHaveBeenCalledTimes(2);
+    expect(ctx2.reply).toHaveBeenCalledWith('Second response');
+  });
+
+  it('sends only user message (not full context) for follow-up messages', async () => {
+    const chatId = 12345;
+    const mockSession = createMockSession('First response');
+    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+
+    // First message - creates session with full context
+    const ctx1 = createMockContext('hello', chatId);
+    await handleChat(ctx1, fastify);
+
+    const firstPrompt = mockSession.prompt.mock.calls[0][0];
+    expect(firstPrompt).toContain('Answer concisely and naturally');
+    expect(firstPrompt).toContain('you cannot create new ones');
+
+    // Second message - reuses session with just user message
+    mockSession.getLastAssistantText.mockReturnValue('Second response');
+    const ctx2 = createMockContext('tell me more', chatId);
+    await handleChat(ctx2, fastify);
+
+    const secondPrompt = mockSession.prompt.mock.calls[1][0];
+    expect(secondPrompt).toBe('tell me more');
+  });
+
+  it('creates new session for different chat ID', async () => {
+    const chatId1 = 12345;
+    const chatId2 = 67890;
+    process.env.TELEGRAM_CHAT_ID = '12345,67890'; // Allow both chat IDs
+
+    const mockSession1 = createMockSession('Response 1');
+    const mockSession2 = createMockSession('Response 2');
+    (createAgentSession as any)
+      .mockResolvedValueOnce({ session: mockSession1 })
+      .mockResolvedValueOnce({ session: mockSession2 });
+
+    // First chat ID
+    const ctx1 = createMockContext('hello from chat 1', chatId1);
+    await handleChat(ctx1, fastify);
+
+    // Second chat ID
+    const ctx2 = createMockContext('hello from chat 2', chatId2);
+    await handleChat(ctx2, fastify);
+
+    expect(createAgentSession).toHaveBeenCalledTimes(2);
+    expect(mockSession1.prompt).toHaveBeenCalledTimes(1);
+    expect(mockSession2.prompt).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call dispose on session after successful prompt', async () => {
+    const mockSession = createMockSession();
+    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+
+    const ctx = createMockContext();
+    await handleChat(ctx, fastify);
+
+    // Session should NOT be disposed - it's managed by the session store
+    expect(mockSession.dispose).not.toHaveBeenCalled();
   });
 });

@@ -47,6 +47,7 @@
     "googleapis": "173.0.0",
     "grammy": "1.43.0",
     "handlebars": "4.7.9",
+    "lru-cache": "11.5.1",
     "pi-extension-for-ynab": "github:themauveavenger/pi-extension-for-ynab#v0.1.6",
     "ts-pattern": "5.9.0",
     "typebox": "1.1.39"

@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
 import { buildMemoryContext } from '../../services/telegram-utils.js';
 import { isAllowedChat, withTimeout } from './shared.js';
+import { getSession, setSession } from './session-store.js';
 
 export async function handleChat(ctx: Context, fastify: FastifyInstance): Promise<void> {
   const chatId = ctx.chat?.id;
@@ -23,31 +24,48 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
   let sessionCreated = false;
 
   try {
-    const { authStorage, modelRegistry, model, resourceLoader } = fastify.agent;
+    // Try to get existing session from store
+    let session = getSession(chatId);
+    let prompt: string;
 
-    const { session } = await createAgentSession({
-      model,
-      authStorage,
-      modelRegistry,
-      resourceLoader,
-      sessionManager: SessionManager.inMemory(),
-      tools: ['memory_list', 'memory_resolve']
-    });
+    if (session) {
+      // Reuse existing session - just send the user's message
+      prompt = text;
+      fastify.log.debug({ chatId }, 'Reusing existing session');
+    }
+    else {
+      // Create new session with full context
+      const { authStorage, modelRegistry, model, resourceLoader } = fastify.agent;
 
-    sessionCreated = true;
+      const result = await createAgentSession({
+        model,
+        authStorage,
+        modelRegistry,
+        resourceLoader,
+        sessionManager: SessionManager.inMemory(),
+        tools: ['memory_list', 'memory_resolve']
+      });
 
-    const memoryContext = buildMemoryContext(fastify);
+      session = result.session;
+      sessionCreated = true;
 
-    const prompt = [
-      ...(memoryContext ? [memoryContext] : []),
-      '',
-      `The user asks: "${text}"`,
-      '',
-      'Answer concisely and naturally. Use the memory_list tool to search for relevant information if needed. '
-      + 'You can only search and read memories — you cannot create new ones. '
-      + 'If you find relevant memories, reference them directly. '
-      + 'If nothing relevant comes up, say so honestly rather than making things up.'
-    ].join('\n');
+      const memoryContext = buildMemoryContext(fastify);
+
+      prompt = [
+        ...(memoryContext ? [memoryContext] : []),
+        '',
+        `The user asks: "${text}"`,
+        '',
+        'Answer concisely and naturally. Use the memory_list tool to search for relevant information if needed. '
+        + 'You can only search and read memories — you cannot create new ones. '
+        + 'If you find relevant memories, reference them directly. '
+        + 'If nothing relevant comes up, say so honestly rather than making things up.'
+      ].join('\n');
+
+      // Store the session for reuse
+      setSession(chatId, session);
+      fastify.log.debug({ chatId }, 'Created new session');
+    }
 
     const { result: responseText, wasTimeout } = await withTimeout(session, async () => {
       await session.prompt(prompt);

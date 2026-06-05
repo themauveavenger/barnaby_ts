@@ -54,7 +54,6 @@ describe('telegram/shared', () => {
 
       expect(result).toEqual({ result: undefined, wasTimeout: true });
       expect(mockSession.abort).toHaveBeenCalled();
-      expect(mockSession.dispose).toHaveBeenCalled();
 
       vi.useRealTimers();
     });
@@ -69,10 +68,9 @@ describe('telegram/shared', () => {
       const result = await withTimeout(mockSession as unknown as AgentSession, async () => 'hello');
 
       expect(result).toEqual({ result: 'hello', wasTimeout: false });
-      expect(mockSession.dispose).toHaveBeenCalled();
     });
 
-    it('disposes session even when fn throws', async () => {
+    it('re-throws when fn throws (does not swallow errors)', async () => {
       const mockSession = {
         setAutoRetryEnabled: vi.fn(),
         abort: vi.fn().mockResolvedValue(undefined),
@@ -84,8 +82,6 @@ describe('telegram/shared', () => {
           throw new Error('fail');
         })
       ).rejects.toThrow('fail');
-
-      expect(mockSession.dispose).toHaveBeenCalled();
     });
 
     it('sets autoRetryEnabled to false', async () => {

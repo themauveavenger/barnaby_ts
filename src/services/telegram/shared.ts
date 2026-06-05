@@ -3,8 +3,11 @@ import type { AgentSession } from '@earendil-works/pi-coding-agent';
 export const SESSION_TIMEOUT_MS = 45_000;
 
 export function isAllowedChat(chatId: number): boolean {
-  const allowedChatId = Number(process.env.TELEGRAM_CHAT_ID);
-  return chatId === allowedChatId;
+  const allowedChatIds = (process.env.TELEGRAM_CHAT_ID ?? '')
+    .split(',')
+    .map(id => Number(id.trim()))
+    .filter(id => !Number.isNaN(id));
+  return allowedChatIds.includes(chatId);
 }
 
 export async function withTimeout<T>(
@@ -35,6 +38,5 @@ export async function withTimeout<T>(
   }
   finally {
     clearTimeout(timeoutId);
-    session.dispose();
   }
 }
