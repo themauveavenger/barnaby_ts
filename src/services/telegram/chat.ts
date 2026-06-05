@@ -1,7 +1,7 @@
 import type { Context } from 'grammy';
 import type { FastifyInstance } from 'fastify';
 import { createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
-import { buildMemoryContext } from '../../services/telegram-utils.js';
+import { buildMemoryContext } from '../telegram-utils.js';
 import { isAllowedChat, withTimeout } from './shared.js';
 import { getSession, setSession } from './session-store.js';
 
