@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { BadRequestError } from '../../plugins/error-handler.js';
+import { clearSessionStore } from '../../services/telegram/session-store.js';
 
 export default async function configRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.get('/config', async (_request, reply) => {
@@ -26,6 +27,7 @@ export default async function configRoutes(fastify: FastifyInstance): Promise<vo
     }
 
     fastify.configRepository.set('personality', personality);
+    clearSessionStore();
     await fastify.agent.resourceLoader.reload();
 
     return reply.redirect('/config');
