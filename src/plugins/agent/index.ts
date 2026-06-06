@@ -10,6 +10,7 @@ import createTelegramExtension from './extensions/telegram.js';
 import createMemoryExtension from './extensions/memory.js';
 import createWeatherExtension from './extensions/weather.js';
 import createGoogleDriveExtension from './extensions/google-drive.js';
+import createWolframAlphaExtension from './extensions/wolfram-alpha.js';
 
 export interface AgentServices {
   authStorage: AuthStorage;
@@ -37,7 +38,8 @@ export default fp(async function agentPlugin(fastify: FastifyInstance) {
       createTelegramExtension(fastify),
       createMemoryExtension(fastify),
       createWeatherExtension(fastify),
-      createGoogleDriveExtension(fastify)
+      createGoogleDriveExtension(fastify),
+      createWolframAlphaExtension(fastify)
     ],
     appendSystemPrompt: [BARNABY_PERSONALITY]
   });

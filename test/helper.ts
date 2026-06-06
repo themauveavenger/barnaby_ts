@@ -13,6 +13,7 @@ export async function buildTestApp() {
   process.env.CALENDAR_IDS = 'test@example.com,family@group.calendar.google.com';
   process.env.BRIEFING_CRON = '0 7 * * *';
   process.env.AFTERNOON_UPDATE_CRON = '0 14 * * *';
+  process.env.WOLFRAM_ALPHA_APPID = 'test-wolfram-appid';
 
   const app = await buildApp();
   return app;

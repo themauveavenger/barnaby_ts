@@ -42,7 +42,7 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
         modelRegistry,
         resourceLoader,
         sessionManager: SessionManager.inMemory(),
-        tools: ['calendar_list', 'memory_list', 'memory_resolve', 'drive_read_doc', 'drive_list_docs']
+        tools: ['calendar_list', 'memory_list', 'memory_resolve', 'drive_read_doc', 'drive_list_docs', 'wolfram_alpha']
       });
 
       session = result.session;
@@ -60,7 +60,7 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
         `The user asks: "${text}"`,
         '',
         'Answer concisely and naturally. '
-        + 'Use the memory_list, calendar_list, drive_read_doc, and drive_list_docs tools to search for relevant information if needed. '
+        + 'Use the memory_list, calendar_list, drive_read_doc, drive_list_docs, and wolfram_alpha tools to search for relevant information or computations if needed. '
         + 'Your tools only have read-only access to data. You cannot create any new memories, calendar events, or Google documents. '
         + 'If you find relevant memories, calendar events, or text in a Google document, reference them directly by name. '
         + 'If nothing relevant comes up, say so honestly rather than making things up.'
