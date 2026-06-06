@@ -1,6 +1,6 @@
 # Barnaby
 
-A personal digital assistant. Barnaby remembers things, manages calendar events, sends daily briefings, and functions as a simple research assistant. All communication happens through a REST API and Telegram.
+A personal digital assistant. Barnaby remembers things, manages calendar events, sends daily briefings, and functions as a simple research assistant. All communication happens through a REST API and Telegram. The assistant's personality is switchable — choose between different personas (e.g. Barnaby, Yarnaby) via the admin UI.
 
 ## Tech Stack
 
@@ -52,6 +52,7 @@ Quick overview:
 | `POST /chat` | Chat with the LLM (no tools, safe mode) |
 | `POST /calendar/events` | Natural language calendar operations |
 | `GET/POST/DELETE /briefing` | List, trigger, or delete briefings |
+| `GET/POST /config` | View and change the active assistant personality |
 
 ## LLM Chat
 
@@ -110,11 +111,19 @@ Barnaby communicates via Telegram for automated messages, daily briefings, and t
   /remember what todos do I have?
   ```
 
+## Personality System
+
+Barnaby supports multiple switchable assistant personalities. Each personality has its own name, system prompt, and optional speaking examples. The active personality is stored in the `config` table and injected into the LLM's system prompt on every agent session.
+
+The default personalities are **Barnaby** (warm, casual, and efficient) and **Yarnaby** (theatrical, dramatic, and eccentric). You can add more by inserting rows into the `personalities` table.
+
+Switch personalities via the admin UI at `/config` (or POST to `/config` with `{ "personality": "<id>" }`). The change takes effect immediately — the `resourceLoader` is reloaded and the Telegram session store is cleared.
+
 ## Daily Briefings
 
 Barnaby sends an AI-generated daily briefing via Telegram on a cron schedule. Set `BRIEFING_CRON` to a valid cron expression (e.g. `0 8 * * *` for 8:00 AM).
 
-The briefing includes calendar events from yesterday, today, and the next 7 days along with recent memories and tasks. You can trigger a manual briefing via `POST /briefing`.
+The briefing includes calendar events from yesterday, today, and the next 7 days along with recent memories and tasks. You can trigger a manual briefing via `POST /briefing`. The briefing is generated using the currently configured personality.
 
 ## YNAB Integration
 

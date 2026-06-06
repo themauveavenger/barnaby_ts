@@ -2,7 +2,15 @@
 
 ## Barnaby
 
-The assistant persona. Warm, casual, efficient. Stateless per-session — each interaction spins up a fresh instance with the shared personality and relevant Core Memories injected at session start. Continuity comes from the memory database, not session history.
+The default assistant persona. Warm, casual, and efficient. One of several **Personalities** that can be configured as the active assistant voice.
+
+## Personality
+
+A switchable assistant persona defined by a name, system prompt, and optional speaking examples. Stored in the `personalities` table and selected via the `config` key `personality`. The active personality's prompt is appended to the LLM system prompt on every agent session. The default personality is `yarnaby` (seeded on startup). Other seeded personalities include `barnaby`.
+
+## Active Personality
+
+The personality currently configured for the assistant. Resolved by checking the `config` key `personality`, falling back to the `is_default = 1` row in the `personalities` table, and finally defaulting to `yarnaby`. Changing the active personality via the admin UI reloads the `resourceLoader` so the new system prompt takes effect immediately.
 
 ## Memory
 

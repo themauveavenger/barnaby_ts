@@ -63,8 +63,6 @@ export function createAfternoonUpdateService(fastify: FastifyInstance): Afternoo
         '- If a tool returns an error, mention it briefly in plain English and move on.',
         '- Do not use emojis.',
         '- End with one brief, encouraging closing line.',
-        '',
-        'TONE: Casual, warm, and efficient. Write like a helpful friend.',
         previousContext
       ].filter(s => s !== '').join('\n');
 
