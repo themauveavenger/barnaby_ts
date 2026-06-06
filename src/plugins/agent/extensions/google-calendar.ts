@@ -59,8 +59,8 @@ export default function createCalendarExtension(fastify: FastifyInstance): Exten
       promptSnippet: 'List events from a Google Calendar within a date range',
       promptGuidelines: [
         'Use calendar_list when the user asks about upcoming events, schedule, or what\'s on their calendar.',
-        'Always provide start and end in ISO 8601 format with timezone offset for calendar_list.',
-        'Use "primary" as calendarId for calendar_list unless the user specifies a different calendar.'
+        'When using calendar_list, always provide start and end in ISO 8601 format with timezone offset.',
+        'When using calendar_list, use "primary" as calendarId unless the user specifies a different calendar.'
       ],
       parameters: Type.Object({
         calendarId: Type.String({ description: 'Calendar ID or "primary"' }),
@@ -103,8 +103,8 @@ export default function createCalendarExtension(fastify: FastifyInstance): Exten
       promptSnippet: 'Create a new event on a Google Calendar',
       promptGuidelines: [
         'Use calendar_create when the user wants to schedule or add a new event to their calendar.',
-        'Provide both start and end times in ISO 8601 format for calendar_create — do not omit the end time.',
-        'Use "primary" as calendarId for calendar_create unless the user specifies otherwise.'
+        'When using calendar_create, provide both start and end times in ISO 8601 format — do not omit the end time.',
+        'When using calendar_create, use "primary" as calendarId unless the user specifies otherwise.'
       ],
       parameters: Type.Object({
         calendarId: Type.String(),
@@ -148,8 +148,8 @@ export default function createCalendarExtension(fastify: FastifyInstance): Exten
       promptSnippet: 'Update an existing Google Calendar event',
       promptGuidelines: [
         'Use calendar_edit when the user wants to change, reschedule, or update an existing event.',
-        'For calendar_edit, use calendar_list first to find the event ID before attempting to edit.',
-        'Only include fields that are changing in calendar_edit — omit unchanged fields.'
+        'When using calendar_edit, use calendar_list first to find the event ID before attempting to edit.',
+        'When using calendar_edit, only include fields that are changing — omit unchanged fields.'
       ],
       parameters: Type.Object({
         calendarId: Type.String(),
