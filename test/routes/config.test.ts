@@ -1,11 +1,14 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import { buildTestApp } from '../helper.js';
+import { setSession, getSession, clearSessionStore } from '../../src/services/telegram/session-store.js';
 
 describe('Config Page', () => {
   let app: Awaited<ReturnType<typeof buildTestApp>>;
   const authHeader = 'Basic ' + Buffer.from('test:test').toString('base64');
 
   beforeEach(async () => {
+    clearSessionStore();
     app = await buildTestApp();
   });
 
@@ -131,6 +134,54 @@ describe('Config Page', () => {
     });
 
     expect(reloadCalled).toBe(true);
+  });
+
+  it('should clear active sessions when personality changes', async () => {
+    const session = {
+      prompt: vi.fn().mockResolvedValue(undefined),
+      getLastAssistantText: vi.fn().mockReturnValue(''),
+      dispose: vi.fn(),
+      setAutoRetryEnabled: vi.fn(),
+      abort: vi.fn().mockResolvedValue(undefined)
+    };
+    setSession(12345, session as unknown as AgentSession);
+
+    await app.inject({
+      method: 'POST',
+      url: '/config',
+      headers: {
+        'authorization': authHeader,
+        'content-type': 'application/x-www-form-urlencoded'
+      },
+      payload: 'personality=barnaby'
+    });
+
+    expect(getSession(12345)).toBeUndefined();
+    expect(session.dispose).toHaveBeenCalled();
+  });
+
+  it('should not clear sessions when personality validation fails', async () => {
+    const session = {
+      prompt: vi.fn().mockResolvedValue(undefined),
+      getLastAssistantText: vi.fn().mockReturnValue(''),
+      dispose: vi.fn(),
+      setAutoRetryEnabled: vi.fn(),
+      abort: vi.fn().mockResolvedValue(undefined)
+    };
+    setSession(67890, session as unknown as AgentSession);
+
+    await app.inject({
+      method: 'POST',
+      url: '/config',
+      headers: {
+        'authorization': authHeader,
+        'content-type': 'application/x-www-form-urlencoded'
+      },
+      payload: 'personality=nonexistent'
+    });
+
+    expect(getSession(67890)).toBe(session);
+    expect(session.dispose).not.toHaveBeenCalled();
   });
 
   it('should return 500 when reload fails', async () => {
