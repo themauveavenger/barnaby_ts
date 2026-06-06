@@ -1,0 +1,12 @@
+<h3>Configuration</h3>
+
+<form method="post" action="/config">
+  <label for="personality">Personality</label>
+  <select id="personality" name="personality">
+    {{#each personalities}}
+      <option value="{{id}}" {{#if (eq id ../activePersonality)}}selected{{/if}}>{{name}}</option>
+    {{/each}}
+  </select>
+  <p>Active assistant personality. Change takes effect on the next conversation.</p>
+  <button type="submit">Save</button>
+</form>

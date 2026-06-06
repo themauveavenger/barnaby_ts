@@ -16,10 +16,12 @@ import { registerBriefingJob } from './services/briefing.js';
 import { registerAfternoonUpdateJob } from './services/afternoon-update.js';
 import registerHandlers from './services/telegram/index.js';
 import briefingRepositoryPlugin from './plugins/briefing-repository.js';
+import configRepositoryPlugin from './plugins/config-repository.js';
 import briefingRoutes from './routes/briefing/index.js';
 import memoryRoutes from './routes/memories/index.js';
 import pageRoutes from './routes/pages/index.js';
 import healthRoutes from './routes/health/index.js';
+import configRoutes from './routes/config/index.js';
 
 type LoggerConfig = FastifyLoggerOptions & PinoLoggerOptions;
 
@@ -65,6 +67,7 @@ export async function buildApp() {
   await app.register(databasePlugin);
   await app.register(repositoryPlugin);
   await app.register(briefingRepositoryPlugin);
+  await app.register(configRepositoryPlugin);
   await app.register(googleAuthPlugin);
   await app.register(calendarClientPlugin);
   await app.register(telegramClientPlugin);
@@ -135,6 +138,7 @@ export async function buildApp() {
   await app.register(memoryRoutes, { prefix: '/memories' });
   await app.register(pageRoutes);
   await app.register(briefingRoutes, { prefix: '/briefing' });
+  await app.register(configRoutes);
 
   return app;
 }

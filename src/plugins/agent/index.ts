@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { AuthStorage, ModelRegistry, DefaultResourceLoader } from '@earendil-works/pi-coding-agent';
 import { getModel } from '@earendil-works/pi-ai';
 import type { Api, Model } from '@earendil-works/pi-ai';
-import { BARNABY_PERSONALITY } from '../../agent/personality.js';
+
 import createCalendarExtension from './extensions/google-calendar.js';
 import { createYnabExtension } from 'pi-extension-for-ynab';
 import createTelegramExtension from './extensions/telegram.js';
@@ -41,7 +41,18 @@ export default fp(async function agentPlugin(fastify: FastifyInstance) {
       createGoogleDriveExtension(fastify),
       createWolframAlphaExtension(fastify)
     ],
-    appendSystemPrompt: [BARNABY_PERSONALITY]
+    appendSystemPromptOverride: (base) => {
+      const activeId = fastify.configRepository?.get('personality') ?? 'yarnaby';
+      const personality = fastify.personalityRepository?.findById(activeId);
+      if (!personality) {
+        return base;
+      }
+      const lines = [personality.prompt];
+      if (personality.examples) {
+        lines.push(`\nHere are examples of how ${personality.name} speaks:\n${personality.examples}`);
+      }
+      return [...base, ...lines];
+    }
   });
   await resourceLoader.reload();
 
