@@ -41,9 +41,11 @@ export default fp(async function agentPlugin(fastify: FastifyInstance) {
       createGoogleDriveExtension(fastify),
       createWolframAlphaExtension(fastify)
     ],
-    appendSystemPromptOverride: (base) => {
-      const activeId = fastify.configRepository?.get('personality') ?? 'yarnaby';
-      const personality = fastify.personalityRepository?.findById(activeId);
+    appendSystemPromptOverride: (base: string[]): string[] => {
+      const activeId = fastify.configRepository.get('personality')
+        ?? fastify.personalityRepository.findDefault()?.id
+        ?? 'yarnaby';
+      const personality = fastify.personalityRepository.findById(activeId);
       if (!personality) {
         return base;
       }

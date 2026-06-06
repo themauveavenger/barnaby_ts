@@ -13,11 +13,11 @@ export interface ConfigRepository {
 
 export function createConfigRepository(db: Database): ConfigRepository {
   return {
-    get(key) {
+    get(key: string): string | undefined {
       const row = db.prepare('SELECT value FROM config WHERE key = ?').get(key) as { value: string } | undefined;
       return row?.value;
     },
-    set(key, value) {
+    set(key: string, value: string): void {
       const existing = db.prepare('SELECT description FROM config WHERE key = ?').get(key) as { description: string } | undefined;
       db.prepare('INSERT OR REPLACE INTO config (key, value, description) VALUES (?, ?, ?)').run(
         key,

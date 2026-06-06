@@ -58,6 +58,59 @@ describe('Config Page', () => {
     expect(getResponse.payload).toContain('value="barnaby" selected');
   });
 
+  it('should fall back to the database default when config row is missing', async () => {
+    app.db.prepare('DELETE FROM config WHERE key = \'personality\'').run();
+    app.db.prepare('UPDATE personalities SET is_default = 0 WHERE id = \'yarnaby\'').run();
+    app.db.prepare('UPDATE personalities SET is_default = 1 WHERE id = \'barnaby\'').run();
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/config',
+      headers: { authorization: authHeader }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toContain('value="barnaby" selected');
+  });
+
+  it('should reject an unknown personality id', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/config',
+      headers: {
+        'authorization': authHeader,
+        'content-type': 'application/x-www-form-urlencoded'
+      },
+      payload: 'personality=hacker'
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().message).toContain('Unknown personality');
+
+    const getResponse = await app.inject({
+      method: 'GET',
+      url: '/config',
+      headers: { authorization: authHeader }
+    });
+
+    expect(getResponse.payload).toContain('value="yarnaby" selected');
+  });
+
+  it('should reject an empty personality', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/config',
+      headers: {
+        'authorization': authHeader,
+        'content-type': 'application/x-www-form-urlencoded'
+      },
+      payload: ''
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().message).toContain('Personality is required');
+  });
+
   it('should trigger agent resource loader reload on change', async () => {
     let reloadCalled = false;
     const agent = app.agent;
@@ -78,5 +131,27 @@ describe('Config Page', () => {
     });
 
     expect(reloadCalled).toBe(true);
+  });
+
+  it('should return 500 when reload fails', async () => {
+    const agent = app.agent;
+    const originalReload = agent.resourceLoader.reload.bind(agent.resourceLoader);
+    agent.resourceLoader.reload = async () => {
+      throw new Error('Simulated reload failure');
+    };
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/config',
+      headers: {
+        'authorization': authHeader,
+        'content-type': 'application/x-www-form-urlencoded'
+      },
+      payload: 'personality=barnaby'
+    });
+
+    expect(response.statusCode).toBe(500);
+
+    agent.resourceLoader.reload = originalReload;
   });
 });
