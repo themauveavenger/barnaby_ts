@@ -1,6 +1,7 @@
 import fp from 'fastify-plugin';
 import type { FastifyInstance } from 'fastify';
 import Database from 'better-sqlite3';
+import { seedUserEntity } from './repositories/entity.js';
 
 export interface ColumnInfo {
   name: string;
@@ -9,6 +10,14 @@ export interface ColumnInfo {
   dflt_value: string | null;
 }
 
+/**
+ * Fastify plugin that initialises the SQLite database, runs migrations,
+ * seeds default data, and decorates the Fastify instance with the db handle.
+ *
+ * All schema definitions live here so the database is self-describing
+ * on startup; this keeps the project deployable without external migration
+ * tooling.
+ */
 export default fp(async function databasePlugin(fastify: FastifyInstance) {
   const dbPath = process.env.DATABASE_PATH || ':memory:';
   const db = new Database(dbPath);
@@ -110,6 +119,48 @@ export default fp(async function databasePlugin(fastify: FastifyInstance) {
     INSERT OR IGNORE INTO config (key, value, description) VALUES
       ('personality', 'yarnaby', 'Active assistant personality');
   `);
+
+  // Entity normalization schema
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS entities (
+      id TEXT PRIMARY KEY,
+      canonical_name TEXT NOT NULL,
+      kind TEXT CHECK (kind IN (
+        'person', 'place', 'organization', 'event',
+        'topic', 'product', 'project', 'goal', 'animal'
+      )),
+      first_seen INTEGER NOT NULL,
+      last_seen INTEGER NOT NULL,
+      merged_into_id TEXT,
+      FOREIGN KEY (merged_into_id) REFERENCES entities(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS entity_aliases (
+      id TEXT PRIMARY KEY,
+      entity_id TEXT NOT NULL,
+      surface_text TEXT NOT NULL,
+      normalized_text TEXT NOT NULL UNIQUE,
+      first_seen INTEGER NOT NULL,
+      last_seen INTEGER NOT NULL,
+      FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS memory_entities (
+      memory_id TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      PRIMARY KEY (memory_id, entity_id),
+      FOREIGN KEY (memory_id) REFERENCES memories(id) ON DELETE CASCADE,
+      FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_entities_merged ON entities(merged_into_id);
+    CREATE INDEX IF NOT EXISTS idx_entity_aliases_entity ON entity_aliases(entity_id);
+    CREATE INDEX IF NOT EXISTS idx_entity_aliases_normalized ON entity_aliases(normalized_text);
+    CREATE INDEX IF NOT EXISTS idx_memory_entities_entity ON memory_entities(entity_id);
+    CREATE INDEX IF NOT EXISTS idx_memory_entities_memory ON memory_entities(memory_id);
+  `);
+
+  seedUserEntity(db);
 
   fastify.decorate('db', db);
 

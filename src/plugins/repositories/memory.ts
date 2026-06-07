@@ -1,7 +1,7 @@
 import type { Database } from 'better-sqlite3';
 import { MEMORY_CATEGORY_NAMES, type MemoryCategory } from '../memory-categories.js';
-
-export type MemoryActionType = 'completed' | 'dismissed';
+import { extractEntities, type EntityRepository } from './entity.js';
+import type { MemoryActionType } from './memory-action.js';
 
 export interface Memory {
   id: string;
@@ -9,13 +9,6 @@ export interface Memory {
   category: MemoryCategory;
   tags: string[];
   permanent: boolean;
-  createdAt: string; // ISO 8601
-}
-
-export interface MemoryAction {
-  id: string;
-  memoryId: string;
-  action: MemoryActionType;
   createdAt: string; // ISO 8601
 }
 
@@ -34,6 +27,7 @@ export interface UpdateMemoryBody {
 export interface ListMemoriesQuery {
   category?: string;
   tags?: string;
+  entity?: string;
   page?: number;
   limit?: number;
 }
@@ -53,12 +47,7 @@ export interface MemoryRepository {
   findRecent(days: number): Memory[];
   findResolvedRecent(days: number): ResolvedMemory[];
   findByTags(tags: string[], options?: { permanentOnly?: boolean }): Memory[];
-}
-
-export interface MemoryActionRepository {
-  create(memoryId: string, action: MemoryActionType): MemoryAction;
-  findByMemoryIds(memoryIds: string[]): Map<string, MemoryAction[]>;
-  delete(id: string): boolean;
+  findByEntity(entityName: string, options?: { limit?: number }): Memory[];
 }
 
 interface MemoryRow {
@@ -75,6 +64,12 @@ type ResolvedMemoryRow = MemoryRow & {
   action_created_at: number;
 };
 
+/**
+ * Maps a raw database row to the domain Memory shape.
+ *
+ * Centralising this conversion keeps the repository decoupled from the
+ * SQLite schema so column renames only need changing in one place.
+ */
 function rowToMemory(row: MemoryRow): Memory {
   return {
     id: row.id,
@@ -86,6 +81,12 @@ function rowToMemory(row: MemoryRow): Memory {
   };
 }
 
+/**
+ * Maps a raw database row to the domain ResolvedMemory shape.
+ *
+ * Extends {@link rowToMemory} with the action state that represents the
+ * terminal lifecycle of a Todo memory.
+ */
 function rowToResolvedMemory(row: ResolvedMemoryRow): ResolvedMemory {
   return {
     ...rowToMemory(row),
@@ -94,6 +95,12 @@ function rowToResolvedMemory(row: ResolvedMemoryRow): ResolvedMemory {
   };
 }
 
+/**
+ * Finds active memories created within the last N days.
+ *
+ * "Active" means the memory has not been resolved (no completed or
+ * dismissed action). Used to surface recent, still-relevant context.
+ */
 function findActiveRecentRows(db: Database, days: number): MemoryRow[] {
   const effectiveDays = Number.isNaN(days) || days <= 0 ? 7 : days;
   const cutoff = Date.now() - effectiveDays * 24 * 60 * 60 * 1000;
@@ -113,6 +120,12 @@ function findActiveRecentRows(db: Database, days: number): MemoryRow[] {
     .all(cutoff) as MemoryRow[];
 }
 
+/**
+ * Finds resolved memories created within the last N days.
+ *
+ * Resolved memories have a terminal action (completed or dismissed) and
+ * are useful for showing what the user has recently finished.
+ */
 function findResolvedRecentRows(db: Database, days: number): ResolvedMemoryRow[] {
   const effectiveDays = Number.isNaN(days) || days <= 0 ? 7 : days;
   const cutoff = Date.now() - effectiveDays * 24 * 60 * 60 * 1000;
@@ -132,63 +145,23 @@ function findResolvedRecentRows(db: Database, days: number): ResolvedMemoryRow[]
     .all(cutoff) as ResolvedMemoryRow[];
 }
 
-export function createMemoryActionRepository(db: Database): MemoryActionRepository {
+/**
+ * Factory that creates the memory repository backed by SQLite.
+ *
+ * The memory repository depends on an {@link EntityRepository} so
+ * that entity extraction and linking happens atomically inside the
+ * same transaction as the memory insert.
+ */
+export function createMemoryRepository(db: Database, entityRepository: EntityRepository): MemoryRepository {
   return {
-    create(memoryId, action) {
-      const memory = db.prepare('SELECT id FROM memories WHERE id = ?').get(memoryId);
-      if (!memory) {
-        throw new Error(`Memory not found: ${memoryId}`);
-      }
-
-      const id = crypto.randomUUID();
-      const createdAt = Date.now();
-
-      db.prepare(
-        'INSERT INTO memory_actions (id, memory_id, action, created_at) VALUES (?, ?, ?, ?)'
-      ).run(id, memoryId, action, createdAt);
-
-      return {
-        id,
-        memoryId,
-        action,
-        createdAt: new Date(createdAt).toISOString()
-      };
-    },
-
-    findByMemoryIds(memoryIds) {
-      const map = new Map<string, MemoryAction[]>();
-      if (memoryIds.length === 0) return map;
-
-      const placeholders = memoryIds.map(() => '?').join(',');
-      const rows = db.prepare(
-        `SELECT id, memory_id, action, created_at FROM memory_actions WHERE memory_id IN (${placeholders})`
-      ).all(...memoryIds) as { id: string; memory_id: string; action: MemoryActionType; created_at: number }[];
-
-      for (const row of rows) {
-        const action: MemoryAction = {
-          id: row.id,
-          memoryId: row.memory_id,
-          action: row.action,
-          createdAt: new Date(row.created_at).toISOString()
-        };
-        const existing = map.get(row.memory_id) || [];
-        existing.push(action);
-        map.set(row.memory_id, existing);
-      }
-
-      return map;
-    },
-
-    delete(id) {
-      const result = db.prepare('DELETE FROM memory_actions WHERE id = ?').run(id);
-      return result.changes > 0;
-    }
-  };
-}
-
-export function createMemoryRepository(db: Database): MemoryRepository {
-  return {
-    create(data) {
+    /**
+     * Creates a new memory, tags, and entity links in a single transaction.
+     *
+     * Entity extraction is bundled here so that every memory write is
+     * atomic: either the memory, tags and entities are all persisted,
+     * or nothing is.
+     */
+    create(data: CreateMemoryBody): Memory {
       const id = crypto.randomUUID();
       const createdAt = Date.now();
       const content = data.content.trim();
@@ -215,11 +188,28 @@ export function createMemoryRepository(db: Database): MemoryRepository {
         'INSERT INTO memory_tags (memory_id, tag_id) VALUES (?, (SELECT id FROM tags WHERE name = ?))'
       );
 
+      const entityNames = extractEntities(content);
+
       const transaction = db.transaction(() => {
         insertMemory.run(id, content, category, permanent, createdAt);
         for (const tag of tags) {
           insertTag.run(tag);
           linkTag.run(id, tag);
+        }
+
+        for (const entityName of entityNames) {
+          const normalized = entityName.toLowerCase().trim();
+          const existing = entityRepository.findByNormalizedText(normalized);
+          if (existing) {
+            entityRepository.linkMemoryToEntity(id, existing.entity.id);
+            const now = Date.now();
+            db.prepare('UPDATE entity_aliases SET last_seen = ? WHERE id = ?').run(now, existing.alias.id);
+            db.prepare('UPDATE entities SET last_seen = ? WHERE id = ?').run(now, existing.entity.id);
+          } else {
+            const entity = entityRepository.createEntity(entityName);
+            entityRepository.createAlias(entity.id, entityName);
+            entityRepository.linkMemoryToEntity(id, entity.id);
+          }
         }
       });
 
@@ -228,7 +218,10 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       return this.findById(id)!;
     },
 
-    findById(id) {
+    /**
+     * Retrieves a single memory by its primary key.
+     */
+    findById(id: string): Memory | null {
       const row = db
         .prepare(
           `SELECT m.*, GROUP_CONCAT(t.name) as tag_names
@@ -245,7 +238,13 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       return rowToMemory(row);
     },
 
-    findAll(query) {
+    /**
+     * Lists memories with optional filters (category, tags, entity).
+     *
+     * Applies pagination so that the Admin UI and API stay performant
+     * even as the memory table grows.
+     */
+    findAll(query: ListMemoriesQuery): { data: Memory[]; total: number } {
       const conditions: string[] = [];
       const params: (string | number)[] = [];
 
@@ -268,6 +267,18 @@ export function createMemoryRepository(db: Database): MemoryRepository {
             WHERE t.name IN (${placeholders})
           )`);
           params.push(...tagList);
+        }
+      }
+
+      if (query.entity) {
+        const normalizedEntity = query.entity.toLowerCase().trim();
+        const alias = entityRepository.findByNormalizedText(normalizedEntity);
+        if (alias) {
+          conditions.push('m.id IN (SELECT memory_id FROM memory_entities WHERE entity_id = ?)');
+          params.push(alias.entity.id);
+        } else {
+          // Entity not found: return empty results
+          return { data: [], total: 0 };
         }
       }
 
@@ -299,7 +310,15 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       return { data, total };
     },
 
-    findForContext() {
+    /**
+     * Returns permanent and recent memories for LLM context injection.
+     *
+     * Permanent memories are enduring facts (preferences, identity, etc.);
+     * recent memories are active (non-resolved) entries within the
+     * configured context window. This split lets the agent receive both
+     * long-term and short-term context without duplication.
+     */
+    findForContext(): { permanent: Memory[]; recent: Memory[] } {
       const days = parseInt(process.env.CONTEXT_WINDOW_DAYS || '30', 10);
       const effectiveDays = Number.isNaN(days) ? 30 : days;
 
@@ -323,17 +342,29 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       };
     },
 
-    findRecent(days) {
+    /**
+     * Finds active memories created within the last N days.
+     */
+    findRecent(days: number): Memory[] {
       const rows = findActiveRecentRows(db, days);
       return rows.map(row => rowToMemory(row));
     },
 
-    findResolvedRecent(days) {
+    /**
+     * Finds resolved memories created within the last N days.
+     */
+    findResolvedRecent(days: number): ResolvedMemory[] {
       const rows = findResolvedRecentRows(db, days);
       return rows.map(row => rowToResolvedMemory(row));
     },
 
-    findByTags(tags, options = {}) {
+    /**
+     * Finds memories that match every requested tag.
+     *
+     * Uses a HAVING clause to enforce an intersection (AND) rather than
+     * a union (OR), so that narrowing tags actually reduces results.
+     */
+    findByTags(tags: string[], options: { permanentOnly?: boolean } = {}): Memory[] {
       const normalizedTags = [
         ...new Set(
           tags
@@ -372,7 +403,13 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       return rows.map(row => rowToMemory(row));
     },
 
-    update(id, data) {
+    /**
+     * Updates a memory's content and/or tags.
+     *
+     * Tags are fully replaced rather than merged so that the update
+     * reflects the exact set the caller intended.
+     */
+    update(id: string, data: UpdateMemoryBody): Memory {
       const existing = db.prepare('SELECT id FROM memories WHERE id = ?').get(id);
       if (!existing) {
         throw new Error(`Memory not found: ${id}`);
@@ -412,9 +449,50 @@ export function createMemoryRepository(db: Database): MemoryRepository {
       return this.findById(id)!;
     },
 
-    delete(id) {
+    /**
+     * Deletes a memory by its primary key.
+     *
+     * Foreign-key cascades on memory_tags, memory_actions and
+     * memory_entities keep related rows in sync automatically.
+     */
+    delete(id: string): boolean {
       const result = db.prepare('DELETE FROM memories WHERE id = ?').run(id);
       return result.changes > 0;
+    },
+
+    /**
+     * Finds all memories linked to a canonical entity (by name or alias).
+     *
+     * Resolves the supplied name through the alias table so that
+     * searching for "josh" also finds memories that only mention "me".
+     */
+    findByEntity(entityName: string, options: { limit?: number } = {}): Memory[] {
+      const normalized = entityName.toLowerCase().trim();
+      const alias = entityRepository.findByNormalizedText(normalized);
+      if (!alias) return [];
+
+      const memoryIds = entityRepository.findMemoryIdsByEntityId(alias.entity.id);
+      if (memoryIds.length === 0) return [];
+
+      const placeholders = memoryIds.map(() => '?').join(',');
+      const sql = `
+        SELECT m.*, GROUP_CONCAT(t.name) as tag_names
+        FROM memories m
+        LEFT JOIN memory_tags mt ON m.id = mt.memory_id
+        LEFT JOIN tags t ON mt.tag_id = t.id
+        WHERE m.id IN (${placeholders})
+        GROUP BY m.id
+        ORDER BY m.created_at DESC
+      `;
+
+      const rows = db.prepare(sql).all(...memoryIds) as MemoryRow[];
+      let memories = rows.map(row => rowToMemory(row));
+
+      if (options.limit) {
+        memories = memories.slice(0, options.limit);
+      }
+
+      return memories;
     }
   };
 }

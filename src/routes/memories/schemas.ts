@@ -31,6 +31,7 @@ export const listMemoriesSchema = {
         enum: [...MEMORY_CATEGORY_NAMES]
       },
       tags: { type: 'string' },
+      entity: { type: 'string' },
       page: { type: 'integer', minimum: 1, default: 1 },
       limit: { type: 'integer', minimum: 1, maximum: 100, default: 20 }
     }

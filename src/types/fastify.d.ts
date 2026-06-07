@@ -1,5 +1,5 @@
 import type { Database } from 'better-sqlite3';
-import type { MemoryRepository, MemoryActionRepository } from '../plugins/repository.js';
+import type { MemoryRepository, MemoryActionRepository, EntityRepository } from '../plugins/repository.js';
 import type { BriefingRepository } from '../plugins/briefing-repository.js';
 import type { AgentServices } from '../plugins/agent/index.js';
 import type { ConfigRepository } from '../plugins/repositories/config.js';
@@ -13,6 +13,7 @@ import type { ToadScheduler } from '@fastify/schedule';
 declare module 'fastify' {
   interface FastifyInstance {
     db: Database;
+    entityRepository: EntityRepository;
     memoryRepository: MemoryRepository;
     memoryActionRepository: MemoryActionRepository;
     briefingRepository: BriefingRepository;

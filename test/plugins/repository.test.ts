@@ -555,4 +555,188 @@ describe('repository plugin', () => {
       expect(recent.map((m: Memory) => m.id)).not.toContain(completed.id);
     });
   });
+
+  describe('entity normalization', () => {
+    it('should seed user entity on database initialization', () => {
+      const userEntity = app.db
+        .prepare('SELECT * FROM entities WHERE canonical_name = ?')
+        .get('Josh') as { id: string; canonical_name: string } | undefined;
+
+      expect(userEntity).toBeDefined();
+
+      const aliases = app.db
+        .prepare('SELECT normalized_text FROM entity_aliases WHERE entity_id = ?')
+        .all(userEntity!.id) as { normalized_text: string }[];
+
+      const aliasTexts = aliases.map(a => a.normalized_text);
+      expect(aliasTexts).toContain('josh');
+      expect(aliasTexts).toContain('me');
+      expect(aliasTexts).toContain('i');
+      expect(aliasTexts).toContain('my');
+      expect(aliasTexts).toContain('myself');
+      expect(aliasTexts).toContain('you');
+      expect(aliasTexts).toContain('your');
+      expect(aliasTexts).toContain('yourself');
+    });
+
+    it('should extract entities and create rows when creating a memory', () => {
+      const memory = app.memoryRepository.create({
+        content: 'Sarah likes Thai food',
+        category: 'note'
+      });
+
+      // 'Sarah' should be extracted as an entity; 'Thai' might be too depending on denylist
+      const entityRows = app.db
+        .prepare('SELECT canonical_name FROM entities WHERE canonical_name = ?')
+        .all('Sarah') as { canonical_name: string }[];
+
+      expect(entityRows.length).toBeGreaterThan(0);
+
+      const aliasRow = app.db
+        .prepare('SELECT * FROM entity_aliases WHERE normalized_text = ?')
+        .get('sarah') as { entity_id: string } | undefined;
+
+      expect(aliasRow).toBeDefined();
+
+      const linkRow = app.db
+        .prepare('SELECT * FROM memory_entities WHERE memory_id = ? AND entity_id = ?')
+        .get(memory.id, aliasRow!.entity_id) as { memory_id: string } | undefined;
+
+      expect(linkRow).toBeDefined();
+    });
+
+    it('should link existing entity alias to a new memory', () => {
+      const first = app.memoryRepository.create({
+        content: 'Sarah likes Thai food',
+        category: 'note'
+      });
+
+      const second = app.memoryRepository.create({
+        content: 'My friend Sarah is visiting',
+        category: 'note'
+      });
+
+      const aliasRow = app.db
+        .prepare('SELECT entity_id FROM entity_aliases WHERE normalized_text = ?')
+        .get('sarah') as { entity_id: string } | undefined;
+
+      expect(aliasRow).toBeDefined();
+
+      const links = app.db
+        .prepare('SELECT memory_id FROM memory_entities WHERE entity_id = ?')
+        .all(aliasRow!.entity_id) as { memory_id: string }[];
+
+      const linkedMemoryIds = links.map(l => l.memory_id);
+      expect(linkedMemoryIds).toContain(first.id);
+      expect(linkedMemoryIds).toContain(second.id);
+    });
+
+    it('should find memory by user entity even when content says You', () => {
+      const memory = app.memoryRepository.create({
+        content: 'You prefer dark mode',
+        category: 'note',
+        permanent: true
+      });
+
+      const results = app.memoryRepository.findByEntity('josh');
+      expect(results.map((m: Memory) => m.id)).toContain(memory.id);
+    });
+
+    it('should find memory by entity name through findAll with entity query', () => {
+      const memory = app.memoryRepository.create({
+        content: 'Sarah likes Thai food',
+        category: 'note'
+      });
+
+      const { data } = app.memoryRepository.findAll({ entity: 'sarah' });
+      expect(data.map((m: Memory) => m.id)).toContain(memory.id);
+    });
+
+    it('should return empty results for unknown entity in findAll', () => {
+      const { data, total } = app.memoryRepository.findAll({ entity: 'nonexistent-person-xyz' });
+      expect(data).toEqual([]);
+      expect(total).toBe(0);
+    });
+
+    it('should merge entities and redirect aliases and memory links', () => {
+      // Create a memory linking to "Margaret"
+      const memory1 = app.memoryRepository.create({
+        content: 'Margaret is coming over',
+        category: 'note'
+      });
+
+      // Create a memory linking to "Mum"
+      const memory2 = app.memoryRepository.create({
+        content: 'Mum called today',
+        category: 'note'
+      });
+
+      // Find the entity ids
+      const margaretAlias = app.db
+        .prepare('SELECT entity_id FROM entity_aliases WHERE normalized_text = ?')
+        .get('margaret') as { entity_id: string };
+
+      const mumAlias = app.db
+        .prepare('SELECT entity_id FROM entity_aliases WHERE normalized_text = ?')
+        .get('mum') as { entity_id: string };
+
+      expect(margaretAlias.entity_id).not.toBe(mumAlias.entity_id);
+
+      // Merge Mum into Margaret
+      app.entityRepository.mergeEntities(margaretAlias.entity_id, mumAlias.entity_id);
+
+      // Verify Mum alias now points to Margaret
+      const mergedAlias = app.db
+        .prepare('SELECT entity_id FROM entity_aliases WHERE normalized_text = ?')
+        .get('mum') as { entity_id: string };
+
+      expect(mergedAlias.entity_id).toBe(margaretAlias.entity_id);
+
+      // Verify both memories link to Margaret
+      const links = app.db
+        .prepare('SELECT memory_id FROM memory_entities WHERE entity_id = ?')
+        .all(margaretAlias.entity_id) as { memory_id: string }[];
+
+      const linkedIds = links.map(l => l.memory_id);
+      expect(linkedIds).toContain(memory1.id);
+      expect(linkedIds).toContain(memory2.id);
+
+      // Verify loser entity is marked as merged
+      const loser = app.db
+        .prepare('SELECT merged_into_id FROM entities WHERE id = ?')
+        .get(mumAlias.entity_id) as { merged_into_id: string };
+
+      expect(loser.merged_into_id).toBe(margaretAlias.entity_id);
+    });
+
+    it('should add loser\'s canonical name as alias of survivor during merge', () => {
+      app.memoryRepository.create({
+        content: 'Margaret is coming over',
+        category: 'note'
+      });
+
+      app.memoryRepository.create({
+        content: 'Mum called today',
+        category: 'note'
+      });
+
+      const margaretAlias = app.db
+        .prepare('SELECT entity_id FROM entity_aliases WHERE normalized_text = ?')
+        .get('margaret') as { entity_id: string };
+
+      const mumAlias = app.db
+        .prepare('SELECT entity_id FROM entity_aliases WHERE normalized_text = ?')
+        .get('mum') as { entity_id: string };
+
+      app.entityRepository.mergeEntities(margaretAlias.entity_id, mumAlias.entity_id);
+
+      // Check that "Mum" (canonical name of loser) is now an alias of survivor
+      const survivorAliases = app.db
+        .prepare('SELECT surface_text FROM entity_aliases WHERE entity_id = ?')
+        .all(margaretAlias.entity_id) as { surface_text: string }[];
+
+      const surfaceTexts = survivorAliases.map(a => a.surface_text);
+      expect(surfaceTexts).toContain('Mum');
+    });
+  });
 });

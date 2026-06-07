@@ -438,6 +438,43 @@ describe('Memories API', () => {
 
       expect(response.statusCode).toBe(400);
     });
+
+    it('should filter by entity name', async () => {
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/memories',
+        headers: { authorization: authHeader },
+        payload: {
+          content: 'You prefer dark mode',
+          category: 'note',
+          permanent: true
+        }
+      });
+      const created = createRes.json();
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/memories?entity=josh',
+        headers: { authorization: authHeader }
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.data.some((m: { id: string }) => m.id === created.id)).toBe(true);
+    });
+
+    it('should return empty results for unknown entity', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/memories?entity=unknown-person-xyz',
+        headers: { authorization: authHeader }
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.data).toEqual([]);
+      expect(body.pagination.total).toBe(0);
+    });
   });
 
   describe('DELETE /memories/:id', () => {
