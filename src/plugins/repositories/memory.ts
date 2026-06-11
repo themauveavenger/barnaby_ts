@@ -1,6 +1,6 @@
 import type { Database } from 'better-sqlite3';
 import { MEMORY_CATEGORY_NAMES, type MemoryCategory } from '../memory-categories.js';
-import { extractEntities, type EntityRepository } from './entity.js';
+import { extractEntities, normalizeText, type EntityRepository } from './entity.js';
 import type { MemoryActionType } from './memory-action.js';
 
 export interface Memory {
@@ -165,7 +165,7 @@ export function createMemoryRepository(db: Database, entityRepository: EntityRep
       const id = crypto.randomUUID();
       const createdAt = Date.now();
       const content = data.content.trim();
-      const category = data.category.toLowerCase();
+      const category = normalizeText(data.category);
       if (!MEMORY_CATEGORY_NAMES.includes(category as MemoryCategory)) {
         throw new Error(`Invalid category: ${data.category}`);
       }
@@ -173,7 +173,7 @@ export function createMemoryRepository(db: Database, entityRepository: EntityRep
       const tags = [
         ...new Set(
           (data.tags || [])
-            .map(t => t.toLowerCase().trim())
+            .map(t => normalizeText(t))
             .filter(Boolean)
         )
       ];
@@ -198,7 +198,7 @@ export function createMemoryRepository(db: Database, entityRepository: EntityRep
         }
 
         for (const entityName of entityNames) {
-          const normalized = entityName.toLowerCase().trim();
+          const normalized = normalizeText(entityName);
           const existing = entityRepository.findByNormalizedText(normalized);
           if (existing) {
             entityRepository.linkMemoryToEntity(id, existing.entity.id);
@@ -250,13 +250,13 @@ export function createMemoryRepository(db: Database, entityRepository: EntityRep
 
       if (query.category) {
         conditions.push('m.category = ?');
-        params.push(query.category.toLowerCase());
+        params.push(normalizeText(query.category));
       }
 
       if (query.tags) {
         const tagList = query.tags
           .split(',')
-          .map(t => t.trim().toLowerCase())
+          .map(t => normalizeText(t))
           .filter(Boolean);
         if (tagList.length > 0) {
           const placeholders = tagList.map(() => '?').join(',');
@@ -271,7 +271,7 @@ export function createMemoryRepository(db: Database, entityRepository: EntityRep
       }
 
       if (query.entity) {
-        const normalizedEntity = query.entity.toLowerCase().trim();
+        const normalizedEntity = normalizeText(query.entity);
         const alias = entityRepository.findByNormalizedText(normalizedEntity);
         if (alias) {
           conditions.push('m.id IN (SELECT memory_id FROM memory_entities WHERE entity_id = ?)');
@@ -368,7 +368,7 @@ export function createMemoryRepository(db: Database, entityRepository: EntityRep
       const normalizedTags = [
         ...new Set(
           tags
-            .map(t => t.toLowerCase().trim())
+            .map(t => normalizeText(t))
             .filter(Boolean)
         )
       ];
@@ -431,7 +431,7 @@ export function createMemoryRepository(db: Database, entityRepository: EntityRep
           const normalizedTags = [
             ...new Set(
               data.tags
-                .map(t => t.toLowerCase().trim())
+                .map(t => normalizeText(t))
                 .filter(Boolean)
             )
           ];
@@ -467,7 +467,7 @@ export function createMemoryRepository(db: Database, entityRepository: EntityRep
      * searching for "josh" also finds memories that only mention "me".
      */
     findByEntity(entityName: string, options: { limit?: number } = {}): Memory[] {
-      const normalized = entityName.toLowerCase().trim();
+      const normalized = normalizeText(entityName);
       const alias = entityRepository.findByNormalizedText(normalized);
       if (!alias) return [];
 

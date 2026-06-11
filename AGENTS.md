@@ -14,6 +14,8 @@
 - Do not annotate literals — let TypeScript infer the type.
 - Function signatures must have explicit return types.
 - Import types from 3rd party modules instead of reimplementing them.
+- Add JSDoc comments to all new functions and classes. The description should include **what** the function does as well as **why** the function is doing it in the context of the application of or feature you're working on. 
+  - Do not duplicate TypeScript types in the JSDocs comments.
 
 ## Pattern Matching (ts-pattern)
 

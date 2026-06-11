@@ -123,6 +123,16 @@ export function extractEntities(content: string): string[] {
 }
 
 /**
+ * Normalizes text by lowercasing and trimming it.
+ *
+ * A single normalization function guarantees all text will go through the same normalization
+ * prior to lookups or inserts into the database.
+ */
+export function normalizeText(text: string): string {
+  return text.toLowerCase().trim();
+}
+
+/**
  * Bootstraps the canonical user entity and its aliases on a fresh database.
  *
  * The user entity is created once per database lifecycle so that first-person
@@ -134,6 +144,7 @@ export function seedUserEntity(db: Database): void {
   if (entityCount.count > 0) return;
 
   const userName = process.env.USER_NAME || 'Josh';
+  const normalizedUserName = normalizeText(userName);
   const now = Date.now();
   const userEntityId = crypto.randomUUID();
 
@@ -141,14 +152,14 @@ export function seedUserEntity(db: Database): void {
     'INSERT INTO entities (id, canonical_name, kind, first_seen, last_seen) VALUES (?, ?, ?, ?, ?)'
   ).run(userEntityId, userName, 'person', now, now);
 
-  const aliases = ['me', 'i', 'my', 'myself', userName.toLowerCase(), 'you', 'your', 'yourself'];
+  const aliases = ['me', 'i', 'my', 'myself', normalizedUserName, 'you', 'your', 'yourself'];
   const insertAlias = db.prepare(
     'INSERT INTO entity_aliases (id, entity_id, surface_text, normalized_text, first_seen, last_seen) VALUES (?, ?, ?, ?, ?, ?)'
   );
 
   for (const alias of aliases) {
     const aliasId = crypto.randomUUID();
-    insertAlias.run(aliasId, userEntityId, alias, alias.toLowerCase(), now, now);
+    insertAlias.run(aliasId, userEntityId, alias, normalizeText(alias), now, now);
   }
 }
 
@@ -186,7 +197,7 @@ export function createEntityRepository(db: Database): EntityRepository {
     createAlias(entityId: string, surfaceText: string): EntityAlias {
       const id = crypto.randomUUID();
       const now = Date.now();
-      const normalized = surfaceText.toLowerCase().trim();
+      const normalized = normalizeText(surfaceText);
 
       db.prepare(
         'INSERT INTO entity_aliases (id, entity_id, surface_text, normalized_text, first_seen, last_seen) VALUES (?, ?, ?, ?, ?, ?)'
@@ -298,13 +309,13 @@ export function createEntityRepository(db: Database): EntityRepository {
         if (loser) {
           const existingAlias = db
             .prepare('SELECT id FROM entity_aliases WHERE normalized_text = ?')
-            .get(loser.canonicalName.toLowerCase()) as { id: string } | undefined;
+            .get(normalizeText(loser.canonicalName)) as { id: string } | undefined;
 
           if (!existingAlias) {
             const aliasId = crypto.randomUUID();
             db.prepare(
               'INSERT INTO entity_aliases (id, entity_id, surface_text, normalized_text, first_seen, last_seen) VALUES (?, ?, ?, ?, ?, ?)'
-            ).run(aliasId, survivorId, loser.canonicalName, loser.canonicalName.toLowerCase(), now, now);
+            ).run(aliasId, survivorId, loser.canonicalName, normalizeText(loser.canonicalName), now, now);
           }
         }
       });
