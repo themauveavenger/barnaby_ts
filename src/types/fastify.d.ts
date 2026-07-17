@@ -7,6 +7,7 @@ import type { PersonalityRepository } from '../plugins/repositories/personality.
 import type { OAuth2Client } from 'google-auth-library';
 import type { CalendarClient } from '../plugins/calendar-client.js';
 import type { TelegramClient } from '../plugins/telegram-client.js';
+import type { EmbeddingProvider } from '../plugins/embedding-provider.js';
 import type { Bot, Context } from 'grammy';
 import type { ToadScheduler } from '@fastify/schedule';
 
@@ -27,5 +28,6 @@ declare module 'fastify' {
     telegramClient: TelegramClient;
     telegramBot: Bot<Context>;
     scheduler: ToadScheduler;
+    embeddingProvider: EmbeddingProvider | null;
   }
 }

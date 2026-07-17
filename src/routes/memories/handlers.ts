@@ -34,9 +34,25 @@ export async function updateMemory(
 export async function listMemories(
   request: FastifyRequest<{ Querystring: ListMemoriesQuery }>
 ) {
-  const { data, total } = request.server.memoryRepository.findAll(request.query);
   const page = request.query.page || 1;
   const limit = request.query.limit || 20;
+
+  if (request.query.q) {
+    const { data, total } = await request.server.memoryRepository.search({
+      query: request.query.q,
+      category: request.query.category,
+      tags: request.query.tags
+        ? request.query.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean)
+        : undefined,
+      limit
+    });
+    return {
+      data,
+      pagination: { page, limit, total }
+    };
+  }
+
+  const { data, total } = request.server.memoryRepository.findAll(request.query);
   return {
     data,
     pagination: { page, limit, total }
@@ -79,7 +95,9 @@ export async function deleteAction(
   reply.code(204);
 }
 
-export async function getContext(request: FastifyRequest) {
-  const context = request.server.memoryRepository.findForContext();
+export async function getContext(
+  request: FastifyRequest<{ Querystring: { q?: string } }>
+) {
+  const context = await request.server.memoryRepository.findForContext(request.query.q);
   return context;
 }

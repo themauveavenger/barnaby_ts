@@ -9,6 +9,7 @@ export type {
   CreateMemoryBody,
   UpdateMemoryBody,
   ListMemoriesQuery,
+  SearchOptions,
   ResolvedMemory,
   MemoryRepository
 } from './repositories/memory.js';
@@ -40,7 +41,7 @@ export { createEntityRepository, extractEntities } from './repositories/entity.j
  */
 export default fp(async function repositoryPlugin(fastify: FastifyInstance) {
   const entityRepo = createEntityRepository(fastify.db);
-  const repo = createMemoryRepository(fastify.db, entityRepo);
+  const repo = createMemoryRepository(fastify.db, entityRepo, fastify.embeddingProvider ?? undefined);
   const actionRepo = createMemoryActionRepository(fastify.db);
   fastify.decorate('entityRepository', entityRepo);
   fastify.decorate('memoryRepository', repo);

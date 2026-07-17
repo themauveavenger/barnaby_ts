@@ -23,7 +23,7 @@ describe('repository plugin', () => {
   });
 
   it('should create and retrieve a memory', () => {
-    const created = app.memoryRepository.create({
+    const created = await app.memoryRepository.create({
       content: 'Test memory',
       category: 'note',
       tags: ['test']
@@ -43,7 +43,7 @@ describe('repository plugin', () => {
   });
 
   it('should create a permanent memory', () => {
-    const created = app.memoryRepository.create({
+    const created = await app.memoryRepository.create({
       content: 'Permanent memory',
       category: 'note',
       permanent: true
@@ -56,7 +56,7 @@ describe('repository plugin', () => {
   });
 
   it('should deduplicate tags', () => {
-    const created = app.memoryRepository.create({
+    const created = await app.memoryRepository.create({
       content: 'Dupes',
       category: 'todo',
       tags: ['work', 'WORK', 'work']
@@ -66,7 +66,7 @@ describe('repository plugin', () => {
   });
 
   it('should delete a memory', () => {
-    const created = app.memoryRepository.create({
+    const created = await app.memoryRepository.create({
       content: 'To delete',
       category: 'note'
     });
@@ -80,104 +80,104 @@ describe('repository plugin', () => {
 
   describe('update', () => {
     it('should update content only', () => {
-      const created = app.memoryRepository.create({
+      const created = await app.memoryRepository.create({
         content: 'Original content',
         category: 'note',
         tags: ['keep-me']
       });
 
-      const updated = app.memoryRepository.update(created.id, { content: 'Updated content' });
+      const updated = await app.memoryRepository.update(created.id, { content: 'Updated content' });
       expect(updated.content).toBe('Updated content');
       expect(updated.tags).toEqual(['keep-me']);
       expect(updated.id).toBe(created.id);
     });
 
     it('should update tags only', () => {
-      const created = app.memoryRepository.create({
+      const created = await app.memoryRepository.create({
         content: 'Keep this content',
         category: 'note'
       });
 
-      const updated = app.memoryRepository.update(created.id, { tags: ['new-tag'] });
+      const updated = await app.memoryRepository.update(created.id, { tags: ['new-tag'] });
       expect(updated.content).toBe('Keep this content');
       expect(updated.tags).toEqual(['new-tag']);
     });
 
     it('should update both content and tags', () => {
-      const created = app.memoryRepository.create({
+      const created = await app.memoryRepository.create({
         content: 'Original',
         category: 'note',
         tags: ['old']
       });
 
-      const updated = app.memoryRepository.update(created.id, { content: 'Updated', tags: ['new'] });
+      const updated = await app.memoryRepository.update(created.id, { content: 'Updated', tags: ['new'] });
       expect(updated.content).toBe('Updated');
       expect(updated.tags).toEqual(['new']);
     });
 
     it('should replace tags entirely, not merge', () => {
-      const created = app.memoryRepository.create({
+      const created = await app.memoryRepository.create({
         content: 'Tag replace',
         category: 'note',
         tags: ['old1', 'old2']
       });
 
-      const updated = app.memoryRepository.update(created.id, { tags: ['replacement'] });
+      const updated = await app.memoryRepository.update(created.id, { tags: ['replacement'] });
       expect(updated.tags).toEqual(['replacement']);
     });
 
     it('should normalize and deduplicate tags on update', () => {
-      const created = app.memoryRepository.create({
+      const created = await app.memoryRepository.create({
         content: 'Dedup update',
         category: 'note'
       });
 
-      const updated = app.memoryRepository.update(created.id, { tags: ['Foo', 'foo', 'FOO'] });
+      const updated = await app.memoryRepository.update(created.id, { tags: ['Foo', 'foo', 'FOO'] });
       expect(updated.tags).toEqual(['foo']);
     });
 
     it('should trim content whitespace on update', () => {
-      const created = app.memoryRepository.create({
+      const created = await app.memoryRepository.create({
         content: 'Original',
         category: 'note'
       });
 
-      const updated = app.memoryRepository.update(created.id, { content: '  Trimmed  ' });
+      const updated = await app.memoryRepository.update(created.id, { content: '  Trimmed  ' });
       expect(updated.content).toBe('Trimmed');
     });
 
     it('should clear tags with empty array', () => {
-      const created = app.memoryRepository.create({
+      const created = await app.memoryRepository.create({
         content: 'Clear my tags',
         category: 'note',
         tags: ['remove-me']
       });
 
-      const updated = app.memoryRepository.update(created.id, { tags: [] });
+      const updated = await app.memoryRepository.update(created.id, { tags: [] });
       expect(updated.tags).toEqual([]);
     });
 
     it('should throw for nonexistent memory', () => {
       expect(() => {
-        app.memoryRepository.update('00000000-0000-0000-0000-000000000000', { content: 'Nope' });
+        await app.memoryRepository.update('00000000-0000-0000-0000-000000000000', { content: 'Nope' });
       }).toThrow('Memory not found');
     });
   });
 
   it('should find memories for context', () => {
-    const permanent = app.memoryRepository.create({
+    const permanent = await app.memoryRepository.create({
       content: 'I like dark mode',
       category: 'note',
       permanent: true
     });
 
-    const recent = app.memoryRepository.create({
+    const recent = await app.memoryRepository.create({
       content: 'Recent thing',
       category: 'note'
     });
 
     // Make an old memory by updating created_at directly
-    const old = app.memoryRepository.create({
+    const old = await app.memoryRepository.create({
       content: 'Old thing',
       category: 'note'
     });
@@ -185,30 +185,30 @@ describe('repository plugin', () => {
       .prepare('UPDATE memories SET created_at = ? WHERE id = ?')
       .run(Date.now() - 31 * 24 * 60 * 60 * 1000, old.id);
 
-    const context = app.memoryRepository.findForContext();
+    const context = await app.memoryRepository.findForContext();
 
     expect(context.permanent.map((m: Memory) => m.id)).toContain(permanent.id);
-    expect(context.recent.map((m: Memory) => m.id)).toContain(recent.id);
-    expect(context.recent.map((m: Memory) => m.id)).not.toContain(old.id);
+    expect(context.relevant.map((m: Memory) => m.id)).toContain(recent.id);
+    expect(context.relevant.map((m: Memory) => m.id)).not.toContain(old.id);
     expect(context.permanent.map((m: Memory) => m.id)).not.toContain(recent.id);
   });
 
   it('should find memories by tags with AND logic', () => {
-    const coreFamily = app.memoryRepository.create({
+    const coreFamily = await app.memoryRepository.create({
       content: 'My partner is Alex',
       category: 'note',
       permanent: true,
       tags: ['core', 'family']
     });
 
-    const coreFood = app.memoryRepository.create({
+    const coreFood = await app.memoryRepository.create({
       content: 'I am vegetarian',
       category: 'note',
       permanent: true,
       tags: ['core', 'food']
     });
 
-    const nonCore = app.memoryRepository.create({
+    const nonCore = await app.memoryRepository.create({
       content: 'Just a regular note',
       category: 'note',
       tags: ['work']
@@ -227,7 +227,7 @@ describe('repository plugin', () => {
   });
 
   it('should findByTags without permanentOnly filter', () => {
-    const nonPermanent = app.memoryRepository.create({
+    const nonPermanent = await app.memoryRepository.create({
       content: 'Temporary core memory',
       category: 'note',
       permanent: false,
@@ -247,12 +247,12 @@ describe('repository plugin', () => {
   });
 
   it('should find recent memories within given days', () => {
-    const recent = app.memoryRepository.create({
+    const recent = await app.memoryRepository.create({
       content: 'Recent note',
       category: 'note'
     });
 
-    const old = app.memoryRepository.create({
+    const old = await app.memoryRepository.create({
       content: 'Old note',
       category: 'note'
     });
@@ -266,7 +266,7 @@ describe('repository plugin', () => {
   });
 
   it('should not include permanent memories in findRecent', () => {
-    const permanent = app.memoryRepository.create({
+    const permanent = await app.memoryRepository.create({
       content: 'Permanent note',
       category: 'note',
       permanent: true
@@ -277,7 +277,7 @@ describe('repository plugin', () => {
   });
 
   it('should order findByTags results by created_at DESC', () => {
-    const older = app.memoryRepository.create({
+    const older = await app.memoryRepository.create({
       content: 'Older memory',
       category: 'note',
       tags: ['chronology']
@@ -287,7 +287,7 @@ describe('repository plugin', () => {
     const start = Date.now();
     while (Date.now() - start < 10) { /* busy wait */ }
 
-    const newer = app.memoryRepository.create({
+    const newer = await app.memoryRepository.create({
       content: 'Newer memory',
       category: 'note',
       tags: ['chronology']
@@ -298,7 +298,7 @@ describe('repository plugin', () => {
   });
 
   it('should handle case-insensitive and duplicate tags in findByTags', () => {
-    const memory = app.memoryRepository.create({
+    const memory = await app.memoryRepository.create({
       content: 'Case test',
       category: 'note',
       tags: ['case']
@@ -309,7 +309,7 @@ describe('repository plugin', () => {
   });
 
   it('should return complete tag arrays from findByTags', () => {
-    const memory = app.memoryRepository.create({
+    const memory = await app.memoryRepository.create({
       content: 'I am vegetarian',
       category: 'note',
       permanent: true,
@@ -324,7 +324,7 @@ describe('repository plugin', () => {
 
   describe('memory actions', () => {
     it('should create a completed action on a memory', () => {
-      const memory = app.memoryRepository.create({
+      const memory = await app.memoryRepository.create({
         content: 'Buy milk',
         category: 'todo'
       });
@@ -337,7 +337,7 @@ describe('repository plugin', () => {
     });
 
     it('should create a dismissed action on a memory', () => {
-      const memory = app.memoryRepository.create({
+      const memory = await app.memoryRepository.create({
         content: 'Call dentist',
         category: 'todo'
       });
@@ -353,8 +353,8 @@ describe('repository plugin', () => {
     });
 
     it('should find actions by memory IDs', () => {
-      const memory1 = app.memoryRepository.create({ content: 'Task 1', category: 'todo' });
-      const memory2 = app.memoryRepository.create({ content: 'Task 2', category: 'todo' });
+      const memory1 = await app.memoryRepository.create({ content: 'Task 1', category: 'todo' });
+      const memory2 = await app.memoryRepository.create({ content: 'Task 2', category: 'todo' });
 
       app.memoryActionRepository.create(memory1.id, 'completed');
       app.memoryActionRepository.create(memory2.id, 'dismissed');
@@ -372,13 +372,13 @@ describe('repository plugin', () => {
     });
 
     it('should return empty array for memory with no actions', () => {
-      const memory = app.memoryRepository.create({ content: 'No action', category: 'note' });
+      const memory = await app.memoryRepository.create({ content: 'No action', category: 'note' });
       const map = app.memoryActionRepository.findByMemoryIds([memory.id]);
       expect(map.has(memory.id)).toBe(false);
     });
 
     it('should allow both completed and dismissed on the same memory', () => {
-      const memory = app.memoryRepository.create({ content: 'Task both', category: 'todo' });
+      const memory = await app.memoryRepository.create({ content: 'Task both', category: 'todo' });
 
       app.memoryActionRepository.create(memory.id, 'completed');
       app.memoryActionRepository.create(memory.id, 'dismissed');
@@ -388,7 +388,7 @@ describe('repository plugin', () => {
     });
 
     it('should enforce unique constraint on memory_id + action', () => {
-      const memory = app.memoryRepository.create({ content: 'Duplicate test', category: 'todo' });
+      const memory = await app.memoryRepository.create({ content: 'Duplicate test', category: 'todo' });
 
       app.memoryActionRepository.create(memory.id, 'completed');
       expect(() => {
@@ -397,7 +397,7 @@ describe('repository plugin', () => {
     });
 
     it('should delete an action', () => {
-      const memory = app.memoryRepository.create({ content: 'Undo test', category: 'todo' });
+      const memory = await app.memoryRepository.create({ content: 'Undo test', category: 'todo' });
       const action = app.memoryActionRepository.create(memory.id, 'completed');
 
       const deleted = app.memoryActionRepository.delete(action.id);
@@ -413,7 +413,7 @@ describe('repository plugin', () => {
     });
 
     it('should cascade delete actions when memory is deleted', () => {
-      const memory = app.memoryRepository.create({ content: 'Cascade test', category: 'todo' });
+      const memory = await app.memoryRepository.create({ content: 'Cascade test', category: 'todo' });
       app.memoryActionRepository.create(memory.id, 'completed');
 
       app.memoryRepository.delete(memory.id);
@@ -426,43 +426,43 @@ describe('repository plugin', () => {
 
   describe('findForContext with actions', () => {
     it('should exclude memories with actions from findForContext', () => {
-      const active = app.memoryRepository.create({
+      const active = await app.memoryRepository.create({
         content: 'Active todo',
         category: 'todo'
       });
 
-      const completed = app.memoryRepository.create({
+      const completed = await app.memoryRepository.create({
         content: 'Completed todo',
         category: 'todo'
       });
 
       app.memoryActionRepository.create(completed.id, 'completed');
 
-      const context = app.memoryRepository.findForContext();
-      expect(context.recent.map((m: Memory) => m.id)).toContain(active.id);
-      expect(context.recent.map((m: Memory) => m.id)).not.toContain(completed.id);
+      const context = await app.memoryRepository.findForContext();
+      expect(context.relevant.map((m: Memory) => m.id)).toContain(active.id);
+      expect(context.relevant.map((m: Memory) => m.id)).not.toContain(completed.id);
     });
 
     it('should exclude dismissed memories from findForContext recent', () => {
-      const active = app.memoryRepository.create({
+      const active = await app.memoryRepository.create({
         content: 'Active task',
         category: 'todo'
       });
 
-      const dismissed = app.memoryRepository.create({
+      const dismissed = await app.memoryRepository.create({
         content: 'Dismissed task',
         category: 'todo'
       });
 
       app.memoryActionRepository.create(dismissed.id, 'dismissed');
 
-      const context = app.memoryRepository.findForContext();
-      expect(context.recent.map((m: Memory) => m.id)).toContain(active.id);
-      expect(context.recent.map((m: Memory) => m.id)).not.toContain(dismissed.id);
+      const context = await app.memoryRepository.findForContext();
+      expect(context.relevant.map((m: Memory) => m.id)).toContain(active.id);
+      expect(context.relevant.map((m: Memory) => m.id)).not.toContain(dismissed.id);
     });
 
     it('should still include permanent memories regardless of actions', () => {
-      const permanent = app.memoryRepository.create({
+      const permanent = await app.memoryRepository.create({
         content: 'Permanent note',
         category: 'note',
         permanent: true
@@ -470,14 +470,14 @@ describe('repository plugin', () => {
 
       app.memoryActionRepository.create(permanent.id, 'completed');
 
-      const context = app.memoryRepository.findForContext();
+      const context = await app.memoryRepository.findForContext();
       expect(context.permanent.map((m: Memory) => m.id)).toContain(permanent.id);
     });
   });
 
   describe('findResolvedRecent', () => {
     it('should return memories with completed actions', () => {
-      const memory = app.memoryRepository.create({
+      const memory = await app.memoryRepository.create({
         content: 'Buy groceries',
         category: 'todo'
       });
@@ -493,7 +493,7 @@ describe('repository plugin', () => {
     });
 
     it('should return memories with dismissed actions', () => {
-      const memory = app.memoryRepository.create({
+      const memory = await app.memoryRepository.create({
         content: 'Call dentist dismissed action test',
         category: 'todo'
       });
@@ -507,7 +507,7 @@ describe('repository plugin', () => {
     });
 
     it('should not return memories without actions', () => {
-      const memory = app.memoryRepository.create({
+      const memory = await app.memoryRepository.create({
         content: 'Active todo for resolved test',
         category: 'todo'
       });
@@ -518,7 +518,7 @@ describe('repository plugin', () => {
     });
 
     it('should not return old resolved memories outside the time window', () => {
-      const memory = app.memoryRepository.create({
+      const memory = await app.memoryRepository.create({
         content: 'Old completed outside window',
         category: 'todo'
       });
@@ -538,12 +538,12 @@ describe('repository plugin', () => {
 
   describe('findRecent with actions', () => {
     it('should exclude completed memories from findRecent', () => {
-      const active = app.memoryRepository.create({
+      const active = await app.memoryRepository.create({
         content: 'Active note',
         category: 'note'
       });
 
-      const completed = app.memoryRepository.create({
+      const completed = await app.memoryRepository.create({
         content: 'Completed todo',
         category: 'todo'
       });
@@ -580,7 +580,7 @@ describe('repository plugin', () => {
     });
 
     it('should extract entities and create rows when creating a memory', () => {
-      const memory = app.memoryRepository.create({
+      const memory = await app.memoryRepository.create({
         content: 'Sarah likes Thai food',
         category: 'note'
       });
@@ -606,12 +606,12 @@ describe('repository plugin', () => {
     });
 
     it('should link existing entity alias to a new memory', () => {
-      const first = app.memoryRepository.create({
+      const first = await app.memoryRepository.create({
         content: 'Sarah likes Thai food',
         category: 'note'
       });
 
-      const second = app.memoryRepository.create({
+      const second = await app.memoryRepository.create({
         content: 'My friend Sarah is visiting',
         category: 'note'
       });
@@ -632,7 +632,7 @@ describe('repository plugin', () => {
     });
 
     it('should find memory by user entity even when content says You', () => {
-      const memory = app.memoryRepository.create({
+      const memory = await app.memoryRepository.create({
         content: 'You prefer dark mode',
         category: 'note',
         permanent: true
@@ -643,7 +643,7 @@ describe('repository plugin', () => {
     });
 
     it('should find memory by entity name through findAll with entity query', () => {
-      const memory = app.memoryRepository.create({
+      const memory = await app.memoryRepository.create({
         content: 'Sarah likes Thai food',
         category: 'note'
       });
@@ -660,13 +660,13 @@ describe('repository plugin', () => {
 
     it('should merge entities and redirect aliases and memory links', () => {
       // Create a memory linking to "Margaret"
-      const memory1 = app.memoryRepository.create({
+      const memory1 = await app.memoryRepository.create({
         content: 'Margaret is coming over',
         category: 'note'
       });
 
       // Create a memory linking to "Mum"
-      const memory2 = app.memoryRepository.create({
+      const memory2 = await app.memoryRepository.create({
         content: 'Mum called today',
         category: 'note'
       });
@@ -710,12 +710,12 @@ describe('repository plugin', () => {
     });
 
     it('should add loser\'s canonical name as alias of survivor during merge', () => {
-      app.memoryRepository.create({
+      await app.memoryRepository.create({
         content: 'Margaret is coming over',
         category: 'note'
       });
 
-      app.memoryRepository.create({
+      await app.memoryRepository.create({
         content: 'Mum called today',
         category: 'note'
       });

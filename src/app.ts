@@ -6,6 +6,7 @@ import view from '@fastify/view';
 import handlebars from 'handlebars';
 import errorHandlerPlugin from './plugins/error-handler.js';
 import databasePlugin from './plugins/database.js';
+import embeddingProviderPlugin from './plugins/embedding-provider.js';
 import repositoryPlugin from './plugins/repository.js';
 import googleAuthPlugin from './plugins/google-auth.js';
 import calendarClientPlugin from './plugins/calendar-client.js';
@@ -65,6 +66,7 @@ export async function buildApp() {
 
   await app.register(errorHandlerPlugin);
   await app.register(databasePlugin);
+  await app.register(embeddingProviderPlugin);
   await app.register(repositoryPlugin);
   await app.register(briefingRepositoryPlugin);
   await app.register(configRepositoryPlugin);

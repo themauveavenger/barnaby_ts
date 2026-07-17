@@ -26,7 +26,7 @@ function createMemoryCreateTool(fastify: FastifyInstance): ToolDefinition {
     }),
     async execute(_toolCallId: string, params: { content: string; category: string; tags?: string[]; permanent?: boolean }) {
       try {
-        const memory = fastify.memoryRepository.create({
+        const memory = await fastify.memoryRepository.create({
           content: params.content,
           category: params.category as MemoryCategory,
           tags: params.tags,

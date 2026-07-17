@@ -160,6 +160,46 @@ export default fp(async function databasePlugin(fastify: FastifyInstance) {
     CREATE INDEX IF NOT EXISTS idx_memory_entities_memory ON memory_entities(memory_id);
   `);
 
+  // Migration: add embedding column for semantic search
+  const memoryColumns = db.pragma('table_info(memories)') as ColumnInfo[];
+  const hasEmbedding = memoryColumns.some(c => c.name === 'embedding');
+  if (!hasEmbedding) {
+    db.exec('ALTER TABLE memories ADD COLUMN embedding TEXT');
+  }
+
+  // Full-text keyword index with automatic sync triggers
+  db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
+      memory_id UNINDEXED,
+      content
+    );
+
+    CREATE TRIGGER IF NOT EXISTS mem_fts_ai AFTER INSERT ON memories BEGIN
+      INSERT INTO memories_fts(memory_id, content) VALUES (new.id, new.content);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS mem_fts_ad AFTER DELETE ON memories BEGIN
+      DELETE FROM memories_fts WHERE memory_id = old.id;
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS mem_fts_au AFTER UPDATE OF content ON memories BEGIN
+      UPDATE memories_fts SET content = new.content WHERE memory_id = old.id;
+    END;
+  `);
+
+  // Backfill existing memories into the FTS index without creating duplicates
+  db.exec(`
+    INSERT OR IGNORE INTO memories_fts(memory_id, content)
+    SELECT id, content FROM memories
+    WHERE id NOT IN (SELECT memory_id FROM memories_fts)
+  `);
+
+  // Partial index to speed up brute-force semantic scans
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_memories_embedding_not_null
+      ON memories(id) WHERE embedding IS NOT NULL
+  `);
+
   seedUserEntity(db);
 
   fastify.decorate('db', db);
