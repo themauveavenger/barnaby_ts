@@ -40,6 +40,7 @@
     "@fastify/view": "12.0.0",
     "@grammyjs/auto-retry": "2.0.2",
     "better-sqlite3": "12.11.1",
+    "compromise": "14.16.0",
     "date-fns": "4.4.0",
     "fastify": "5.10.0",
     "fastify-plugin": "6.0.0",

@@ -445,7 +445,7 @@ describe('Memories API', () => {
         url: '/memories',
         headers: { authorization: authHeader },
         payload: {
-          content: 'You prefer dark mode',
+          content: 'Josh prefers dark mode',
           category: 'note',
           permanent: true
         }

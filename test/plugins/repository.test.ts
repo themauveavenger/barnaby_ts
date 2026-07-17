@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import databasePlugin from '../../src/plugins/database.js';
 import repositoryPlugin from '../../src/plugins/repository.js';
 import type { Memory, ResolvedMemory } from '../../src/plugins/repository.js';
+import { extractEntities } from '../../src/plugins/repositories/entity.js';
 
 describe('repository plugin', () => {
   let app: Awaited<ReturnType<typeof Fastify>>;
@@ -585,12 +586,12 @@ describe('repository plugin', () => {
         category: 'note'
       });
 
-      // 'Sarah' should be extracted as an entity; 'Thai' might be too depending on denylist
       const entityRows = app.db
-        .prepare('SELECT canonical_name FROM entities WHERE canonical_name = ?')
-        .all('Sarah') as { canonical_name: string }[];
+        .prepare('SELECT canonical_name, kind FROM entities WHERE canonical_name = ?')
+        .all('Sarah') as { canonical_name: string; kind: string | null }[];
 
       expect(entityRows.length).toBeGreaterThan(0);
+      expect(entityRows[0].kind).toBe('person');
 
       const aliasRow = app.db
         .prepare('SELECT * FROM entity_aliases WHERE normalized_text = ?')
@@ -631,9 +632,9 @@ describe('repository plugin', () => {
       expect(linkedMemoryIds).toContain(second.id);
     });
 
-    it('should find memory by user entity even when content says You', () => {
+    it('should find memory by user entity when content mentions the user by name', () => {
       const memory = app.memoryRepository.create({
-        content: 'You prefer dark mode',
+        content: 'Josh prefers dark mode',
         category: 'note',
         permanent: true
       });
@@ -665,9 +666,9 @@ describe('repository plugin', () => {
         category: 'note'
       });
 
-      // Create a memory linking to "Mum"
+      // Create a memory linking to "Sally"
       const memory2 = app.memoryRepository.create({
-        content: 'Mum called today',
+        content: 'Sally called today',
         category: 'note'
       });
 
@@ -676,19 +677,19 @@ describe('repository plugin', () => {
         .prepare('SELECT entity_id FROM entity_aliases WHERE normalized_text = ?')
         .get('margaret') as { entity_id: string };
 
-      const mumAlias = app.db
+      const sallyAlias = app.db
         .prepare('SELECT entity_id FROM entity_aliases WHERE normalized_text = ?')
-        .get('mum') as { entity_id: string };
+        .get('sally') as { entity_id: string };
 
-      expect(margaretAlias.entity_id).not.toBe(mumAlias.entity_id);
+      expect(margaretAlias.entity_id).not.toBe(sallyAlias.entity_id);
 
-      // Merge Mum into Margaret
-      app.entityRepository.mergeEntities(margaretAlias.entity_id, mumAlias.entity_id);
+      // Merge Sally into Margaret
+      app.entityRepository.mergeEntities(margaretAlias.entity_id, sallyAlias.entity_id);
 
-      // Verify Mum alias now points to Margaret
+      // Verify Sally alias now points to Margaret
       const mergedAlias = app.db
         .prepare('SELECT entity_id FROM entity_aliases WHERE normalized_text = ?')
-        .get('mum') as { entity_id: string };
+        .get('sally') as { entity_id: string };
 
       expect(mergedAlias.entity_id).toBe(margaretAlias.entity_id);
 
@@ -704,7 +705,7 @@ describe('repository plugin', () => {
       // Verify loser entity is marked as merged
       const loser = app.db
         .prepare('SELECT merged_into_id FROM entities WHERE id = ?')
-        .get(mumAlias.entity_id) as { merged_into_id: string };
+        .get(sallyAlias.entity_id) as { merged_into_id: string };
 
       expect(loser.merged_into_id).toBe(margaretAlias.entity_id);
     });
@@ -716,7 +717,7 @@ describe('repository plugin', () => {
       });
 
       app.memoryRepository.create({
-        content: 'Mum called today',
+        content: 'Sally called today',
         category: 'note'
       });
 
@@ -724,19 +725,102 @@ describe('repository plugin', () => {
         .prepare('SELECT entity_id FROM entity_aliases WHERE normalized_text = ?')
         .get('margaret') as { entity_id: string };
 
-      const mumAlias = app.db
+      const sallyAlias = app.db
         .prepare('SELECT entity_id FROM entity_aliases WHERE normalized_text = ?')
-        .get('mum') as { entity_id: string };
+        .get('sally') as { entity_id: string };
 
-      app.entityRepository.mergeEntities(margaretAlias.entity_id, mumAlias.entity_id);
+      app.entityRepository.mergeEntities(margaretAlias.entity_id, sallyAlias.entity_id);
 
-      // Check that "Mum" (canonical name of loser) is now an alias of survivor
+      // Check that "Sally" (canonical name of loser) is now an alias of survivor
       const survivorAliases = app.db
         .prepare('SELECT surface_text FROM entity_aliases WHERE entity_id = ?')
         .all(margaretAlias.entity_id) as { surface_text: string }[];
 
       const surfaceTexts = survivorAliases.map(a => a.surface_text);
-      expect(surfaceTexts).toContain('Mum');
+      expect(surfaceTexts).toContain('Sally');
+    });
+  });
+
+  describe('extractEntities (compromise)', () => {
+    it('should extract a mid-sentence proper noun with kind person', () => {
+      const result = extractEntities('I met Jorge yesterday');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe('Jorge');
+      expect(result[0].kind).toBe('person');
+    });
+
+    it('should not extract a sentence-initial greeting as an entity', () => {
+      const result = extractEntities('Hey there, I have an appointment at Jorge\'s');
+
+      const names = result.map(r => r.name);
+      expect(names).not.toContain('Hey');
+    });
+
+    it('should extract a place with kind place', () => {
+      const result = extractEntities('I went to Paris last spring');
+
+      const paris = result.find(r => r.name === 'Paris');
+      expect(paris).toBeDefined();
+      expect(paris!.kind).toBe('place');
+    });
+
+    it('should extract an organization with kind organization', () => {
+      const result = extractEntities('Google announced new products');
+
+      const google = result.find(r => r.name === 'Google');
+      expect(google).toBeDefined();
+      expect(google!.kind).toBe('organization');
+    });
+
+    it('should extract multi-word names as single entities', () => {
+      const result = extractEntities('John Smith came over');
+
+      const entity = result.find(r => r.name === 'John Smith');
+      expect(entity).toBeDefined();
+      expect(entity!.kind).toBe('person');
+    });
+
+    it('should strip trailing punctuation from extracted names', () => {
+      const result = extractEntities('We visited Paris.');
+
+      const paris = result.find(r => r.name === 'Paris');
+      expect(paris).toBeDefined();
+      expect(paris!.name).toBe('Paris');
+    });
+
+    it('should return empty array for empty or entity-free input', () => {
+      expect(extractEntities('')).toEqual([]);
+      expect(extractEntities('the cat sat on the mat')).toEqual([]);
+    });
+
+    it('should deduplicate entities that appear in multiple passes', () => {
+      const result = extractEntities('Jorge from Google flew to Paris');
+
+      const names = result.map(r => r.name);
+      // Jorge should appear exactly once despite being both a person and a proper noun
+      expect(names.filter(n => n === 'Jorge')).toHaveLength(1);
+    });
+
+    it('should recognize known names passed as options', () => {
+      const result = extractEntities('met up with toby yesterday', {
+        knownNames: [{ name: 'Toby', kind: 'person' }]
+      });
+
+      const toby = result.find(r => r.name.toLowerCase() === 'toby');
+      expect(toby).toBeDefined();
+      expect(toby!.kind).toBe('person');
+    });
+
+    it('should handle the original message from the spec correctly', () => {
+      const result = extractEntities(
+        'Hey there, I have an appointment at Jorge\'s at 12:05pm on Monday'
+      );
+
+      const names = result.map(r => r.name);
+      expect(names).not.toContain('Hey');
+      expect(names).not.toContain('Monday');
+      expect(names).toContain('Jorge');
     });
   });
 });

@@ -16,6 +16,14 @@ The personality currently configured for the assistant. Resolved by checking the
 
 Something Barnaby remembers for the user. Categorised as either a **Todo** (a task to do) or a **Note** (general information, facts, reminders). A third category, **Appointment**, exists in the codebase but is legacy — scheduled events belong in Google Calendar.
 
+## Entity
+
+A named thing extracted from Memory content by the entity extraction pipeline. Has a canonical name, an optional **Kind** (person, place, organization, or event), and one or more **Aliases** that map different surface text forms back to it. Entities link many Memories together so they can be queried as a group (e.g., "everything about Sarah"). Entities with different surface forms that refer to the same real-world thing can be manually merged.
+
+## Entity Alias
+
+A surface text form that resolves to a canonical Entity. Aliases tolerate capitalisation differences, nicknames, pronouns, and possessive forms (`Jorge`, `jorge`, `Jorge's`) — all normalised to lowercase before lookup. First-person references (`me`, `I`, `my`) are seeded as aliases for the user entity.
+
 ## Core Memory
 
 A Memory representing an enduring fact about the user: identity, preferences, relationships, or standing instructions. Always included in LLM context regardless of age. Denoted by the `core` tag.

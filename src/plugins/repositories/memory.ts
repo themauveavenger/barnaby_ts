@@ -188,7 +188,8 @@ export function createMemoryRepository(db: Database, entityRepository: EntityRep
         'INSERT INTO memory_tags (memory_id, tag_id) VALUES (?, (SELECT id FROM tags WHERE name = ?))'
       );
 
-      const entityNames = extractEntities(content);
+      const knownNames = entityRepository.getCanonicalNames();
+      const entities = extractEntities(content, { knownNames });
 
       const transaction = db.transaction(() => {
         insertMemory.run(id, content, category, permanent, createdAt);
@@ -197,8 +198,8 @@ export function createMemoryRepository(db: Database, entityRepository: EntityRep
           linkTag.run(id, tag);
         }
 
-        for (const entityName of entityNames) {
-          const normalized = entityName.toLowerCase().trim();
+        for (const entity of entities) {
+          const normalized = entity.name.toLowerCase().trim();
           const existing = entityRepository.findByNormalizedText(normalized);
           if (existing) {
             entityRepository.linkMemoryToEntity(id, existing.entity.id);
@@ -206,9 +207,9 @@ export function createMemoryRepository(db: Database, entityRepository: EntityRep
             db.prepare('UPDATE entity_aliases SET last_seen = ? WHERE id = ?').run(now, existing.alias.id);
             db.prepare('UPDATE entities SET last_seen = ? WHERE id = ?').run(now, existing.entity.id);
           } else {
-            const entity = entityRepository.createEntity(entityName);
-            entityRepository.createAlias(entity.id, entityName);
-            entityRepository.linkMemoryToEntity(id, entity.id);
+            const created = entityRepository.createEntity(entity.name, entity.kind ?? undefined);
+            entityRepository.createAlias(created.id, entity.name);
+            entityRepository.linkMemoryToEntity(id, created.id);
           }
         }
       });

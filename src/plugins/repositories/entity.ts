@@ -1,4 +1,5 @@
 import type { Database } from 'better-sqlite3';
+import nlp from 'compromise';
 
 export type EntityKind
   = 'person'
@@ -35,6 +36,7 @@ export interface EntityRepository {
   findByNormalizedText(normalizedText: string): { entity: Entity; alias: EntityAlias } | null;
   findEntityById(id: string): Entity | null;
   findCanonicalEntityById(id: string): Entity | null;
+  getCanonicalNames(): { name: string; kind: EntityKind | null }[];
   mergeEntities(survivorId: string, loserId: string): void;
   linkMemoryToEntity(memoryId: string, entityId: string): void;
   findMemoryIdsByEntityId(entityId: string): string[];
@@ -92,34 +94,71 @@ function rowToAlias(row: EntityAliasRow): EntityAlias {
   };
 }
 
-const DENYLIST = new Set([
-  'the', 'a', 'an', 'it', 'this', 'that', 'these', 'those',
-  'we', 'they', 'he', 'she',
-  'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
-  'january', 'february', 'march', 'april', 'may', 'june',
-  'july', 'august', 'september', 'october', 'november', 'december',
-  'am', 'pm', 'ok', 'yes', 'no',
-  'his', 'her', 'its', 'their'
-]);
+const KIND_TO_COMPROMISE_TAG: Record<EntityKind, string> = {
+  person: 'FirstName',
+  place: 'City',
+  organization: 'Organization',
+  event: 'Holiday',
+  topic: 'ProperNoun',
+  product: 'ProperNoun',
+  project: 'ProperNoun',
+  goal: 'ProperNoun',
+  animal: 'FirstName'
+};
+
+function buildLexicon(knownNames?: { name: string; kind: EntityKind | null }[]): Record<string, string> | undefined {
+  if (!knownNames || knownNames.length === 0) return undefined;
+  const lexicon: Record<string, string> = {};
+  for (const { name, kind } of knownNames) {
+    lexicon[name] = kind ? KIND_TO_COMPROMISE_TAG[kind] : 'ProperNoun';
+  }
+  return lexicon;
+}
+
+function stripTrailingPunctuation(name: string): string {
+  return name.replace(/[.,;:!?]+$/, '').replace(/\x27s$/, '');
+}
 
 /**
- * Extracts potential entity names from memory content using a lightweight
- * heuristic (capitalised words minus a denylist of common false positives).
+ * Extracts potential entities from memory content using compromise's
+ * part-of-speech tagging. Returns entities with inferred kinds
+ * (person, place, organization, event) where possible.
  *
- * Uses a regex rather than an LLM to keep the memory write path fast and
- * deterministic. The denylist catches days, months and pronouns that
- * would otherwise pollute the entity graph.
+ * Falls back to an empty array if compromise throws.
  */
-export function extractEntities(content: string): string[] {
-  const matches = content.match(/\b[A-Z][a-zA-Z]*\b/g) || [];
-  const entities = [
-    ...new Set(
-      matches
-        .map(w => w.trim())
-        .filter(w => w.length > 1 && !DENYLIST.has(w.toLowerCase()))
-    )
-  ];
-  return entities;
+export function extractEntities(
+  content: string,
+  opts?: { knownNames?: { name: string; kind: EntityKind | null }[] }
+): { name: string; kind: EntityKind | null }[] {
+  try {
+    const doc = nlp(content, buildLexicon(opts?.knownNames));
+    const seen = new Set<string>();
+    const results: { name: string; kind: EntityKind | null }[] = [];
+
+    const addResult = (name: string, kind: EntityKind | null) => {
+      const cleaned = stripTrailingPunctuation(name);
+      const normalized = cleaned.toLowerCase();
+      if (!seen.has(normalized) && cleaned.length > 0) {
+        seen.add(normalized);
+        results.push({ name: cleaned, kind });
+      }
+    };
+
+    // Pass 1: kind-aware extraction
+    for (const name of doc.people().out('array') as string[]) addResult(name, 'person');
+    for (const name of doc.places().out('array') as string[]) addResult(name, 'place');
+    for (const name of doc.organizations().out('array') as string[]) addResult(name, 'organization');
+    for (const name of doc.match('#Holiday').out('array') as string[]) addResult(name, 'event');
+
+    // Pass 2: remaining proper nouns not caught above
+    for (const name of doc.match('#ProperNoun').not('#Person').not('#Place').not('#Organization').not('#Holiday').out('array') as string[]) {
+      addResult(name, null);
+    }
+
+    return results;
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -253,6 +292,21 @@ export function createEntityRepository(db: Database): EntityRepository {
 
       if (!row) return null;
       return rowToEntity(row);
+    },
+
+    /**
+     * Returns canonical names and kinds of all live entities.
+     *
+     * Used by {@link extractEntities} to pass known entities as lexicon
+     * hints to compromise so that previously seen names are recognised
+     * even in lowercase or unusual forms.
+     */
+    getCanonicalNames(): { name: string; kind: EntityKind | null }[] {
+      const rows = db
+        .prepare('SELECT canonical_name, kind FROM entities WHERE merged_into_id IS NULL')
+        .all() as { canonical_name: string; kind: EntityKind | null }[];
+
+      return rows.map(r => ({ name: r.canonical_name, kind: r.kind }));
     },
 
     /**
