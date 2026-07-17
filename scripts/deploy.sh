@@ -17,19 +17,28 @@ DOMAIN="${DOMAIN:?must be set}"
 NGINX_SITE="barnaby.conf"
 REMOTE_APP_DIR="/home/${PI_USER}/barnaby_ts"
 
+# Use Windows SSH client when running inside WSL (better agent / keychain integration)
+if grep -qi 'microsoft\|wsl' /proc/sys/kernel/osrelease 2>/dev/null || [ -n "${WSL_DISTRO_NAME:-}" ]; then
+  SSH_CMD="ssh.exe"
+  SCP_CMD="scp.exe"
+else
+  SSH_CMD="ssh"
+  SCP_CMD="scp"
+fi
+
 echo "Deploying to ${PI_USER}@${PI_HOST}..."
 
 # Copy nginx and systemd config files to the Pi first,
 # then run a single remote script that handles everything.
-scp -P "${PI_PORT}" \
+${SCP_CMD} -P "${PI_PORT}" \
   scripts/systemd/barnaby.service \
   "${PI_USER}@${PI_HOST}:/tmp/barnaby.service"
 
-scp -P "${PI_PORT}" \
+${SCP_CMD} -P "${PI_PORT}" \
   scripts/nginx/barnaby.conf \
   "${PI_USER}@${PI_HOST}:/tmp/${NGINX_SITE}"
 
-ssh -p "${PI_PORT}" "${PI_USER}@${PI_HOST}" bash -s <<REMOTE
+${SSH_CMD} -p "${PI_PORT}" "${PI_USER}@${PI_HOST}" bash -s <<REMOTE
   set -euo pipefail
 
   APP_DIR="${REMOTE_APP_DIR}"
@@ -82,6 +91,13 @@ ssh -p "${PI_PORT}" "${PI_USER}@${PI_HOST}" bash -s <<REMOTE
   echo "--> Pulling latest code..."
   cd "\${APP_DIR}"
   LOCKFILE_HASH_BEFORE=\$(md5sum package-lock.json 2>/dev/null || echo "none")
+
+  # Stash any debugging detritus so git pull can fast-forward cleanly
+  if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "--> Stashing local changes before pull..."
+    git stash push -m "deploy.sh auto-stash \$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  fi
+
   git pull
   LOCKFILE_HASH_AFTER=\$(md5sum package-lock.json 2>/dev/null || echo "none")
 
