@@ -18,7 +18,7 @@ Something Barnaby remembers for the user. Categorised as either a **Todo** (a ta
 
 ## Entity
 
-A named thing extracted from Memory content by the entity extraction pipeline. Has a canonical name, an optional **Kind** (person, place, organization, or event), and one or more **Aliases** that map different surface text forms back to it. Entities link many Memories together so they can be queried as a group (e.g., "everything about Sarah"). Entities with different surface forms that refer to the same real-world thing can be manually merged.
+A named thing extracted from Memory content by the entity extraction pipeline. Has a canonical name, an optional **Kind** (person, place, or organization), and one or more **Aliases** that map different surface text forms back to it. Entities link many Memories together so they can be queried as a group (e.g., "everything about Sarah"). Entities with different surface forms that refer to the same real-world thing can be manually merged.
 
 ## Entity Alias
 

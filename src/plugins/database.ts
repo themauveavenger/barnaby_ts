@@ -126,7 +126,7 @@ export default fp(async function databasePlugin(fastify: FastifyInstance) {
       id TEXT PRIMARY KEY,
       canonical_name TEXT NOT NULL,
       kind TEXT CHECK (kind IN (
-        'person', 'place', 'organization', 'event',
+        'person', 'place', 'organization',
         'topic', 'product', 'project', 'goal', 'animal'
       )),
       first_seen INTEGER NOT NULL,

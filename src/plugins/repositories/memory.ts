@@ -1,4 +1,5 @@
 import type { Database } from 'better-sqlite3';
+import type { FastifyBaseLogger } from 'fastify';
 import { MEMORY_CATEGORY_NAMES, type MemoryCategory } from '../memory-categories.js';
 import { extractEntities, type EntityRepository } from './entity.js';
 import type { MemoryActionType } from './memory-action.js';
@@ -152,7 +153,7 @@ function findResolvedRecentRows(db: Database, days: number): ResolvedMemoryRow[]
  * that entity extraction and linking happens atomically inside the
  * same transaction as the memory insert.
  */
-export function createMemoryRepository(db: Database, entityRepository: EntityRepository): MemoryRepository {
+export function createMemoryRepository(db: Database, entityRepository: EntityRepository, logger?: FastifyBaseLogger): MemoryRepository {
   return {
     /**
      * Creates a new memory, tags, and entity links in a single transaction.
@@ -189,7 +190,7 @@ export function createMemoryRepository(db: Database, entityRepository: EntityRep
       );
 
       const knownNames = entityRepository.getCanonicalNames();
-      const entities = extractEntities(content, { knownNames });
+      const entities = extractEntities(content, { knownNames, logger });
 
       const transaction = db.transaction(() => {
         insertMemory.run(id, content, category, permanent, createdAt);
@@ -207,7 +208,7 @@ export function createMemoryRepository(db: Database, entityRepository: EntityRep
             db.prepare('UPDATE entity_aliases SET last_seen = ? WHERE id = ?').run(now, existing.alias.id);
             db.prepare('UPDATE entities SET last_seen = ? WHERE id = ?').run(now, existing.entity.id);
           } else {
-            const created = entityRepository.createEntity(entity.name, entity.kind ?? undefined);
+            const created = entityRepository.createEntity(entity.name, entity.kind);
             entityRepository.createAlias(created.id, entity.name);
             entityRepository.linkMemoryToEntity(id, created.id);
           }

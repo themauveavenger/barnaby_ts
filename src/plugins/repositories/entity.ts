@@ -1,11 +1,11 @@
 import type { Database } from 'better-sqlite3';
 import nlp from 'compromise';
+import type { FastifyBaseLogger } from 'fastify';
 
 export type EntityKind
   = 'person'
     | 'place'
     | 'organization'
-    | 'event'
     | 'topic'
     | 'product'
     | 'project'
@@ -31,7 +31,7 @@ export interface EntityAlias {
 }
 
 export interface EntityRepository {
-  createEntity(canonicalName: string, kind?: EntityKind): Entity;
+  createEntity(canonicalName: string, kind?: EntityKind | null): Entity;
   createAlias(entityId: string, surfaceText: string): EntityAlias;
   findByNormalizedText(normalizedText: string): { entity: Entity; alias: EntityAlias } | null;
   findEntityById(id: string): Entity | null;
@@ -94,17 +94,16 @@ function rowToAlias(row: EntityAliasRow): EntityAlias {
   };
 }
 
-const KIND_TO_COMPROMISE_TAG: Record<EntityKind, string> = {
+const KIND_TO_COMPROMISE_TAG = {
   person: 'FirstName',
   place: 'City',
   organization: 'Organization',
-  event: 'Holiday',
   topic: 'ProperNoun',
   product: 'ProperNoun',
   project: 'ProperNoun',
   goal: 'ProperNoun',
-  animal: 'FirstName'
-};
+  animal: 'ProperNoun'
+} as const satisfies Record<EntityKind, string>;
 
 function buildLexicon(knownNames?: { name: string; kind: EntityKind | null }[]): Record<string, string> | undefined {
   if (!knownNames || knownNames.length === 0) return undefined;
@@ -116,19 +115,29 @@ function buildLexicon(knownNames?: { name: string; kind: EntityKind | null }[]):
 }
 
 function stripTrailingPunctuation(name: string): string {
-  return name.replace(/[.,;:!?]+$/, '').replace(/\x27s$/, '');
+  return name.replace(/[.,;:!?]+$/, '').replace(/'s$/, '');
 }
+
+type NlpDoc = ReturnType<typeof nlp>;
+// Sub-views (.people(), .places(), .match() results) share the base View type,
+// which compromise doesn't export — derive it from match()'s return type.
+type NlpView = ReturnType<NlpDoc['match']>;
+
+const outArray = (view: NlpView): string[] => view.out('array') as string[];
+
+const untaggedProperNouns = (doc: NlpDoc): string[] =>
+  outArray(doc.match('#ProperNoun').not('#Person').not('#Place').not('#Organization'));
 
 /**
  * Extracts potential entities from memory content using compromise's
  * part-of-speech tagging. Returns entities with inferred kinds
- * (person, place, organization, event) where possible.
+ * (person, place, organization) where possible.
  *
  * Falls back to an empty array if compromise throws.
  */
 export function extractEntities(
   content: string,
-  opts?: { knownNames?: { name: string; kind: EntityKind | null }[] }
+  opts?: { knownNames?: { name: string; kind: EntityKind | null }[]; logger?: FastifyBaseLogger }
 ): { name: string; kind: EntityKind | null }[] {
   try {
     const doc = nlp(content, buildLexicon(opts?.knownNames));
@@ -144,19 +153,22 @@ export function extractEntities(
       }
     };
 
-    // Pass 1: kind-aware extraction
-    for (const name of doc.people().out('array') as string[]) addResult(name, 'person');
-    for (const name of doc.places().out('array') as string[]) addResult(name, 'place');
-    for (const name of doc.organizations().out('array') as string[]) addResult(name, 'organization');
-    for (const name of doc.match('#Holiday').out('array') as string[]) addResult(name, 'event');
+    const kindSources = [
+      { names: outArray(doc.people()), kind: 'person' },
+      { names: outArray(doc.places()), kind: 'place' },
+      { names: outArray(doc.organizations()), kind: 'organization' }
+    ] as const;
 
-    // Pass 2: remaining proper nouns not caught above
-    for (const name of doc.match('#ProperNoun').not('#Person').not('#Place').not('#Organization').not('#Holiday').out('array') as string[]) {
-      addResult(name, null);
+    for (const { names, kind } of kindSources) {
+      for (const name of names) addResult(name, kind);
     }
 
+    // Pass 2: remaining proper nouns not caught above
+    for (const name of untaggedProperNouns(doc)) addResult(name, null);
+
     return results;
-  } catch {
+  } catch (err) {
+    opts?.logger?.warn({ err }, 'entity extraction failed');
     return [];
   }
 }
@@ -198,6 +210,8 @@ export function seedUserEntity(db: Database): void {
  * can interact with entities through a narrow interface instead of raw SQL.
  */
 export function createEntityRepository(db: Database): EntityRepository {
+  let canonicalNamesCache: { name: string; kind: EntityKind | null }[] | null = null;
+
   return {
     /**
      * Creates a new canonical entity row.
@@ -205,7 +219,7 @@ export function createEntityRepository(db: Database): EntityRepository {
      * Every alias must point to exactly one canonical entity so that
      * entity-aware queries always resolve to a single identity.
      */
-    createEntity(canonicalName: string, kind?: EntityKind): Entity {
+    createEntity(canonicalName: string, kind?: EntityKind | null): Entity {
       const id = crypto.randomUUID();
       const now = Date.now();
 
@@ -213,6 +227,7 @@ export function createEntityRepository(db: Database): EntityRepository {
         'INSERT INTO entities (id, canonical_name, kind, first_seen, last_seen) VALUES (?, ?, ?, ?, ?)'
       ).run(id, canonicalName, kind || null, now, now);
 
+      canonicalNamesCache = null;
       return this.findEntityById(id)!;
     },
 
@@ -302,11 +317,14 @@ export function createEntityRepository(db: Database): EntityRepository {
      * even in lowercase or unusual forms.
      */
     getCanonicalNames(): { name: string; kind: EntityKind | null }[] {
-      const rows = db
-        .prepare('SELECT canonical_name, kind FROM entities WHERE merged_into_id IS NULL')
-        .all() as { canonical_name: string; kind: EntityKind | null }[];
+      if (!canonicalNamesCache) {
+        const rows = db
+          .prepare('SELECT canonical_name, kind FROM entities WHERE merged_into_id IS NULL')
+          .all() as { canonical_name: string; kind: EntityKind | null }[];
 
-      return rows.map(r => ({ name: r.canonical_name, kind: r.kind }));
+        canonicalNamesCache = rows.map(r => ({ name: r.canonical_name, kind: r.kind }));
+      }
+      return canonicalNamesCache;
     },
 
     /**
@@ -364,6 +382,7 @@ export function createEntityRepository(db: Database): EntityRepository {
       });
 
       transaction();
+      canonicalNamesCache = null;
     },
 
     /**

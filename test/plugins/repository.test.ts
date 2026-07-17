@@ -821,6 +821,11 @@ describe('repository plugin', () => {
       expect(names).not.toContain('Hey');
       expect(names).not.toContain('Monday');
       expect(names).toContain('Jorge');
+
+      // User story #9 requires Jorge classified as a person, not merely present.
+      const jorge = result.find(r => r.name === 'Jorge');
+      expect(jorge).toBeDefined();
+      expect(jorge!.kind).toBe('person');
     });
   });
 });
