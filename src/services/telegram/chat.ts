@@ -34,12 +34,11 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
       fastify.log.debug({ chatId }, 'Reusing existing session');
     } else {
       // Create new session with full context
-      const { authStorage, modelRegistry, model, resourceLoader } = fastify.agent;
+      const { modelRuntime, model, resourceLoader } = fastify.agent;
 
       const result = await createAgentSession({
         model,
-        authStorage,
-        modelRegistry,
+        modelRuntime,
         resourceLoader,
         sessionManager: SessionManager.inMemory(),
         tools: ['calendar_list', 'memory_list', 'memory_resolve', 'drive_read_doc', 'drive_list_docs', 'wolfram_alpha']

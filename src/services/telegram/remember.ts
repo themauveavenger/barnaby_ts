@@ -27,12 +27,11 @@ export async function handleRemember(ctx: Context, fastify: FastifyInstance): Pr
   let sessionCreated = false;
 
   try {
-    const { authStorage, modelRegistry, model, resourceLoader } = fastify.agent;
+    const { modelRuntime, model, resourceLoader } = fastify.agent;
 
     const { session } = await createAgentSession({
       model,
-      authStorage,
-      modelRegistry,
+      modelRuntime,
       resourceLoader,
       sessionManager: SessionManager.inMemory(),
       tools: ['memory_create', 'memory_list', 'memory_resolve']

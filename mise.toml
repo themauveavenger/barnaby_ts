@@ -1,4 +1,4 @@
 [tools]
-node = '24'
+node = '26.5.0'
 bun = 'latest'
 python = '3'

@@ -1,7 +1,6 @@
 import fp from 'fastify-plugin';
 import type { FastifyInstance } from 'fastify';
-import { AuthStorage, ModelRegistry, DefaultResourceLoader } from '@earendil-works/pi-coding-agent';
-import { getModel } from '@earendil-works/pi-ai';
+import { ModelRuntime, DefaultResourceLoader } from '@earendil-works/pi-coding-agent';
 import type { Api, Model } from '@earendil-works/pi-ai';
 
 import createCalendarExtension from './extensions/google-calendar.js';
@@ -13,16 +12,17 @@ import createGoogleDriveExtension from './extensions/google-drive.js';
 import createWolframAlphaExtension from './extensions/wolfram-alpha.js';
 
 export interface AgentServices {
-  authStorage: AuthStorage;
-  modelRegistry: ModelRegistry;
+  modelRuntime: ModelRuntime;
   model: Model<Api>;
   resourceLoader: DefaultResourceLoader;
 }
 
 export default fp(async function agentPlugin(fastify: FastifyInstance) {
-  const authStorage = AuthStorage.create();
-  const modelRegistry = ModelRegistry.create(authStorage);
-  const model = getModel('opencode-go', 'kimi-k2.6');
+  const modelRuntime = await ModelRuntime.create({});
+  const model = modelRuntime.getModel('opencode-go', 'kimi-k2.6');
+  if (!model) {
+    throw new Error('Default model opencode-go/kimi-k2.6 is not available');
+  }
 
   const resourceLoader = new DefaultResourceLoader({
     cwd: process.cwd(),
@@ -58,5 +58,5 @@ export default fp(async function agentPlugin(fastify: FastifyInstance) {
   });
   await resourceLoader.reload();
 
-  fastify.decorate('agent', { authStorage, modelRegistry, model, resourceLoader });
+  fastify.decorate('agent', { modelRuntime, model, resourceLoader });
 });

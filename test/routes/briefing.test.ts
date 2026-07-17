@@ -16,22 +16,19 @@ const mockResourceLoader = {
 
 vi.mock('@earendil-works/pi-coding-agent', async () => {
   return {
-    AuthStorage: { create: vi.fn(() => ({})) },
-    ModelRegistry: { create: vi.fn(() => ({})) },
+    ModelRuntime: {
+      create: vi.fn(async () => ({
+        getModel: vi.fn(() => ({
+          id: 'kimi-k2.6',
+          provider: 'opencode-go'
+        }))
+      }))
+    },
     DefaultResourceLoader: vi.fn(function DefaultResourceLoader() {
       return mockResourceLoader;
     }),
     createAgentSession: vi.fn(async () => ({ session: mockSession })),
     SessionManager: { inMemory: vi.fn(() => ({})) }
-  };
-});
-
-vi.mock('@earendil-works/pi-ai', async () => {
-  return {
-    getModel: vi.fn(() => ({
-      id: 'kimi-k2.6',
-      provider: 'opencode-go'
-    }))
   };
 });
 

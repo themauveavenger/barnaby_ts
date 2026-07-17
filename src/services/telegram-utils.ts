@@ -71,12 +71,11 @@ export async function createAgentAndDeliver(options: DeliverOptions): Promise<st
   }
 
   const chatId = Number(chatIdEnv);
-  const { authStorage, modelRegistry, model, resourceLoader } = fastify.agent;
+  const { modelRuntime, model, resourceLoader } = fastify.agent;
 
   const { session } = await createAgentSession({
     model,
-    authStorage,
-    modelRegistry,
+    modelRuntime,
     resourceLoader,
     sessionManager: SessionManager.inMemory(),
     tools

@@ -7,7 +7,7 @@ A personal digital assistant. Barnaby remembers things, manages calendar events,
 - **Runtime:** Node.js 24 LTS with TypeScript (ESM, no build step via `tsx`)
 - **Server:** Fastify with `@fastify/basic-auth` (global auth on all routes)
 - **Database:** SQLite via `better-sqlite3`
-- **LLM:** `@mariozechner/pi-coding-agent` SDK with OpenCode Go provider (`minimax-m2.7`)
+- **LLM:** `@earendil-works/pi-coding-agent` SDK with OpenCode Go provider (`kimi-k2.6`)
 - **Templating:** Handlebars with PicoCSS (CDN) for the memories page
 - **Telegram:** `grammy` with `@grammyjs/auto-retry`
 - **Testing:** Vitest (run with `npm run test:minimal`)
@@ -22,7 +22,7 @@ A personal digital assistant. Barnaby remembers things, manages calendar events,
 | `GOOGLE_CLIENT_ID` | Yes | Google OAuth 2.0 client ID (for Calendar API) |
 | `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth 2.0 client secret |
 | `GOOGLE_REFRESH_TOKEN` | Yes | Refresh token from one-time OAuth flow |
-| `YNAB_ACCESS_TOKEN` | No² | YNAB personal access token (from [app.youneedabudget.com/settings/developer](https://app.youneedabudget.com/settings/developer)) |
+| `YNAB_PERSONAL_ACCESS_TOKEN` | No² | YNAB personal access token (from [app.youneedabudget.com/settings/developer](https://app.youneedabudget.com/settings/developer)) |
 | `TELEGRAM_BOT_TOKEN` | Yes | Telegram Bot API token (from [@BotFather](https://t.me/BotFather)) |
 | `TELEGRAM_CHAT_ID` | Yes | Your Telegram chat ID (send `/start` to the bot to get it) |
 | `BRIEFING_CRON` | Yes | Cron expression for daily briefing schedule (e.g. `0 8 * * *` for 8:00 AM) |
@@ -127,7 +127,7 @@ The briefing includes calendar events from yesterday, today, and the next 7 days
 
 ## YNAB Integration
 
-Seven YNAB tools are implemented (`ynab_get_transactions`, `ynab_get_payee_history`, `ynab_create_transaction`, `ynab_split_transaction`, `ynab_approve_transaction`, `ynab_delete_transaction`, `ynab_flag_transaction`) but are **not yet exposed through any user-facing endpoint**. Set `YNAB_ACCESS_TOKEN` in your `.env` for when they are enabled.
+Seven YNAB tools are implemented (`ynab_get_transactions`, `ynab_get_payee_history`, `ynab_create_transaction`, `ynab_split_transaction`, `ynab_approve_transaction`, `ynab_delete_transaction`, `ynab_flag_transaction`) but are **not yet exposed through any user-facing endpoint**. Set `YNAB_PERSONAL_ACCESS_TOKEN` in your `.env` for when they are enabled.
 
 ## Memory Actions
 
