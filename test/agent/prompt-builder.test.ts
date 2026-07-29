@@ -161,8 +161,76 @@ describe('PromptBuilder.briefing', () => {
 
     expect(prompt).toBe(expected);
   });
+});
 
-  it('composes the 7 shared behavior rules (sanity, byte-equivalent wording)', () => {
+const CHAT_ORCHESTRATION = 'Answer concisely and naturally. '
+  + 'Use the memory_list, calendar_list, drive_read_doc, drive_list_docs, and wolfram_alpha tools to search for relevant information or computations if needed. '
+  + 'Your tools only have read-only access to data. You cannot create any new memories, calendar events, or Google documents. '
+  + 'If you find relevant memories, calendar events, or text in a Google document, reference them directly by name. '
+  + 'If nothing relevant comes up, say so honestly rather than making things up.';
+
+describe('PromptBuilder.chat', () => {
+  it('pins the new intended output: chat orchestration text plus the 7 shared rules (no memory/calendar)', () => {
+    const prompt = promptBuilder.chat({
+      userMessage: 'what type of donut did Iris like?',
+      memoryContext: '',
+      calendarIds: []
+    });
+
+    // The leading "\n" is the documented blank-line quirk of chat's
+    // conditional-array-spreads + join('\n') handling when no context is
+    // present — preserved deliberately.
+    const expected = [
+      '',
+      'The user asks: "what type of donut did Iris like?"',
+      '',
+      CHAT_ORCHESTRATION,
+      '',
+      ...SHARE_RULES
+    ].join('\n');
+
+    expect(prompt).toBe(expected);
+  });
+
+  it('prepends memory and calendar context with no leading newline when present', () => {
+    const prompt = promptBuilder.chat({
+      userMessage: 'tell me more',
+      memoryContext: 'Core memories about the user:\n- Shellfish allergy',
+      calendarIds: ['primary', 'family.calendar@gmail.com']
+    });
+
+    const expected = [
+      'Core memories about the user:\n- Shellfish allergy',
+      'Available calendars:\n- primary\n- family.calendar@gmail.com',
+      '',
+      'The user asks: "tell me more"',
+      '',
+      CHAT_ORCHESTRATION,
+      '',
+      ...SHARE_RULES
+    ].join('\n');
+
+    expect(prompt).toBe(expected);
+  });
+
+  it('emits all 7 shared behavior rules (deliberate behavior change for chat)', () => {
+    const prompt = promptBuilder.chat({
+      userMessage: 'hi',
+      memoryContext: '',
+      calendarIds: []
+    });
+
+    for (const rule of SHARE_RULES) {
+      expect(prompt).toContain(rule);
+    }
+    // Chat-specific orchestration text is preserved.
+    expect(prompt).toContain('Answer concisely and naturally');
+    expect(prompt).toContain('You cannot create any new memories');
+  });
+});
+
+describe('PromptBuilder.briefing (shared rules sanity)', () => {
+  it('composes the 7 shared behavior rules (byte-equivalent wording)', () => {
     const prompt = promptBuilder.briefing({
       today: TODAY,
       timeOfDay: TIME_OF_DAY,

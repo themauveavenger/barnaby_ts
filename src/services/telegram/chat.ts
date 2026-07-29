@@ -2,6 +2,7 @@ import type { Context } from 'grammy';
 import type { FastifyInstance } from 'fastify';
 import { createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
 import { buildMemoryContext } from '../telegram-utils.js';
+import { promptBuilder } from '../../agent/prompt-builder.js';
 import { isAllowedChat, withTimeout } from './shared.js';
 import { getSession, setSession } from './session-store.js';
 
@@ -48,22 +49,12 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
       sessionCreated = true;
 
       const memoryContext = buildMemoryContext(fastify);
-      const calendarContext = fastify.calendarIds.length > 0
-        ? `Available calendars:\n${fastify.calendarIds.map(id => `- ${id}`).join('\n')}`
-        : '';
 
-      prompt = [
-        ...(memoryContext ? [memoryContext] : []),
-        ...(calendarContext ? [calendarContext] : []),
-        '',
-        `The user asks: "${text}"`,
-        '',
-        'Answer concisely and naturally. '
-        + 'Use the memory_list, calendar_list, drive_read_doc, drive_list_docs, and wolfram_alpha tools to search for relevant information or computations if needed. '
-        + 'Your tools only have read-only access to data. You cannot create any new memories, calendar events, or Google documents. '
-        + 'If you find relevant memories, calendar events, or text in a Google document, reference them directly by name. '
-        + 'If nothing relevant comes up, say so honestly rather than making things up.'
-      ].join('\n');
+      prompt = promptBuilder.chat({
+        userMessage: text,
+        memoryContext,
+        calendarIds: fastify.calendarIds
+      });
 
       // Store the session for reuse
       setSession(chatId, session);

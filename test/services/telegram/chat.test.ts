@@ -15,9 +15,18 @@ vi.mock('../../../src/services/telegram/shared.js', async (importOriginal) => {
   };
 });
 
+vi.mock('../../../src/agent/prompt-builder.js', () => ({
+  promptBuilder: {
+    briefing: vi.fn().mockReturnValue('MOCK PROMPT'),
+    chat: vi.fn().mockReturnValue('MOCK PROMPT'),
+    afternoonUpdate: vi.fn().mockReturnValue('MOCK PROMPT')
+  }
+}));
+
 import { createAgentSession } from '@earendil-works/pi-coding-agent';
 import type { Context } from 'grammy';
 import { withTimeout } from '../../../src/services/telegram/shared.js';
+import { promptBuilder } from '../../../src/agent/prompt-builder.js';
 import { handleChat } from '../../../src/services/telegram/chat.js';
 import { getSession, clearSessionStore } from '../../../src/services/telegram/session-store.js';
 
@@ -124,29 +133,30 @@ describe('handleChat', () => {
     expect(ctx.reply).toHaveBeenCalledWith('I couldn\'t come up with a response. Try again?');
   });
 
-  it('includes user message in prompt', async () => {
+  it('delegates prompt assembly to PromptBuilder.chat with the user message on a new session', async () => {
     const mockSession = createMockSession();
     (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
     const ctx = createMockContext('what type of donut did Iris like?');
     await handleChat(ctx, fastify);
 
-    const prompt = mockSession.prompt.mock.calls[0][0];
-    expect(prompt).toContain('what type of donut did Iris like?');
+    expect(promptBuilder.chat).toHaveBeenCalledTimes(1);
+    expect((promptBuilder.chat as any).mock.calls[0][0]).toMatchObject({
+      userMessage: 'what type of donut did Iris like?'
+    });
   });
 
-  it('includes read-only instruction in prompt', async () => {
+  it('passes the PromptBuilder output to the agent session', async () => {
     const mockSession = createMockSession();
     (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
 
-    const prompt = mockSession.prompt.mock.calls[0][0];
-    expect(prompt).toContain('You cannot create any new memories');
+    expect(mockSession.prompt).toHaveBeenCalledWith('MOCK PROMPT');
   });
 
-  it('includes memory context when memories exist', async () => {
+  it('passes memory context to PromptBuilder.chat when memories exist', async () => {
     const mockSession = createMockSession();
     (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -160,14 +170,14 @@ describe('handleChat', () => {
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
 
-    const prompt = mockSession.prompt.mock.calls[0][0];
-    expect(prompt).toContain('Core memories about the user');
-    expect(prompt).toContain('Shellfish allergy');
-    expect(prompt).toContain('Recent notes and tasks');
-    expect(prompt).toContain('Dentist appointment on Thursday');
+    const memoryContext = (promptBuilder.chat as any).mock.calls[0][0].memoryContext as string;
+    expect(memoryContext).toContain('Core memories about the user');
+    expect(memoryContext).toContain('Shellfish allergy');
+    expect(memoryContext).toContain('Recent notes and tasks');
+    expect(memoryContext).toContain('Dentist appointment on Thursday');
   });
 
-  it('omits empty memory sections from prompt', async () => {
+  it('passes an empty memory context to PromptBuilder when no memories exist', async () => {
     const mockSession = createMockSession();
     (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -178,12 +188,10 @@ describe('handleChat', () => {
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
 
-    const prompt = mockSession.prompt.mock.calls[0][0];
-    expect(prompt).not.toContain('Core memories about the user');
-    expect(prompt).not.toContain('Recent notes and tasks');
+    expect((promptBuilder.chat as any).mock.calls[0][0].memoryContext).toBe('');
   });
 
-  it('includes calendar context when calendars are configured', async () => {
+  it('passes configured calendar IDs to PromptBuilder.chat', async () => {
     const mockSession = createMockSession();
     (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -192,13 +200,12 @@ describe('handleChat', () => {
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
 
-    const prompt = mockSession.prompt.mock.calls[0][0];
-    expect(prompt).toContain('Available calendars');
-    expect(prompt).toContain('- primary');
-    expect(prompt).toContain('- family.calendar@gmail.com');
+    expect((promptBuilder.chat as any).mock.calls[0][0]).toMatchObject({
+      calendarIds: ['primary', 'family.calendar@gmail.com']
+    });
   });
 
-  it('omits calendar context when no calendars are configured', async () => {
+  it('passes an empty calendar ID list to PromptBuilder.chat when none configured', async () => {
     const mockSession = createMockSession();
     (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -207,8 +214,9 @@ describe('handleChat', () => {
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
 
-    const prompt = mockSession.prompt.mock.calls[0][0];
-    expect(prompt).not.toContain('Available calendars');
+    expect((promptBuilder.chat as any).mock.calls[0][0]).toMatchObject({
+      calendarIds: []
+    });
   });
 
   it('ignores messages from unauthorized chat ID', async () => {
@@ -309,19 +317,20 @@ describe('handleChat', () => {
     const mockSession = createMockSession('First response');
     (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
-    // First message - creates session with full context
+    // First message - creates session; prompt is assembled by PromptBuilder.
     const ctx1 = createMockContext('hello', chatId);
     await handleChat(ctx1, fastify);
 
-    const firstPrompt = mockSession.prompt.mock.calls[0][0];
-    expect(firstPrompt).toContain('Answer concisely and naturally');
-    expect(firstPrompt).toContain('You cannot create any new memories');
+    expect(promptBuilder.chat).toHaveBeenCalledTimes(1);
+    expect(mockSession.prompt).toHaveBeenCalledWith('MOCK PROMPT');
 
-    // Second message - reuses session with just user message
+    // Second message - reuses session with raw user text (no PromptBuilder).
     mockSession.getLastAssistantText.mockReturnValue('Second response');
     const ctx2 = createMockContext('tell me more', chatId);
     await handleChat(ctx2, fastify);
 
+    // PromptBuilder is NOT called again on follow-up.
+    expect(promptBuilder.chat).toHaveBeenCalledTimes(1);
     const secondPrompt = mockSession.prompt.mock.calls[1][0];
     expect(secondPrompt).toBe('tell me more');
   });
