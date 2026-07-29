@@ -11,6 +11,16 @@ vi.mock('@earendil-works/pi-coding-agent', () => ({
   }
 }));
 
+import { promptBuilder } from '../../src/agent/prompt-builder.js';
+
+vi.mock('../../src/agent/prompt-builder.js', () => ({
+  promptBuilder: {
+    briefing: vi.fn().mockReturnValue('MOCK PROMPT'),
+    chat: vi.fn().mockReturnValue('MOCK PROMPT'),
+    afternoonUpdate: vi.fn().mockReturnValue('MOCK PROMPT')
+  }
+}));
+
 import { createAgentSession } from '@earendil-works/pi-coding-agent';
 
 function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
@@ -406,6 +416,10 @@ describe('briefing service', () => {
   });
 
   describe('sendBriefing', () => {
+    function lastBriefingContext(): Record<string, unknown> {
+      return (promptBuilder.briefing as any).mock.calls[0][0];
+    }
+
     it('creates agent session with correct tools and sends result to Telegram', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
@@ -423,20 +437,28 @@ describe('briefing service', () => {
       expect(fastify.memoryRepository.findByTags).toHaveBeenCalledWith(['core'], { permanentOnly: true });
       expect(fastify.memoryRepository.findRecent).toHaveBeenCalledWith(7);
 
-      const prompt = mockSession.prompt.mock.calls[0][0];
-      expect(prompt).toContain('Today is');
-      expect(prompt).toContain('It is currently');
-      expect(prompt).toContain('Use the calendar_list tool');
-      expect(prompt).toContain('Available calendars:');
-      expect(prompt).toContain('Call get_weather_forecast');
-      expect(prompt).toContain('weather summary');
-      expect(prompt).toContain('test@example.com');
-      expect(prompt).toContain('family@group.calendar.google.com');
-      expect(prompt).toContain('Generate a daily briefing');
-      expect(prompt).toContain('Start with a brief, warm greeting');
-      expect(prompt).toContain('max 150 words');
-      expect(prompt).toContain('Do not use emojis');
-      expect(prompt).toContain('America/New_York');
+      // Caller computes context and delegates prompt assembly to PromptBuilder.
+      expect(promptBuilder.briefing).toHaveBeenCalledTimes(1);
+      const context = lastBriefingContext();
+      expect(context).toMatchObject({
+        timezone: 'America/New_York',
+        memoryContext: '',
+        calendarIds: ['test@example.com', 'family@group.calendar.google.com']
+      });
+      expect(context.dateRanges).toEqual(expect.objectContaining({
+        yesterdayStart: expect.any(Date),
+        yesterdayEnd: expect.any(Date),
+        todayStart: expect.any(Date),
+        todayEnd: expect.any(Date),
+        weekStart: expect.any(Date),
+        weekEnd: expect.any(Date)
+      }));
+      // No weather configured, no previous briefing in this baseline.
+      expect(context).not.toHaveProperty('weatherLatitude');
+      expect(context).not.toHaveProperty('previousBriefing');
+
+      // The agent session receives whatever PromptBuilder produced.
+      expect(mockSession.prompt).toHaveBeenCalledWith('MOCK PROMPT');
 
       expect(fastify.telegramClient.sendMessage).toHaveBeenCalledWith(
         12345,
@@ -451,6 +473,26 @@ describe('briefing service', () => {
       expect(mockSession.dispose).toHaveBeenCalled();
     });
 
+    it('passes weather location to PromptBuilder when configured', async () => {
+      const mockSession = createMockSession();
+      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+
+      vi.stubEnv('WEATHER_LATITUDE', '40.7');
+      vi.stubEnv('WEATHER_LONGITUDE', '-74.0');
+      try {
+        const fastify = createMockFastify();
+        const service = createBriefingService(fastify);
+        await service.sendBriefing();
+
+        expect(lastBriefingContext()).toMatchObject({
+          weatherLatitude: '40.7',
+          weatherLongitude: '-74.0'
+        });
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    });
+
     it('disables auto-retry on the agent session', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
@@ -462,7 +504,7 @@ describe('briefing service', () => {
       expect(mockSession.setAutoRetryEnabled).toHaveBeenCalledWith(false);
     });
 
-    it('includes core memories in the prompt when they exist', async () => {
+    it('passes core memories (as memory context) to PromptBuilder when they exist', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -481,13 +523,13 @@ describe('briefing service', () => {
       const service = createBriefingService(fastify);
       await service.sendBriefing();
 
-      const prompt = mockSession.prompt.mock.calls[0][0];
-      expect(prompt).toContain('Core memories about the user:');
-      expect(prompt).toContain('- The user is vegetarian');
-      expect(prompt).toContain('- The user lives in Portland');
+      const memoryContext = lastBriefingContext().memoryContext as string;
+      expect(memoryContext).toContain('Core memories about the user:');
+      expect(memoryContext).toContain('- The user is vegetarian');
+      expect(memoryContext).toContain('- The user lives in Portland');
     });
 
-    it('includes recent memories in the prompt when they exist', async () => {
+    it('passes recent memories (as memory context) to PromptBuilder when they exist', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -506,13 +548,13 @@ describe('briefing service', () => {
       const service = createBriefingService(fastify);
       await service.sendBriefing();
 
-      const prompt = mockSession.prompt.mock.calls[0][0];
-      expect(prompt).toContain('Recent notes and tasks (last 7 days):');
-      expect(prompt).toContain('- Buy milk');
-      expect(prompt).toContain('- Call dentist');
+      const memoryContext = lastBriefingContext().memoryContext as string;
+      expect(memoryContext).toContain('Recent notes and tasks (last 7 days):');
+      expect(memoryContext).toContain('- Buy milk');
+      expect(memoryContext).toContain('- Call dentist');
     });
 
-    it('omits memory sections when no memories exist', async () => {
+    it('passes an empty memory context when no memories exist', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -520,12 +562,10 @@ describe('briefing service', () => {
       const service = createBriefingService(fastify);
       await service.sendBriefing();
 
-      const prompt = mockSession.prompt.mock.calls[0][0];
-      expect(prompt).not.toContain('Core memories about the user:');
-      expect(prompt).not.toContain('Recent notes and tasks');
+      expect(lastBriefingContext().memoryContext).toBe('');
     });
 
-    it('includes resolved (completed/dismissed) memories in the prompt', async () => {
+    it('passes resolved (completed/dismissed) memories as memory context', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -544,11 +584,11 @@ describe('briefing service', () => {
       const service = createBriefingService(fastify);
       await service.sendBriefing();
 
-      const prompt = mockSession.prompt.mock.calls[0][0];
-      expect(prompt).toContain('Tasks already completed or dismissed');
-      expect(prompt).toContain('Buy groceries (completed');
-      expect(prompt).toContain('Call dentist (dismissed');
-      expect(prompt).toContain('do not mention these again');
+      const memoryContext = lastBriefingContext().memoryContext as string;
+      expect(memoryContext).toContain('Tasks already completed or dismissed');
+      expect(memoryContext).toContain('Buy groceries (completed');
+      expect(memoryContext).toContain('Call dentist (dismissed');
+      expect(memoryContext).toContain('do not mention these again');
     });
 
     it('throws MissingChatIdError when TELEGRAM_CHAT_ID is not set', async () => {
@@ -582,7 +622,7 @@ describe('briefing service', () => {
       await expect(service.sendBriefing()).rejects.toThrow('Telegram API down');
     });
 
-    it('includes previous briefing context when one exists', async () => {
+    it('passes the previous briefing (raw content + triggeredAt) to PromptBuilder when one exists', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -603,11 +643,12 @@ describe('briefing service', () => {
       const service = createBriefingService(fastify);
       await service.sendBriefing();
 
-      const prompt = mockSession.prompt.mock.calls[0][0];
-      expect(prompt).toContain('Previous briefing content');
-      expect(prompt).toContain('Try not to repeat the same information');
-      const expectedDate = new Date(previousBriefing.triggeredAt).toLocaleDateString('en-US');
-      expect(prompt).toContain(`from ${expectedDate}`);
+      // Caller passes raw previous-briefing data; PromptBuilder owns the
+      // preamble wording.
+      expect(lastBriefingContext().previousBriefing).toEqual({
+        content: 'Previous briefing content',
+        triggeredAt: previousBriefing.triggeredAt
+      });
     });
 
     it('saves manual briefings with correct trigger type', async () => {
