@@ -254,3 +254,137 @@ describe('PromptBuilder.briefing (shared rules sanity)', () => {
     }
   });
 });
+
+describe('PromptBuilder.afternoonUpdate', () => {
+  // The afternoon weekEnd is todayStart + 4 days (a 3-day forward window).
+  const AFTERNOON_WEEK_END = '2026-01-19T05:00:00.000Z';
+
+  function afternoonDateRanges() {
+    return {
+      todayStart: new Date(TODAY_START),
+      todayEnd: new Date(TODAY_END),
+      weekStart: new Date(WEEK_START),
+      weekEnd: new Date(AFTERNOON_WEEK_END)
+    };
+  }
+
+  it('matches the expected prompt with calendars but no memory/previous (byte-equivalent except the reconciled core-memories line)', () => {
+    const prompt = promptBuilder.afternoonUpdate({
+      today: TODAY,
+      timeOfDay: TIME_OF_DAY,
+      timezone: TIMEZONE,
+      tzAbbr: TZ_ABBR,
+      tzLong: TZ_LONG,
+      memoryContext: '',
+      calendarIds: ['test@example.com', 'family@group.calendar.google.com'],
+      dateRanges: afternoonDateRanges()
+    });
+
+    const expected = [
+      `Today is ${TODAY}. It is currently ${TIME_OF_DAY}. All times are in ${TZ_LONG} (${TIMEZONE}, ${TZ_ABBR}).`,
+      'Available calendars:\n- test@example.com\n- family@group.calendar.google.com',
+      'INSTRUCTIONS:',
+      'Use the calendar_list tool to fetch events for each available calendar across these two ranges:',
+      `1. Today:       start "${TODAY_START}"     end "${TODAY_END}"`,
+      `2. Next 3 days: start "${WEEK_START}"      end "${AFTERNOON_WEEK_END}"`,
+      'Generate a brief afternoon check-in based on those events and the notes above.',
+      '- Start with a brief, warm greeting referencing the time of day.',
+      '- Focus on what is ahead this afternoon and evening.',
+      '- Highlight anything new or changed since the morning briefing.',
+      '- If memories were added today, mention only newly relevant ones.',
+      '- Use 1-2 short paragraphs, max 100 words.',
+      '- Use a single bullet list only for 3+ calendar events; otherwise weave them into sentences.',
+      ...SHARE_RULES,
+      '- End with one brief, encouraging closing line.'
+    ].join('\n');
+
+    expect(prompt).toBe(expected);
+    // The reconciled wording (briefing's) replaces the afternoon's original
+    // "unless the user explicitly asks about them." (no "you").
+    expect(prompt).toContain('unless the user explicitly asks you about them.');
+    expect(prompt).not.toContain('unless the user explicitly asks about them.');
+  });
+
+  it('appends the previous briefing with the afternoon-distinct preamble', () => {
+    const previousBriefing = {
+      content: 'Morning briefing content',
+      triggeredAt: '2026-01-14T11:00:00.000Z'
+    };
+
+    const prompt = promptBuilder.afternoonUpdate({
+      today: TODAY,
+      timeOfDay: TIME_OF_DAY,
+      timezone: TIMEZONE,
+      tzAbbr: TZ_ABBR,
+      tzLong: TZ_LONG,
+      memoryContext: 'Recent notes and tasks (last 7 days):\n- Pick up dry cleaning',
+      calendarIds: [],
+      dateRanges: afternoonDateRanges(),
+      previousBriefing
+    });
+
+    const expected = [
+      `Today is ${TODAY}. It is currently ${TIME_OF_DAY}. All times are in ${TZ_LONG} (${TIMEZONE}, ${TZ_ABBR}).`,
+      'Recent notes and tasks (last 7 days):\n- Pick up dry cleaning',
+      'INSTRUCTIONS:',
+      'Use the calendar_list tool to fetch events for each available calendar across these two ranges:',
+      `1. Today:       start "${TODAY_START}"     end "${TODAY_END}"`,
+      `2. Next 3 days: start "${WEEK_START}"      end "${AFTERNOON_WEEK_END}"`,
+      'Generate a brief afternoon check-in based on those events and the notes above.',
+      '- Start with a brief, warm greeting referencing the time of day.',
+      '- Focus on what is ahead this afternoon and evening.',
+      '- Highlight anything new or changed since the morning briefing.',
+      '- If memories were added today, mention only newly relevant ones.',
+      '- Use 1-2 short paragraphs, max 100 words.',
+      '- Use a single bullet list only for 3+ calendar events; otherwise weave them into sentences.',
+      ...SHARE_RULES,
+      '- End with one brief, encouraging closing line.',
+      '\n\nHere is the most recent briefing (sent 1/14/2026) for reference. Do not repeat information from it unless something has changed or it requires an update:\n\nMorning briefing content'
+    ].join('\n');
+
+    expect(prompt).toBe(expected);
+  });
+
+  it('omits the previous-briefing preamble when no prior briefing exists', () => {
+    const prompt = promptBuilder.afternoonUpdate({
+      today: TODAY,
+      timeOfDay: TIME_OF_DAY,
+      timezone: TIMEZONE,
+      tzAbbr: TZ_ABBR,
+      tzLong: TZ_LONG,
+      memoryContext: '',
+      calendarIds: [],
+      dateRanges: afternoonDateRanges()
+    });
+
+    expect(prompt).not.toContain('Here is the most recent briefing');
+  });
+
+  it('keeps a distinct preamble from the briefing (asymmetry preserved)', () => {
+    const previousBriefing = { content: 'X', triggeredAt: '2026-01-14T11:00:00.000Z' };
+    const ranges = {
+      yesterdayStart: new Date(YESTERDAY_START),
+      yesterdayEnd: new Date(YESTERDAY_END),
+      todayStart: new Date(TODAY_START),
+      todayEnd: new Date(TODAY_END),
+      weekStart: new Date(WEEK_START),
+      weekEnd: new Date(WEEK_END)
+    };
+
+    const briefingPrompt = promptBuilder.briefing({
+      today: TODAY, timeOfDay: TIME_OF_DAY, timezone: TIMEZONE, tzAbbr: TZ_ABBR, tzLong: TZ_LONG,
+      memoryContext: '', calendarIds: [], dateRanges: ranges, previousBriefing
+    });
+    const afternoonPrompt = promptBuilder.afternoonUpdate({
+      today: TODAY, timeOfDay: TIME_OF_DAY, timezone: TIMEZONE, tzAbbr: TZ_ABBR, tzLong: TZ_LONG,
+      memoryContext: '', calendarIds: [], dateRanges: afternoonDateRanges(), previousBriefing
+    });
+
+    expect(briefingPrompt).toContain('Here is your previous briefing from');
+    expect(afternoonPrompt).toContain('Here is the most recent briefing (sent');
+    // The two preambles use different wording — normalization would be a
+    // conscious decision, noted here so it can't slip in silently.
+    expect(briefingPrompt).not.toContain('most recent briefing');
+    expect(afternoonPrompt).not.toContain('your previous briefing from');
+  });
+});

@@ -9,7 +9,16 @@ vi.mock('@earendil-works/pi-coding-agent', () => ({
   }
 }));
 
+vi.mock('../../src/agent/prompt-builder.js', () => ({
+  promptBuilder: {
+    briefing: vi.fn().mockReturnValue('MOCK PROMPT'),
+    chat: vi.fn().mockReturnValue('MOCK PROMPT'),
+    afternoonUpdate: vi.fn().mockReturnValue('MOCK PROMPT')
+  }
+}));
+
 import { createAgentSession } from '@earendil-works/pi-coding-agent';
+import { promptBuilder } from '../../src/agent/prompt-builder.js';
 
 function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -80,6 +89,10 @@ describe('afternoon update service', () => {
   });
 
   describe('sendUpdate', () => {
+    function lastAfternoonContext(): Record<string, unknown> {
+      return (promptBuilder.afternoonUpdate as any).mock.calls[0][0];
+    }
+
     it('creates agent session with calendar_list only and sends result', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
@@ -98,6 +111,25 @@ describe('afternoon update service', () => {
       const toolsArg = (createAgentSession as any).mock.calls[0][0].tools;
       expect(toolsArg).not.toContain('get_weather_forecast');
 
+      // Caller delegates prompt assembly to PromptBuilder with the computed
+      // context (two date ranges only, calendar IDs).
+      expect(promptBuilder.afternoonUpdate).toHaveBeenCalledTimes(1);
+      const context = lastAfternoonContext();
+      expect(context).toMatchObject({
+        timezone: 'America/New_York',
+        memoryContext: '',
+        calendarIds: ['test@example.com', 'family@group.calendar.google.com']
+      });
+      expect(context.dateRanges).toEqual(expect.objectContaining({
+        todayStart: expect.any(Date),
+        todayEnd: expect.any(Date),
+        weekStart: expect.any(Date),
+        weekEnd: expect.any(Date)
+      }));
+      expect(context.dateRanges).not.toHaveProperty('yesterdayStart');
+      expect(context).not.toHaveProperty('previousBriefing');
+      expect(mockSession.prompt).toHaveBeenCalledWith('MOCK PROMPT');
+
       expect(fastify.telegramClient.sendMessage).toHaveBeenCalledWith(
         12345,
         'Good afternoon! You have a meeting at 3pm.'
@@ -108,7 +140,7 @@ describe('afternoon update service', () => {
       expect(mockSession.dispose).toHaveBeenCalled();
     });
 
-    it('includes calendar context and prompt ranges in the prompt', async () => {
+    it('passes the computed two-range dateRanges (no yesterday range) to PromptBuilder', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -116,29 +148,13 @@ describe('afternoon update service', () => {
       const service = createAfternoonUpdateService(fastify);
       await service.sendUpdate();
 
-      const prompt = mockSession.prompt.mock.calls[0][0];
-
-      // Should include calendar context
-      expect(prompt).toContain('Available calendars:');
-      expect(prompt).toContain('test@example.com');
-
-      // Should include today and next 3 days ranges
-      expect(prompt).toContain('Today:');
-      expect(prompt).toContain('Next 3 days:');
-
-      // Should NOT include yesterday range
-      expect(prompt).not.toContain('Yesterday:');
-
-      // Should NOT include weather instructions
-      expect(prompt).not.toContain('get_weather_forecast');
-      expect(prompt).not.toContain('weather summary');
-
-      // Should include afternoon-appropriate instructions
-      expect(prompt).toContain('afternoon check-in');
-      expect(prompt).toContain('max 100 words');
+      const { dateRanges } = lastAfternoonContext() as { dateRanges: Record<string, Date> };
+      expect(Object.keys(dateRanges).sort()).toEqual(['todayEnd', 'todayStart', 'weekEnd', 'weekStart']);
+      // weekStart immediately follows todayEnd (a continuous today + 3-day window).
+      expect(dateRanges.weekStart.getTime()).toBe(dateRanges.todayEnd.getTime());
     });
 
-    it('includes previous briefing context when one exists', async () => {
+    it('passes the previous briefing to PromptBuilder when one exists (preamble present)', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -159,12 +175,15 @@ describe('afternoon update service', () => {
       const service = createAfternoonUpdateService(fastify);
       await service.sendUpdate();
 
-      const prompt = mockSession.prompt.mock.calls[0][0];
-      expect(prompt).toContain('Morning briefing: You have a dentist appointment today.');
-      expect(prompt).toContain('Do not repeat information from it unless something has changed');
+      // Caller passes raw previous-briefing data; PromptBuilder owns the
+      // preamble wording (present whenever previousBriefing is supplied).
+      expect(lastAfternoonContext().previousBriefing).toEqual({
+        content: 'Morning briefing: You have a dentist appointment today.',
+        triggeredAt: previousBriefing.triggeredAt
+      });
     });
 
-    it('does not include previous briefing context when none exists', async () => {
+    it('does not pass a previous briefing to PromptBuilder when none exists (preamble absent)', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -172,11 +191,10 @@ describe('afternoon update service', () => {
       const service = createAfternoonUpdateService(fastify);
       await service.sendUpdate();
 
-      const prompt = mockSession.prompt.mock.calls[0][0];
-      expect(prompt).not.toContain('Here is the most recent briefing');
+      expect(lastAfternoonContext()).not.toHaveProperty('previousBriefing');
     });
 
-    it('includes memory context from buildMemoryContext', async () => {
+    it('passes the memory context string from buildMemoryContext to PromptBuilder', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -192,11 +210,11 @@ describe('afternoon update service', () => {
       const service = createAfternoonUpdateService(fastify);
       await service.sendUpdate();
 
-      const prompt = mockSession.prompt.mock.calls[0][0];
-      expect(prompt).toContain('Core memories about the user:');
-      expect(prompt).toContain('- I am vegetarian');
-      expect(prompt).toContain('Recent notes and tasks (last 7 days):');
-      expect(prompt).toContain('- Pick up dry cleaning');
+      const memoryContext = lastAfternoonContext().memoryContext as string;
+      expect(memoryContext).toContain('Core memories about the user:');
+      expect(memoryContext).toContain('- I am vegetarian');
+      expect(memoryContext).toContain('Recent notes and tasks (last 7 days):');
+      expect(memoryContext).toContain('- Pick up dry cleaning');
     });
 
     it('passes abort signal through to createAgentAndDeliver', async () => {
@@ -231,7 +249,7 @@ describe('afternoon update service', () => {
       expect(fastify.briefingRepository.create).not.toHaveBeenCalled();
     });
 
-    it('includes timezone information in the prompt', async () => {
+    it('passes timezone information to PromptBuilder', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -239,8 +257,7 @@ describe('afternoon update service', () => {
       const service = createAfternoonUpdateService(fastify);
       await service.sendUpdate();
 
-      const prompt = mockSession.prompt.mock.calls[0][0];
-      expect(prompt).toContain('America/New_York');
+      expect(lastAfternoonContext().timezone).toBe('America/New_York');
     });
   });
 
