@@ -12,6 +12,7 @@ vi.mock('@earendil-works/pi-coding-agent', () => ({
 }));
 
 import { promptBuilder } from '../../src/agent/prompt-builder.js';
+import type { BriefingContext } from '../../src/agent/prompt-builder.js';
 
 vi.mock('../../src/agent/prompt-builder.js', () => ({
   promptBuilder: {
@@ -416,8 +417,8 @@ describe('briefing service', () => {
   });
 
   describe('sendBriefing', () => {
-    function lastBriefingContext(): Record<string, unknown> {
-      return (promptBuilder.briefing as any).mock.calls[0][0];
+    function lastBriefingContext(): BriefingContext {
+      return vi.mocked(promptBuilder.briefing).mock.calls[0][0];
     }
 
     it('creates agent session with correct tools and sends result to Telegram', async () => {
@@ -523,7 +524,7 @@ describe('briefing service', () => {
       const service = createBriefingService(fastify);
       await service.sendBriefing();
 
-      const memoryContext = lastBriefingContext().memoryContext as string;
+      const memoryContext = lastBriefingContext().memoryContext;
       expect(memoryContext).toContain('Core memories about the user:');
       expect(memoryContext).toContain('- The user is vegetarian');
       expect(memoryContext).toContain('- The user lives in Portland');
@@ -548,7 +549,7 @@ describe('briefing service', () => {
       const service = createBriefingService(fastify);
       await service.sendBriefing();
 
-      const memoryContext = lastBriefingContext().memoryContext as string;
+      const memoryContext = lastBriefingContext().memoryContext;
       expect(memoryContext).toContain('Recent notes and tasks (last 7 days):');
       expect(memoryContext).toContain('- Buy milk');
       expect(memoryContext).toContain('- Call dentist');
@@ -584,7 +585,7 @@ describe('briefing service', () => {
       const service = createBriefingService(fastify);
       await service.sendBriefing();
 
-      const memoryContext = lastBriefingContext().memoryContext as string;
+      const memoryContext = lastBriefingContext().memoryContext;
       expect(memoryContext).toContain('Tasks already completed or dismissed');
       expect(memoryContext).toContain('Buy groceries (completed');
       expect(memoryContext).toContain('Call dentist (dismissed');

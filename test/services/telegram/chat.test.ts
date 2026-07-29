@@ -141,7 +141,7 @@ describe('handleChat', () => {
     await handleChat(ctx, fastify);
 
     expect(promptBuilder.chat).toHaveBeenCalledTimes(1);
-    expect((promptBuilder.chat as any).mock.calls[0][0]).toMatchObject({
+    expect(vi.mocked(promptBuilder.chat).mock.calls[0][0]).toMatchObject({
       userMessage: 'what type of donut did Iris like?'
     });
   });
@@ -170,7 +170,7 @@ describe('handleChat', () => {
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
 
-    const memoryContext = (promptBuilder.chat as any).mock.calls[0][0].memoryContext as string;
+    const memoryContext = vi.mocked(promptBuilder.chat).mock.calls[0][0].memoryContext;
     expect(memoryContext).toContain('Core memories about the user');
     expect(memoryContext).toContain('Shellfish allergy');
     expect(memoryContext).toContain('Recent notes and tasks');
@@ -188,7 +188,7 @@ describe('handleChat', () => {
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
 
-    expect((promptBuilder.chat as any).mock.calls[0][0].memoryContext).toBe('');
+    expect(vi.mocked(promptBuilder.chat).mock.calls[0][0].memoryContext).toBe('');
   });
 
   it('passes configured calendar IDs to PromptBuilder.chat', async () => {
@@ -200,7 +200,7 @@ describe('handleChat', () => {
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
 
-    expect((promptBuilder.chat as any).mock.calls[0][0]).toMatchObject({
+    expect(vi.mocked(promptBuilder.chat).mock.calls[0][0]).toMatchObject({
       calendarIds: ['primary', 'family.calendar@gmail.com']
     });
   });
@@ -214,7 +214,7 @@ describe('handleChat', () => {
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
 
-    expect((promptBuilder.chat as any).mock.calls[0][0]).toMatchObject({
+    expect(vi.mocked(promptBuilder.chat).mock.calls[0][0]).toMatchObject({
       calendarIds: []
     });
   });

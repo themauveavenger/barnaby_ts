@@ -19,6 +19,7 @@ vi.mock('../../src/agent/prompt-builder.js', () => ({
 
 import { createAgentSession } from '@earendil-works/pi-coding-agent';
 import { promptBuilder } from '../../src/agent/prompt-builder.js';
+import type { AfternoonUpdateContext } from '../../src/agent/prompt-builder.js';
 
 function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -89,8 +90,8 @@ describe('afternoon update service', () => {
   });
 
   describe('sendUpdate', () => {
-    function lastAfternoonContext(): Record<string, unknown> {
-      return (promptBuilder.afternoonUpdate as any).mock.calls[0][0];
+    function lastAfternoonContext(): AfternoonUpdateContext {
+      return vi.mocked(promptBuilder.afternoonUpdate).mock.calls[0][0];
     }
 
     it('creates agent session with calendar_list only and sends result', async () => {
@@ -148,7 +149,7 @@ describe('afternoon update service', () => {
       const service = createAfternoonUpdateService(fastify);
       await service.sendUpdate();
 
-      const { dateRanges } = lastAfternoonContext() as { dateRanges: Record<string, Date> };
+      const { dateRanges } = lastAfternoonContext();
       expect(Object.keys(dateRanges).sort()).toEqual(['todayEnd', 'todayStart', 'weekEnd', 'weekStart']);
       // weekStart immediately follows todayEnd (a continuous today + 3-day window).
       expect(dateRanges.weekStart.getTime()).toBe(dateRanges.todayEnd.getTime());
@@ -210,7 +211,7 @@ describe('afternoon update service', () => {
       const service = createAfternoonUpdateService(fastify);
       await service.sendUpdate();
 
-      const memoryContext = lastAfternoonContext().memoryContext as string;
+      const memoryContext = lastAfternoonContext().memoryContext;
       expect(memoryContext).toContain('Core memories about the user:');
       expect(memoryContext).toContain('- I am vegetarian');
       expect(memoryContext).toContain('Recent notes and tasks (last 7 days):');

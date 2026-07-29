@@ -84,7 +84,7 @@ interface TimeContext {
   tzLong: string;
 }
 
-interface ChatContext {
+export interface ChatContext {
   userMessage: string;
   memoryContext: string;
   calendarIds: string[];
@@ -99,7 +99,7 @@ interface BriefingDateRanges {
   weekEnd: Date;
 }
 
-interface BriefingContext extends TimeContext {
+export interface BriefingContext extends TimeContext {
   memoryContext: string;
   calendarIds: string[];
   weatherLatitude?: string;
@@ -115,7 +115,7 @@ interface AfternoonDateRanges {
   weekEnd: Date;
 }
 
-interface AfternoonUpdateContext extends TimeContext {
+export interface AfternoonUpdateContext extends TimeContext {
   memoryContext: string;
   calendarIds: string[];
   previousBriefing?: PreviousBriefingData;
