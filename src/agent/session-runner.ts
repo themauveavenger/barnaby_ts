@@ -14,6 +14,7 @@ export const ALL_TOOLS = [
   'calendar_list',
   'memory_list',
   'memory_resolve',
+  'memory_create',
   'drive_read_doc',
   'drive_list_docs',
   'wolfram_alpha',
