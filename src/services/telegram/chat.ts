@@ -42,7 +42,7 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
         modelRuntime,
         resourceLoader,
         sessionManager: SessionManager.inMemory(),
-        tools: ['calendar_list', 'memory_list', 'memory_resolve', 'drive_read_doc', 'drive_list_docs', 'wolfram_alpha']
+        tools: ['calendar_list', 'memory_list', 'memory_resolve', 'drive_read_doc', 'drive_list_docs', 'wolfram_alpha', 'kagi_search', 'kagi_extract']
       });
 
       session = result.session;

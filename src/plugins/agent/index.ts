@@ -10,6 +10,7 @@ import createMemoryExtension from './extensions/memory.js';
 import createWeatherExtension from './extensions/weather.js';
 import createGoogleDriveExtension from './extensions/google-drive.js';
 import createWolframAlphaExtension from './extensions/wolfram-alpha.js';
+import createKagiExtension from './extensions/kagi.js';
 
 export interface AgentServices {
   modelRuntime: ModelRuntime;
@@ -39,7 +40,8 @@ export default fp(async function agentPlugin(fastify: FastifyInstance) {
       createMemoryExtension(fastify),
       createWeatherExtension(fastify),
       createGoogleDriveExtension(fastify),
-      createWolframAlphaExtension(fastify)
+      createWolframAlphaExtension(fastify),
+      createKagiExtension(fastify)
     ],
     appendSystemPromptOverride: (base: string[]): string[] => {
       const activeId = fastify.configRepository.get('personality')
