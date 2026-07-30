@@ -1,20 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-vi.mock('@earendil-works/pi-coding-agent', () => ({
-  createAgentSession: vi.fn(),
-  SessionManager: {
-    inMemory: vi.fn(() => ({}))
-  }
-}));
-
-vi.mock('../../../src/services/telegram/shared.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../src/services/telegram/shared.js')>();
-  return {
-    ...actual,
-    withTimeout: vi.fn(actual.withTimeout)
-  };
-});
-
 vi.mock('../../../src/agent/prompt-builder.js', () => ({
   promptBuilder: {
     briefing: vi.fn().mockReturnValue('MOCK PROMPT'),
@@ -23,9 +8,16 @@ vi.mock('../../../src/agent/prompt-builder.js', () => ({
   }
 }));
 
-import { createAgentSession } from '@earendil-works/pi-coding-agent';
+vi.mock('../../../src/agent/session-runner.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/agent/session-runner.js')>();
+  return {
+    ...actual,
+    runAgentSession: vi.fn()
+  };
+});
+
 import type { Context } from 'grammy';
-import { withTimeout } from '../../../src/services/telegram/shared.js';
+import { runAgentSession, EmptyResponseError, SessionTimeoutError } from '../../../src/agent/session-runner.js';
 import { promptBuilder } from '../../../src/agent/prompt-builder.js';
 import { handleChat } from '../../../src/services/telegram/chat.js';
 import { getSession, clearSessionStore } from '../../../src/services/telegram/session-store.js';
@@ -36,6 +28,7 @@ function createMockSession(returnText = 'Iris likes maple donuts!') {
     getLastAssistantText: vi.fn().mockReturnValue(returnText),
     dispose: vi.fn(),
     setAutoRetryEnabled: vi.fn(),
+    setActiveToolsByName: vi.fn(),
     abort: vi.fn().mockResolvedValue(undefined)
   };
 }
@@ -88,14 +81,14 @@ describe('handleChat', () => {
     vi.clearAllMocks();
   });
 
-  it('creates session with read-only tools for memories, calendar, and drive', async () => {
+  it('creates session with the full tool set for a new chat', async () => {
     const mockSession = createMockSession();
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+    (runAgentSession as any).mockResolvedValue({ text: 'Iris likes maple donuts!', session: mockSession });
 
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
 
-    expect(createAgentSession).toHaveBeenCalledWith(
+    expect(runAgentSession).toHaveBeenCalledWith(
       expect.objectContaining({
         tools: ['calendar_list', 'memory_list', 'memory_resolve', 'drive_read_doc', 'drive_list_docs', 'wolfram_alpha', 'kagi_search', 'kagi_extract']
       })
@@ -104,7 +97,7 @@ describe('handleChat', () => {
 
   it('sends typing indicator before processing', async () => {
     const mockSession = createMockSession();
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+    (runAgentSession as any).mockResolvedValue({ text: 'Hello', session: mockSession });
 
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
@@ -114,7 +107,7 @@ describe('handleChat', () => {
 
   it('replies with agent text on success', async () => {
     const mockSession = createMockSession('Iris likes maple donuts!');
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+    (runAgentSession as any).mockResolvedValue({ text: 'Iris likes maple donuts!', session: mockSession });
 
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
@@ -123,9 +116,7 @@ describe('handleChat', () => {
   });
 
   it('replies with fallback message when agent returns empty response', async () => {
-    const mockSession = createMockSession('');
-    mockSession.getLastAssistantText.mockReturnValue(null);
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+    (runAgentSession as any).mockRejectedValue(new EmptyResponseError());
 
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
@@ -135,7 +126,7 @@ describe('handleChat', () => {
 
   it('delegates prompt assembly to PromptBuilder.chat with the user message on a new session', async () => {
     const mockSession = createMockSession();
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+    (runAgentSession as any).mockResolvedValue({ text: 'Hello', session: mockSession });
 
     const ctx = createMockContext('what type of donut did Iris like?');
     await handleChat(ctx, fastify);
@@ -146,19 +137,23 @@ describe('handleChat', () => {
     });
   });
 
-  it('passes the PromptBuilder output to the agent session', async () => {
+  it('passes the PromptBuilder output to SessionRunner on a new session', async () => {
     const mockSession = createMockSession();
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+    (runAgentSession as any).mockResolvedValue({ text: 'Hello', session: mockSession });
 
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
 
-    expect(mockSession.prompt).toHaveBeenCalledWith('MOCK PROMPT');
+    expect(runAgentSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: 'MOCK PROMPT'
+      })
+    );
   });
 
   it('passes memory context to PromptBuilder.chat when memories exist', async () => {
     const mockSession = createMockSession();
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+    (runAgentSession as any).mockResolvedValue({ text: 'Hello', session: mockSession });
 
     fastify.memoryRepository.findByTags.mockReturnValue([
       { content: 'Shellfish allergy', tags: ['core', 'health'], permanent: true }
@@ -179,7 +174,7 @@ describe('handleChat', () => {
 
   it('passes an empty memory context to PromptBuilder when no memories exist', async () => {
     const mockSession = createMockSession();
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+    (runAgentSession as any).mockResolvedValue({ text: 'Hello', session: mockSession });
 
     fastify.memoryRepository.findByTags.mockReturnValue([]);
     fastify.memoryRepository.findRecent.mockReturnValue([]);
@@ -193,7 +188,7 @@ describe('handleChat', () => {
 
   it('passes configured calendar IDs to PromptBuilder.chat', async () => {
     const mockSession = createMockSession();
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+    (runAgentSession as any).mockResolvedValue({ text: 'Hello', session: mockSession });
 
     fastify.calendarIds = ['primary', 'family.calendar@gmail.com'];
 
@@ -207,7 +202,7 @@ describe('handleChat', () => {
 
   it('passes an empty calendar ID list to PromptBuilder.chat when none configured', async () => {
     const mockSession = createMockSession();
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+    (runAgentSession as any).mockResolvedValue({ text: 'Hello', session: mockSession });
 
     fastify.calendarIds = [];
 
@@ -223,7 +218,7 @@ describe('handleChat', () => {
     const ctx = createMockContext('hello', 99999);
     await handleChat(ctx, fastify);
 
-    expect(createAgentSession).not.toHaveBeenCalled();
+    expect(runAgentSession).not.toHaveBeenCalled();
     expect(ctx.reply).not.toHaveBeenCalled();
     expect(ctx.replyWithChatAction).not.toHaveBeenCalled();
   });
@@ -239,23 +234,11 @@ describe('handleChat', () => {
 
     await handleChat(ctx, fastify);
 
-    expect(createAgentSession).not.toHaveBeenCalled();
+    expect(runAgentSession).not.toHaveBeenCalled();
   });
 
-  it('replies with error message when session creation fails', async () => {
-    (createAgentSession as any).mockRejectedValue(new Error('API down'));
-
-    const ctx = createMockContext();
-    await handleChat(ctx, fastify);
-
-    expect(ctx.reply).toHaveBeenCalledWith('Couldn\'t start a session — please try again.');
-    expect(fastify.log.error).toHaveBeenCalled();
-  });
-
-  it('replies with generic error when prompt fails after session creation', async () => {
-    const mockSession = createMockSession();
-    mockSession.prompt.mockRejectedValue(new Error('LLM error'));
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+  it('replies with generic error when SessionRunner fails', async () => {
+    (runAgentSession as any).mockRejectedValue(new Error('API down'));
 
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
@@ -264,11 +247,8 @@ describe('handleChat', () => {
     expect(fastify.log.error).toHaveBeenCalled();
   });
 
-  it('replies with timeout message when session times out', async () => {
-    (withTimeout as any).mockResolvedValueOnce({ result: undefined, wasTimeout: true });
-
-    const mockSession = createMockSession();
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+  it('replies with timeout message when SessionRunner times out', async () => {
+    (runAgentSession as any).mockRejectedValue(new SessionTimeoutError());
 
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
@@ -278,7 +258,7 @@ describe('handleChat', () => {
 
   it('stores session in session store after first message', async () => {
     const mockSession = createMockSession();
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+    (runAgentSession as any).mockResolvedValue({ text: 'Hello', session: mockSession });
 
     const chatId = 12345;
     const ctx = createMockContext('hello', chatId);
@@ -291,48 +271,74 @@ describe('handleChat', () => {
   it('reuses existing session for follow-up messages', async () => {
     const chatId = 12345;
     const mockSession = createMockSession('First response');
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+    (runAgentSession as any)
+      .mockResolvedValueOnce({ text: 'First response', session: mockSession })
+      .mockResolvedValueOnce({ text: 'Second response', session: mockSession });
 
     // First message - creates session
     const ctx1 = createMockContext('hello', chatId);
     await handleChat(ctx1, fastify);
 
-    expect(createAgentSession).toHaveBeenCalledTimes(1);
-    expect(mockSession.prompt).toHaveBeenCalledTimes(1);
+    expect(runAgentSession).toHaveBeenCalledTimes(1);
 
     // Second message - reuses session
-    mockSession.getLastAssistantText.mockReturnValue('Second response');
     const ctx2 = createMockContext('tell me more', chatId);
     await handleChat(ctx2, fastify);
 
-    // Should not create a new session
-    expect(createAgentSession).toHaveBeenCalledTimes(1);
-    // Should prompt the existing session again
-    expect(mockSession.prompt).toHaveBeenCalledTimes(2);
+    expect(runAgentSession).toHaveBeenCalledTimes(2);
+    expect(runAgentSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        _session: mockSession,
+        prompt: 'tell me more'
+      })
+    );
     expect(ctx2.reply).toHaveBeenCalledWith('Second response');
+  });
+
+  it('activates the full tool set when reusing a cached session', async () => {
+    const chatId = 12345;
+    const mockSession = createMockSession('First response');
+    (runAgentSession as any)
+      .mockResolvedValueOnce({ text: 'First response', session: mockSession })
+      .mockResolvedValueOnce({ text: 'Second response', session: mockSession });
+
+    await handleChat(createMockContext('hello', chatId), fastify);
+    await handleChat(createMockContext('tell me more', chatId), fastify);
+
+    expect(mockSession.setActiveToolsByName).toHaveBeenCalledWith(
+      ['calendar_list', 'memory_list', 'memory_resolve', 'drive_read_doc', 'drive_list_docs', 'wolfram_alpha', 'kagi_search', 'kagi_extract']
+    );
   });
 
   it('sends only user message (not full context) for follow-up messages', async () => {
     const chatId = 12345;
     const mockSession = createMockSession('First response');
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+    (runAgentSession as any)
+      .mockResolvedValueOnce({ text: 'First response', session: mockSession })
+      .mockResolvedValueOnce({ text: 'Second response', session: mockSession });
 
     // First message - creates session; prompt is assembled by PromptBuilder.
     const ctx1 = createMockContext('hello', chatId);
     await handleChat(ctx1, fastify);
 
     expect(promptBuilder.chat).toHaveBeenCalledTimes(1);
-    expect(mockSession.prompt).toHaveBeenCalledWith('MOCK PROMPT');
+    expect(runAgentSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        prompt: 'MOCK PROMPT'
+      })
+    );
 
     // Second message - reuses session with raw user text (no PromptBuilder).
-    mockSession.getLastAssistantText.mockReturnValue('Second response');
     const ctx2 = createMockContext('tell me more', chatId);
     await handleChat(ctx2, fastify);
 
     // PromptBuilder is NOT called again on follow-up.
     expect(promptBuilder.chat).toHaveBeenCalledTimes(1);
-    const secondPrompt = mockSession.prompt.mock.calls[1][0];
-    expect(secondPrompt).toBe('tell me more');
+    expect(runAgentSession).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        prompt: 'tell me more'
+      })
+    );
   });
 
   it('creates new session for different chat ID', async () => {
@@ -343,9 +349,9 @@ describe('handleChat', () => {
     try {
       const mockSession1 = createMockSession('Response 1');
       const mockSession2 = createMockSession('Response 2');
-      (createAgentSession as any)
-        .mockResolvedValueOnce({ session: mockSession1 })
-        .mockResolvedValueOnce({ session: mockSession2 });
+      (runAgentSession as any)
+        .mockResolvedValueOnce({ text: 'Response 1', session: mockSession1 })
+        .mockResolvedValueOnce({ text: 'Response 2', session: mockSession2 });
 
       // First chat ID
       const ctx1 = createMockContext('hello from chat 1', chatId1);
@@ -355,9 +361,7 @@ describe('handleChat', () => {
       const ctx2 = createMockContext('hello from chat 2', chatId2);
       await handleChat(ctx2, fastify);
 
-      expect(createAgentSession).toHaveBeenCalledTimes(2);
-      expect(mockSession1.prompt).toHaveBeenCalledTimes(1);
-      expect(mockSession2.prompt).toHaveBeenCalledTimes(1);
+      expect(runAgentSession).toHaveBeenCalledTimes(2);
     } finally {
       vi.unstubAllEnvs();
     }
@@ -365,7 +369,7 @@ describe('handleChat', () => {
 
   it('does not call dispose on session after successful prompt', async () => {
     const mockSession = createMockSession();
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+    (runAgentSession as any).mockResolvedValue({ text: 'Hello', session: mockSession });
 
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
@@ -380,13 +384,13 @@ describe('handleChat', () => {
     try {
       const mockSession1 = createMockSession('First response');
       const mockSession2 = createMockSession('Second response');
-      (createAgentSession as any)
-        .mockResolvedValueOnce({ session: mockSession1 })
-        .mockResolvedValueOnce({ session: mockSession2 });
+      (runAgentSession as any)
+        .mockResolvedValueOnce({ text: 'First response', session: mockSession1 })
+        .mockResolvedValueOnce({ text: 'Second response', session: mockSession2 });
 
       // First message — creates and stores a session.
       await handleChat(createMockContext('hello', 12345), fastify);
-      expect(createAgentSession).toHaveBeenCalledTimes(1);
+      expect(runAgentSession).toHaveBeenCalledTimes(1);
       expect(mockSession1.dispose).not.toHaveBeenCalled();
 
       // Advance past the 15-minute TTL. The session store evicts the
@@ -397,7 +401,7 @@ describe('handleChat', () => {
       // created. The first session's dispose should have fired exactly
       // once from the eviction.
       await handleChat(createMockContext('hello again', 12345), fastify);
-      expect(createAgentSession).toHaveBeenCalledTimes(2);
+      expect(runAgentSession).toHaveBeenCalledTimes(2);
       expect(mockSession1.dispose).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
@@ -407,13 +411,13 @@ describe('handleChat', () => {
   it('does not reuse a session that has been evicted from the store', async () => {
     const mockSession1 = createMockSession('First response');
     const mockSession2 = createMockSession('Second response');
-    (createAgentSession as any)
-      .mockResolvedValueOnce({ session: mockSession1 })
-      .mockResolvedValueOnce({ session: mockSession2 });
+    (runAgentSession as any)
+      .mockResolvedValueOnce({ text: 'First response', session: mockSession1 })
+      .mockResolvedValueOnce({ text: 'Second response', session: mockSession2 });
 
     // First message — creates and stores a session.
     await handleChat(createMockContext('hello', 12345), fastify);
-    expect(createAgentSession).toHaveBeenCalledTimes(1);
+    expect(runAgentSession).toHaveBeenCalledTimes(1);
     expect(mockSession1.dispose).not.toHaveBeenCalled();
 
     // Simulate eviction: the session store drops the session and calls
@@ -425,6 +429,6 @@ describe('handleChat', () => {
     // Second message — the cached session is gone, so a new one is
     // created instead of reusing the disposed one.
     await handleChat(createMockContext('hello again', 12345), fastify);
-    expect(createAgentSession).toHaveBeenCalledTimes(2);
+    expect(runAgentSession).toHaveBeenCalledTimes(2);
   });
 });

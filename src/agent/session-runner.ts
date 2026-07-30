@@ -57,6 +57,11 @@ export interface RunAgentSessionOptions {
    * may pass a shorter value to avoid real waits.
    */
   _timeoutMs?: number;
+  /**
+   * An existing session to reuse instead of creating a new one. When provided,
+   * the tools are only used to set active tools via setActiveToolsByName.
+   */
+  _session?: AgentSession;
 }
 
 export interface RunAgentSessionResult {
@@ -73,9 +78,9 @@ export interface RunAgentSessionResult {
 export async function runAgentSession(
   options: RunAgentSessionOptions
 ): Promise<RunAgentSessionResult> {
-  const { modelRuntime, model, resourceLoader, tools, activeTools, prompt, signal, _timeoutMs } = options;
+  const { modelRuntime, model, resourceLoader, tools, activeTools, prompt, signal, _timeoutMs, _session } = options;
 
-  let session: AgentSession | undefined;
+  let session: AgentSession;
   let timeoutFired = false;
 
   // Set up the timeout before any await so fake-timer tests can intercept it.
@@ -100,13 +105,17 @@ export async function runAgentSession(
   }
 
   try {
-    ({ session } = await createAgentSession({
-      model,
-      modelRuntime,
-      resourceLoader,
-      sessionManager: SessionManager.inMemory(),
-      tools: [...tools]
-    }));
+    if (_session) {
+      session = _session;
+    } else {
+      ({ session } = await createAgentSession({
+        model,
+        modelRuntime,
+        resourceLoader,
+        sessionManager: SessionManager.inMemory(),
+        tools: [...tools]
+      }));
+    }
 
     session.setActiveToolsByName([...(activeTools ?? tools)]);
     session.setAutoRetryEnabled(false);

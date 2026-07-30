@@ -1,9 +1,9 @@
 import type { Context } from 'grammy';
 import type { FastifyInstance } from 'fastify';
-import { createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
 import { buildMemoryContext } from '../telegram-utils.js';
+import { ALL_TOOLS, EmptyResponseError, runAgentSession, SessionTimeoutError } from '../../agent/session-runner.js';
 import { promptBuilder } from '../../agent/prompt-builder.js';
-import { isAllowedChat, withTimeout } from './shared.js';
+import { isAllowedChat } from './shared.js';
 import { getSession, setSession } from './session-store.js';
 
 export async function handleChat(ctx: Context, fastify: FastifyInstance): Promise<void> {
@@ -22,60 +22,52 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
 
   fastify.log.info({ chatId, text }, 'Telegram chat message received');
 
-  let sessionCreated = false;
-
   try {
-    // Try to get existing session from store
-    let session = getSession(chatId);
-    let prompt: string;
+    const cachedSession = getSession(chatId);
+    const { modelRuntime, model, resourceLoader } = fastify.agent;
 
-    if (session) {
-      // Reuse existing session - just send the user's message
-      prompt = text;
+    if (cachedSession) {
+      cachedSession.setActiveToolsByName([...ALL_TOOLS]);
       fastify.log.debug({ chatId }, 'Reusing existing session');
-    } else {
-      // Create new session with full context
-      const { modelRuntime, model, resourceLoader } = fastify.agent;
 
-      const result = await createAgentSession({
-        model,
+      const { text: responseText } = await runAgentSession({
         modelRuntime,
+        model,
         resourceLoader,
-        sessionManager: SessionManager.inMemory(),
-        tools: ['calendar_list', 'memory_list', 'memory_resolve', 'drive_read_doc', 'drive_list_docs', 'wolfram_alpha', 'kagi_search', 'kagi_extract']
+        tools: ALL_TOOLS,
+        _session: cachedSession,
+        prompt: text
       });
 
-      session = result.session;
-      sessionCreated = true;
-
+      await ctx.reply(responseText);
+    } else {
       const memoryContext = buildMemoryContext(fastify);
-
-      prompt = promptBuilder.chat({
+      const prompt = promptBuilder.chat({
         userMessage: text,
         memoryContext,
         calendarIds: fastify.calendarIds
       });
 
-      // Store the session for reuse
+      const { text: responseText, session } = await runAgentSession({
+        modelRuntime,
+        model,
+        resourceLoader,
+        tools: ALL_TOOLS,
+        prompt
+      });
+
       setSession(chatId, session);
       fastify.log.debug({ chatId }, 'Created new session');
-    }
 
-    const { result: responseText, wasTimeout } = await withTimeout(session, async () => {
-      await session.prompt(prompt);
-      return session.getLastAssistantText();
-    });
-
-    if (wasTimeout) {
-      await ctx.reply('That took too long — please try again.');
-    } else {
-      await ctx.reply(responseText ?? 'I couldn\'t come up with a response. Try again?');
+      await ctx.reply(responseText);
     }
   } catch (error) {
     fastify.log.error({ err: error, chatId, text }, 'Failed to process Telegram chat message');
 
-    if (!sessionCreated) {
-      await ctx.reply('Couldn\'t start a session — please try again.');
+    if (error instanceof SessionTimeoutError) {
+      await ctx.reply('That took too long — please try again.');
+    } else if (error instanceof EmptyResponseError) {
+      await ctx.reply('I couldn\'t come up with a response. Try again?');
     } else {
       await ctx.reply('Something went wrong — please try again.');
     }
