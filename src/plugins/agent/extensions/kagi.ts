@@ -128,7 +128,7 @@ export default function createKagiExtension(
         'Page through long kagi_extract content with offset and limit rather than re-requesting the same URL at a larger limit.',
         'Use kagi_extract\'s refresh parameter only when a cached page may be stale; normal offset/limit paging never needs refresh.',
         'Use kagi_extract for remote https URLs and the read tool for local file paths.',
-        'You have a limited extract budget per message. If the cap is near, read only the most critical pages and plan the rest for the next message.'
+        'When using kagi_extract, you have a limited extract budget per message. If the cap is near, read only the most critical pages and plan the rest for the next message.'
       ],
       async execute(toolCallId, params, signal, onUpdate, ctx) {
         if (!process.env.KAGI_API_KEY) {
