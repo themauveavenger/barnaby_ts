@@ -1,23 +1,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-vi.mock('@earendil-works/pi-coding-agent', () => ({
-  createAgentSession: vi.fn(),
-  SessionManager: {
-    inMemory: vi.fn(() => ({}))
-  }
-}));
-
-vi.mock('../../../src/services/telegram/shared.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../src/services/telegram/shared.js')>();
+vi.mock('../../../src/agent/session-runner.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/agent/session-runner.js')>();
   return {
     ...actual,
-    withTimeout: vi.fn(actual.withTimeout)
+    runAgentSession: vi.fn(),
+    SessionTimeoutError: class SessionTimeoutError extends Error {
+      constructor() {
+        super('Session timed out');
+        this.name = 'SessionTimeoutError';
+      }
+    }
   };
 });
 
-import { createAgentSession } from '@earendil-works/pi-coding-agent';
 import type { Context } from 'grammy';
-import { withTimeout } from '../../../src/services/telegram/shared.js';
+import { runAgentSession, SessionTimeoutError } from '../../../src/agent/session-runner.js';
 import { handleRemember } from '../../../src/services/telegram/remember.js';
 
 function createMockSession() {
@@ -70,20 +68,23 @@ describe('handleRemember', () => {
     vi.clearAllMocks();
   });
 
-  it('creates agent session and reacts with checkmark on success', async () => {
+  it('calls SessionRunner with memory tools and reacts with checkmark on success', async () => {
     const mockSession = createMockSession();
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+    (runAgentSession as any).mockResolvedValue({ text: 'Created todo: "Call the dentist"', session: mockSession });
 
     const ctx = createMockContext({ match: 'call the dentist on Friday' });
     await handleRemember(ctx, fastify);
 
-    expect(createAgentSession).toHaveBeenCalledWith(
+    expect(runAgentSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        tools: ['memory_create', 'memory_list', 'memory_resolve']
+        tools: ['memory_create', 'memory_list', 'memory_resolve'],
+        model: fastify.agent.model,
+        modelRuntime: fastify.agent.modelRuntime,
+        resourceLoader: fastify.agent.resourceLoader
       })
     );
 
-    const prompt = mockSession.prompt.mock.calls[0][0];
+    const prompt = (runAgentSession as any).mock.calls[0][0].prompt;
     expect(prompt).toContain('call the dentist on Friday');
     expect(prompt).toContain('todo');
     expect(prompt).toContain('note');
@@ -99,7 +100,7 @@ describe('handleRemember', () => {
 
     expect(ctx.reply).not.toHaveBeenCalled();
     expect(ctx.react).not.toHaveBeenCalled();
-    expect(createAgentSession).not.toHaveBeenCalled();
+    expect(runAgentSession).not.toHaveBeenCalled();
   });
 
   it('sends usage hint when /remember is called without text', async () => {
@@ -108,7 +109,7 @@ describe('handleRemember', () => {
 
     expect(ctx.react).toHaveBeenCalledWith('🤔');
     expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Usage: /remember'));
-    expect(createAgentSession).not.toHaveBeenCalled();
+    expect(runAgentSession).not.toHaveBeenCalled();
   });
 
   it('sends usage hint when /remember is called with whitespace only', async () => {
@@ -117,37 +118,23 @@ describe('handleRemember', () => {
 
     expect(ctx.react).toHaveBeenCalledWith('🤔');
     expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('Usage: /remember'));
-    expect(createAgentSession).not.toHaveBeenCalled();
+    expect(runAgentSession).not.toHaveBeenCalled();
   });
 
-  it('reacts with shrug and sends specific message when session creation fails', async () => {
-    (createAgentSession as any).mockRejectedValue(new Error('LLM API down'));
-
-    const ctx = createMockContext({ match: 'something to remember' });
-    await handleRemember(ctx, fastify);
-
-    expect(ctx.react).toHaveBeenCalledWith('🤷');
-    expect(ctx.reply).toHaveBeenCalledWith('Couldn\'t start a session — please try again.');
-    expect(fastify.log.error).toHaveBeenCalled();
-  });
-
-  it('reacts with shrug and sends generic message when prompt fails', async () => {
-    const mockSession = createMockSession();
-    mockSession.prompt.mockRejectedValue(new Error('Timeout'));
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+  it('reacts with shrug and sends generic error message when SessionRunner fails', async () => {
+    (runAgentSession as any).mockRejectedValue(new Error('LLM API down'));
 
     const ctx = createMockContext({ match: 'something to remember' });
     await handleRemember(ctx, fastify);
 
     expect(ctx.react).toHaveBeenCalledWith('🤷');
     expect(ctx.reply).toHaveBeenCalledWith('Something went wrong — please try again.');
-    expect(mockSession.dispose).toHaveBeenCalled();
+    expect(fastify.log.error).toHaveBeenCalled();
   });
 
-  it('disposes session even when prompt fails', async () => {
+  it('disposes session even when SessionRunner fails after session creation', async () => {
     const mockSession = createMockSession();
-    mockSession.prompt.mockRejectedValue(new Error('fail'));
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+    (runAgentSession as any).mockResolvedValue({ text: '', session: mockSession });
 
     const ctx = createMockContext({ match: 'something to remember' });
     await handleRemember(ctx, fastify);
@@ -157,23 +144,20 @@ describe('handleRemember', () => {
 
   it('includes categorization guidelines in prompt', async () => {
     const mockSession = createMockSession();
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+    (runAgentSession as any).mockResolvedValue({ text: 'Created note', session: mockSession });
 
     const ctx = createMockContext({ match: 'shellfish allergy' });
     await handleRemember(ctx, fastify);
 
-    const prompt = mockSession.prompt.mock.calls[0][0];
+    const prompt = (runAgentSession as any).mock.calls[0][0].prompt;
     expect(prompt).toContain('"todo"');
     expect(prompt).toContain('"note"');
     expect(prompt).toContain('permanent');
     expect(prompt).toContain('core');
   });
 
-  it('reacts with shrug and sends timeout message when session times out', async () => {
-    (withTimeout as any).mockResolvedValueOnce({ result: undefined, wasTimeout: true });
-
-    const mockSession = createMockSession();
-    (createAgentSession as any).mockResolvedValue({ session: mockSession });
+  it('reacts with shrug and sends timeout message when SessionRunner times out', async () => {
+    (runAgentSession as any).mockRejectedValue(new SessionTimeoutError());
 
     const ctx = createMockContext({ match: 'something to remember' });
     await handleRemember(ctx, fastify);

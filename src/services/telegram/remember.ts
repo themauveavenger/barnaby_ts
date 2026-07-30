@@ -1,8 +1,8 @@
 import type { Context } from 'grammy';
 import type { FastifyInstance } from 'fastify';
-import { createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
 import { MEMORY_CATEGORIZATION_GUIDELINES } from '../../agent/memory-guidelines.js';
-import { isAllowedChat, withTimeout } from './shared.js';
+import { MEMORY_TOOLS, runAgentSession, SessionTimeoutError } from '../../agent/session-runner.js';
+import { isAllowedChat } from './shared.js';
 
 export async function handleRemember(ctx: Context, fastify: FastifyInstance): Promise<void> {
   const chatId = ctx.chat?.id;
@@ -24,32 +24,19 @@ export async function handleRemember(ctx: Context, fastify: FastifyInstance): Pr
   const guidelines = MEMORY_CATEGORIZATION_GUIDELINES.join('\n');
   const prompt = `${guidelines}\n\nUser says: "${text}"`;
 
-  let sessionCreated = false;
-
   try {
     const { modelRuntime, model, resourceLoader } = fastify.agent;
 
-    const { session } = await createAgentSession({
-      model,
+    const { session } = await runAgentSession({
       modelRuntime,
+      model,
       resourceLoader,
-      sessionManager: SessionManager.inMemory(),
-      tools: ['memory_create', 'memory_list', 'memory_resolve']
+      tools: MEMORY_TOOLS,
+      prompt
     });
 
-    sessionCreated = true;
-
     try {
-      const { wasTimeout } = await withTimeout(session, async () => {
-        await session.prompt(prompt);
-      });
-
-      if (wasTimeout) {
-        await ctx.react('🤷');
-        await ctx.reply('That took too long — please try again.');
-      } else {
-        await ctx.react('👍');
-      }
+      await ctx.react('👍');
     } finally {
       session.dispose();
     }
@@ -57,8 +44,8 @@ export async function handleRemember(ctx: Context, fastify: FastifyInstance): Pr
     fastify.log.error({ err: error, prompt, text }, 'Failed to process /remember command');
     await ctx.react('🤷');
 
-    if (!sessionCreated) {
-      await ctx.reply('Couldn\'t start a session — please try again.');
+    if (error instanceof SessionTimeoutError) {
+      await ctx.reply('That took too long — please try again.');
     } else {
       await ctx.reply('Something went wrong — please try again.');
     }
