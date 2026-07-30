@@ -1,49 +1,114 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
+import type { AgentToolResult, ExtensionAPI } from '@earendil-works/pi-coding-agent';
+import type { EventBus } from '@earendil-works/pi-coding-agent';
 import type { FastifyInstance } from 'fastify';
+import fastify from 'fastify';
 import createKagiExtension from '../../../../src/plugins/agent/extensions/kagi.js';
+
+// ── Types ──────────────────────────────────────────────────────────────────
+
+type ToolExecute = (
+  toolCallId: string,
+  params: unknown,
+  signal?: AbortSignal,
+  onUpdate?: unknown,
+  ctx?: unknown
+) => Promise<AgentToolResult<unknown>>;
+
+interface CapturedTool {
+  name: string;
+  label: string;
+  description: string;
+  parameters: unknown;
+  promptSnippet?: string;
+  promptGuidelines?: string[];
+  execute: ToolExecute;
+}
+
+interface CapturedHandlers {
+  agent_start: (() => void)[];
+}
+
+interface MockExtensionAPI extends ExtensionAPI {
+  _tools: CapturedTool[];
+  _handlers: CapturedHandlers;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function getFirstText(result: AgentToolResult<unknown>): string {
+  const first = result.content[0];
+  return first?.type === 'text' ? first.text : '';
+}
+
+function getResultErrorFlag(result: AgentToolResult<unknown>): boolean {
+  return (result as AgentToolResult<unknown> & { isError?: boolean }).isError ?? false;
+}
 
 // ── Mock ExtensionAPI ──────────────────────────────────────────────────────
 
-function createMockExtensionAPI(): ExtensionAPI & {
-  _tools: { name: string; execute: Function }[];
-  _handlers: Record<string, (() => void)[]>;
-} {
-  const tools: { name: string; execute: Function }[] = [];
-  const handlers: Record<string, (() => void)[]> = {};
-  return {
-    registerTool: vi.fn(tool => tools.push(tool)),
-    on: vi.fn((event, handler) => {
-      (handlers[event as string] ??= []).push(handler);
-    }),
-    registerCommand: vi.fn(),
-    registerShortcut: vi.fn(),
-    registerFlag: vi.fn(),
-    _tools: tools,
-    _handlers: handlers
-  } as unknown as ExtensionAPI & {
-    _tools: { name: string; execute: Function }[];
-    _handlers: Record<string, (() => void)[]>;
+function createMockExtensionAPI(): MockExtensionAPI {
+  const tools: CapturedTool[] = [];
+  const handlers: CapturedHandlers = { agent_start: [] };
+
+  const api: ExtensionAPI = {
+    registerTool: vi.fn((tool: CapturedTool) => {
+      tools.push(tool);
+    }) as ExtensionAPI['registerTool'],
+    on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+      if (event === 'agent_start') {
+        handlers.agent_start.push(handler as () => void);
+      }
+    }) as ExtensionAPI['on'],
+    registerCommand: vi.fn() as ExtensionAPI['registerCommand'],
+    registerShortcut: vi.fn() as ExtensionAPI['registerShortcut'],
+    registerFlag: vi.fn() as ExtensionAPI['registerFlag'],
+    getFlag: vi.fn() as ExtensionAPI['getFlag'],
+    registerProvider: vi.fn() as ExtensionAPI['registerProvider'],
+    unregisterProvider: vi.fn() as ExtensionAPI['unregisterProvider'],
+    events: {
+      emit: vi.fn() as EventBus['emit'],
+      on: vi.fn() as EventBus['on']
+    },
+    registerMessageRenderer: vi.fn() as ExtensionAPI['registerMessageRenderer'],
+    registerEntryRenderer: vi.fn() as ExtensionAPI['registerEntryRenderer'],
+    sendMessage: vi.fn() as ExtensionAPI['sendMessage'],
+    sendUserMessage: vi.fn() as ExtensionAPI['sendUserMessage'],
+    appendEntry: vi.fn() as ExtensionAPI['appendEntry'],
+    setSessionName: vi.fn() as ExtensionAPI['setSessionName'],
+    getSessionName: vi.fn() as ExtensionAPI['getSessionName'],
+    setLabel: vi.fn() as ExtensionAPI['setLabel'],
+    exec: vi.fn() as ExtensionAPI['exec'],
+    getActiveTools: vi.fn() as ExtensionAPI['getActiveTools'],
+    getAllTools: vi.fn() as ExtensionAPI['getAllTools'],
+    setActiveTools: vi.fn() as ExtensionAPI['setActiveTools'],
+    getCommands: vi.fn() as ExtensionAPI['getCommands'],
+    setModel: vi.fn() as ExtensionAPI['setModel'],
+    getThinkingLevel: vi.fn() as ExtensionAPI['getThinkingLevel'],
+    setThinkingLevel: vi.fn() as ExtensionAPI['setThinkingLevel']
   };
+
+  return Object.assign(api, { _tools: tools, _handlers: handlers });
 }
 
-function getTools(extApi: ExtensionAPI): { name: string; execute: Function }[] {
-  return (extApi as unknown as { _tools: { name: string; execute: Function }[] })._tools;
+function getTools(extApi: MockExtensionAPI): CapturedTool[] {
+  return extApi._tools;
 }
 
 function getAgentStartHandler(
-  extApi: ExtensionAPI
+  extApi: MockExtensionAPI
 ): (() => void) | undefined {
-  return (extApi as unknown as { _handlers: Record<string, (() => void)[]> })
-    ._handlers['agent_start']?.[0];
+  return extApi._handlers.agent_start[0];
 }
 
 // ── Mock Fastify ───────────────────────────────────────────────────────────
 
 function createMockFastify(): FastifyInstance {
-  return {
-    log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
-  } as unknown as FastifyInstance;
+  const app = fastify({ logger: false });
+  app.log.info = vi.fn() as typeof app.log.info;
+  app.log.warn = vi.fn() as typeof app.log.warn;
+  app.log.error = vi.fn() as typeof app.log.error;
+  return app;
 }
 
 // ── Fetch stubs ────────────────────────────────────────────────────────────
@@ -70,14 +135,20 @@ function makeSearchResponse(
 
 function makeExtractResponse(
   url: string,
-  markdown: string
+  markdown = '# Test Page\n\nContent.'
 ): KagiExtractResponse {
   return { data: [{ url, markdown }] };
 }
 
 // ── Setup ──────────────────────────────────────────────────────────────────
 
-function setup() {
+function setup(): {
+  fastify: FastifyInstance;
+  extApi: MockExtensionAPI;
+  searchTool: CapturedTool;
+  extractTool: CapturedTool;
+  agentStartHandler: (() => void) | undefined;
+} {
   const fastify = createMockFastify();
   const extApi = createMockExtensionAPI();
   createKagiExtension(fastify)(extApi);
@@ -104,7 +175,7 @@ describe('kagi extension', () => {
     vi.unstubAllEnvs();
   });
 
-  function stubSearch(results: KagiSearchResult[] = []) {
+  function stubSearch(results: KagiSearchResult[] = []): void {
     vi.mocked(globalThis.fetch).mockResolvedValueOnce(
       new Response(JSON.stringify(makeSearchResponse(results)), {
         status: 200
@@ -112,7 +183,7 @@ describe('kagi extension', () => {
     );
   }
 
-  function stubExtract(url: string, markdown = '# Test Page\n\nContent.') {
+  function stubExtract(url: string, markdown = '# Test Page\n\nContent.'): void {
     vi.mocked(globalThis.fetch).mockResolvedValueOnce(
       new Response(JSON.stringify(makeExtractResponse(url, markdown)), {
         status: 200
@@ -129,7 +200,7 @@ describe('kagi extension', () => {
 
       const result = await searchTool.execute('call-1', { query: 'test' });
       expect(result).toHaveProperty('content');
-      expect(result.content[0].text).toContain('Example');
+      expect(getFirstText(result)).toContain('Example');
       expect(fastify.log.info).toHaveBeenCalledWith(
         expect.objectContaining({ tool: 'kagi_search', query: 'test' }),
         expect.stringContaining('kagi_search')
@@ -150,8 +221,8 @@ describe('kagi extension', () => {
       // Call 3: blocked
       const result = await searchTool.execute('call-3', { query: 'third' });
 
-      expect(result.content[0].text).toContain('Budget exhausted');
-      expect(result.content[0].text).toContain('search');
+      expect(getFirstText(result)).toContain('Budget exhausted');
+      expect(getFirstText(result)).toContain('search');
       // Should not have called fetch a third time
       expect(fastify.log.info).toHaveBeenCalledTimes(2);
     });
@@ -163,9 +234,8 @@ describe('kagi extension', () => {
       await searchTool.execute('call-1', { query: 'private search' });
 
       const logCall = vi.mocked(fastify.log.info).mock.calls[0];
-      const logArgs = logCall as unknown[];
       // The info call should not contain the response body text
-      const logged = JSON.stringify(logArgs);
+      const logged = JSON.stringify(logCall);
       expect(logged).not.toContain('sensitive');
       expect(logged).toContain('private search');
     });
@@ -182,7 +252,7 @@ describe('kagi extension', () => {
         url: 'https://example.com'
       });
       expect(result).toHaveProperty('content');
-      expect(result.content[0].text).toContain('Hello');
+      expect(getFirstText(result)).toContain('Hello');
       expect(fastify.log.info).toHaveBeenCalledWith(
         expect.objectContaining({
           tool: 'kagi_extract',
@@ -208,8 +278,8 @@ describe('kagi extension', () => {
         url: 'https://example.com/7'
       });
 
-      expect(result.content[0].text).toContain('Budget exhausted');
-      expect(result.content[0].text).toContain('extract');
+      expect(getFirstText(result)).toContain('Budget exhausted');
+      expect(getFirstText(result)).toContain('extract');
       expect(fastify.log.info).toHaveBeenCalledTimes(6);
     });
 
@@ -244,14 +314,14 @@ describe('kagi extension', () => {
     const blockedSearch = await searchTool.execute('s3', {
       query: 'third'
     });
-    expect(blockedSearch.content[0].text).toContain('Budget exhausted');
+    expect(getFirstText(blockedSearch)).toContain('Budget exhausted');
 
     // Extract should still work
     stubExtract('https://example.com');
     const extractResult = await extractTool.execute('e1', {
       url: 'https://example.com'
     });
-    expect(extractResult.content[0].text).toContain('Test Page');
+    expect(getFirstText(extractResult)).toContain('Test Page');
   });
 
   it('exhausting extract does not block search', async () => {
@@ -269,12 +339,12 @@ describe('kagi extension', () => {
     const blockedExtract = await extractTool.execute('e7', {
       url: 'https://example.com/7'
     });
-    expect(blockedExtract.content[0].text).toContain('Budget exhausted');
+    expect(getFirstText(blockedExtract)).toContain('Budget exhausted');
 
     // Search should still work
     stubSearch([{ url: 'https://a.com', title: 'A' }]);
     const searchResult = await searchTool.execute('s1', { query: 'test' });
-    expect(searchResult.content[0].text).toContain('A');
+    expect(getFirstText(searchResult)).toContain('A');
   });
 
   // ── Budget reset ───────────────────────────────────────────────────────
@@ -295,14 +365,14 @@ describe('kagi extension', () => {
     // Should now have a full fresh budget again
     stubSearch([{ url: 'https://b.com', title: 'B' }]);
     const searchResult = await searchTool.execute('s2', { query: 'second' });
-    expect(searchResult.content[0].text).toContain('B');
+    expect(getFirstText(searchResult)).toContain('B');
 
     // And should be able to do 6 more extracts (spot-check with one)
     stubExtract('https://example.com/2');
     const extractResult = await extractTool.execute('e2', {
       url: 'https://example.com/2'
     });
-    expect(extractResult.content[0].text).toContain('Test Page');
+    expect(getFirstText(extractResult)).toContain('Test Page');
   });
 
   // ── Missing API key ────────────────────────────────────────────────────
@@ -312,13 +382,13 @@ describe('kagi extension', () => {
     const { searchTool, extractTool } = setup();
 
     const searchResult = await searchTool.execute('call-1', { query: 'test' });
-    expect(searchResult.content[0].text).toContain('KAGI_API_KEY');
-    expect(searchResult.content[0].text).toContain('.env');
+    expect(getFirstText(searchResult)).toContain('KAGI_API_KEY');
+    expect(getFirstText(searchResult)).toContain('.env');
 
     const extractResult = await extractTool.execute('call-1', {
       url: 'https://example.com'
     });
-    expect(extractResult.content[0].text).toContain('KAGI_API_KEY');
+    expect(getFirstText(extractResult)).toContain('KAGI_API_KEY');
   });
 
   // ── Registration ───────────────────────────────────────────────────────
@@ -333,11 +403,13 @@ describe('kagi extension', () => {
 
     const search = tools.find(t => t.name === 'kagi_search')!;
     expect(search).toBeDefined();
-    // We can't easily inspect promptSnippet/promptGuidelines from the captured
-    // tool (they're on the original ToolDefinition, not the execute wrapper),
-    // but we can verify the tools were registered with the right names.
+    expect(search.promptSnippet).toContain('Limited calls per message');
+    expect(search.promptGuidelines?.some(g => g.includes('limited number'))).toBe(true);
+
     const extract = tools.find(t => t.name === 'kagi_extract')!;
     expect(extract).toBeDefined();
+    expect(extract.promptSnippet).toContain('Each uncached URL costs a paid call');
+    expect(extract.promptGuidelines?.some(g => g.includes('limited extract budget'))).toBe(true);
   });
 
   // ── Error passthrough ──────────────────────────────────────────────────
@@ -352,7 +424,7 @@ describe('kagi extension', () => {
     await searchTool.execute('s2', { query: 'second' });
 
     const result = await searchTool.execute('s3', { query: 'third' });
-    expect(result.isError).toBeFalsy();
+    expect(getResultErrorFlag(result)).toBeFalsy();
   });
 
   it('isError stays false on missing API key', async () => {
@@ -360,6 +432,6 @@ describe('kagi extension', () => {
     const { searchTool } = setup();
 
     const result = await searchTool.execute('call-1', { query: 'test' });
-    expect(result.isError).toBeFalsy();
+    expect(getResultErrorFlag(result)).toBeFalsy();
   });
 });
