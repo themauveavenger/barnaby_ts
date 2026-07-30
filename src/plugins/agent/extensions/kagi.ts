@@ -92,7 +92,7 @@ export default function createKagiExtension(
       promptGuidelines: [
         'Prefer kagi_search before considering kagi_extract; search snippets often answer the question on their own.',
         'When kagi_search results are insufficient, page deeper with kagi_search\'s offset parameter instead of rephrasing or repeating the same query.',
-        'You have a limited number of web calls per message. When you are close to the cap, prioritize the most important query and plan follow-ups for the next message.'
+        'When using kagi_search, you have a limited number of web calls per message. When you are close to the cap with kagi_search, prioritize the most important query and plan follow-ups for the next message.'
       ],
       async execute(toolCallId, params, signal, onUpdate, ctx) {
         if (!process.env.KAGI_API_KEY) {
