@@ -1,7 +1,8 @@
 import type { Context } from 'grammy';
 import type { FastifyInstance } from 'fastify';
 import { match } from 'ts-pattern';
-import { GENERIC_ERROR_MESSAGE, isAllowedChat, reportTelegramError } from './shared.js';
+import { confirmSuccess, GENERIC_ERROR_MESSAGE, reportTelegramError } from './shared.js';
+import { isAllowedChat } from './auth.js';
 import { clearSessionStore } from './session-store.js';
 
 export async function handleKillSessions(ctx: Context, fastify: FastifyInstance): Promise<void> {
@@ -30,9 +31,5 @@ export async function handleKillSessions(ctx: Context, fastify: FastifyInstance)
 
   // Confirm: if this fails the kill already happened, so report nothing — a
   // failure reply would claim the kill failed when it succeeded.
-  try {
-    await ctx.react('👍');
-  } catch (error) {
-    fastify.log.error({ err: error, chatId }, 'Failed to confirm /kill_sessions success');
-  }
+  await confirmSuccess(ctx, fastify, { chatId, logLabel: 'Failed to confirm /kill_sessions success' });
 }

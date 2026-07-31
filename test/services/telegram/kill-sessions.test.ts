@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import type { Context } from 'grammy';
+import type { FastifyInstance } from 'fastify';
 import { handleKillSessions } from '../../../src/services/telegram/kill-sessions.js';
 import { getSession, setSession, clearSessionStore } from '../../../src/services/telegram/session-store.js';
 
@@ -30,7 +31,7 @@ function createMockFastify() {
       debug: vi.fn(),
       warn: vi.fn()
     }
-  } as any;
+  } as unknown as FastifyInstance;
 }
 
 describe('handleKillSessions', () => {
@@ -46,6 +47,15 @@ describe('handleKillSessions', () => {
     const session = createMockSession();
     setSession(12345, session as any);
 
+    const ctx = createMockContext();
+    await handleKillSessions(ctx, fastify);
+
+    expect(getSession(12345)).toBeUndefined();
+    expect(ctx.react).toHaveBeenCalledWith('👍');
+    expect(ctx.reply).not.toHaveBeenCalled();
+  });
+
+  it('succeeds with a checkmark when no sessions are cached (no-op)', async () => {
     const ctx = createMockContext();
     await handleKillSessions(ctx, fastify);
 

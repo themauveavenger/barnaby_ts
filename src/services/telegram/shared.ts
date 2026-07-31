@@ -1,24 +1,8 @@
 import type { Context } from 'grammy';
 import type { FastifyInstance } from 'fastify';
+import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import { match, P } from 'ts-pattern';
 import { SessionTimeoutError } from '../../agent/session-runner.js';
-
-/**
- * Validates whether a chat is authorized to interact with the bot.
- *
- * Implements a whitelist security model - only chat IDs explicitly listed in the
- * TELEGRAM_CHAT_ID environment variable are allowed. This prevents unauthorized
- * users from accessing the bot even if they discover it.
- *
- * The environment variable accepts comma-separated chat IDs (e.g., "123456,789012").
- */
-export function isAllowedChat(chatId: number): boolean {
-  const allowedChatIds = (process.env.TELEGRAM_CHAT_ID ?? '')
-    .split(',')
-    .map(id => Number(id.trim()))
-    .filter(id => !Number.isNaN(id));
-  return allowedChatIds.includes(chatId);
-}
 
 export const GENERIC_ERROR_MESSAGE = 'Something went wrong — please try again.';
 
@@ -53,5 +37,40 @@ export async function reportTelegramError(
     await ctx.reply(replyText);
   } catch (error) {
     fastify.log.error({ err: error, chatId }, 'Failed to report error to Telegram');
+  }
+}
+
+/**
+ * Reacts 👍 to confirm a handler succeeded. The reaction is Telegram I/O and
+ * can fail; if it does, the operation already succeeded so we log only — a
+ * failure reply would claim the operation failed when it didn't.
+ */
+export async function confirmSuccess(
+  ctx: Context,
+  fastify: FastifyInstance,
+  { chatId, logLabel }: { chatId: number; logLabel: string }
+): Promise<void> {
+  try {
+    await ctx.react('👍');
+  } catch (error) {
+    fastify.log.error({ err: error, chatId }, logLabel);
+  }
+}
+
+/**
+ * Disposes a session, swallowing and logging any failure so it can neither
+ * mask an operation error nor escape the handler — grammy's default error
+ * handler would stop the bot (no bot.catch is installed). Only the `dispose`
+ * member is required, so callers may pass any object exposing it.
+ */
+export function disposeQuietly(
+  session: Pick<AgentSession, 'dispose'>,
+  fastify: FastifyInstance,
+  { chatId, logLabel }: { chatId: number; logLabel: string }
+): void {
+  try {
+    session.dispose();
+  } catch (error) {
+    fastify.log.error({ err: error, chatId }, logLabel);
   }
 }

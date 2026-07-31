@@ -3,7 +3,8 @@ import type { FastifyInstance } from 'fastify';
 import { MEMORY_CATEGORIZATION_GUIDELINES } from '../../agent/memory-guidelines.js';
 import { createSession } from '../../agent/session-factory.js';
 import { MEMORY_TOOLS, runAgentSession } from '../../agent/session-runner.js';
-import { defaultErrorMessage, isAllowedChat, reportTelegramError } from './shared.js';
+import { confirmSuccess, defaultErrorMessage, disposeQuietly, reportTelegramError } from './shared.js';
+import { isAllowedChat } from './auth.js';
 
 export async function handleRemember(ctx: Context, fastify: FastifyInstance): Promise<void> {
   const chatId = ctx.chat?.id;
@@ -45,11 +46,7 @@ export async function handleRemember(ctx: Context, fastify: FastifyInstance): Pr
         prompt
       });
     } finally {
-      try {
-        session.dispose();
-      } catch (disposeError) {
-        fastify.log.error({ err: disposeError, chatId }, 'Failed to dispose /remember session');
-      }
+      disposeQuietly(session, fastify, { chatId, logLabel: 'Failed to dispose /remember session' });
     }
   } catch (error) {
     fastify.log.error({ err: error, prompt, text }, 'Failed to process /remember command');
@@ -59,9 +56,5 @@ export async function handleRemember(ctx: Context, fastify: FastifyInstance): Pr
 
   // Confirm: if this fails the memory was already saved, so report nothing — a
   // failure reply would claim the save failed when it succeeded.
-  try {
-    await ctx.react('👍');
-  } catch (error) {
-    fastify.log.error({ err: error, chatId }, 'Failed to confirm /remember success');
-  }
+  await confirmSuccess(ctx, fastify, { chatId, logLabel: 'Failed to confirm /remember success' });
 }

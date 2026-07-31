@@ -4,7 +4,8 @@ import { buildMemoryContext } from '../telegram-utils.js';
 import { createSession } from '../../agent/session-factory.js';
 import { ALL_TOOLS, EmptyResponseError, runAgentSession } from '../../agent/session-runner.js';
 import { promptBuilder } from '../../agent/prompt-builder.js';
-import { defaultErrorMessage, isAllowedChat, reportTelegramError } from './shared.js';
+import { defaultErrorMessage, disposeQuietly, reportTelegramError } from './shared.js';
+import { isAllowedChat } from './auth.js';
 import { getSession, setSession } from './session-store.js';
 
 export async function handleChat(ctx: Context, fastify: FastifyInstance): Promise<void> {
@@ -62,11 +63,7 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
         fastify.log.debug({ chatId }, 'Created new session');
       } catch (error) {
         // Dispose must not mask the run error or escape the handler.
-        try {
-          session.dispose();
-        } catch (disposeError) {
-          fastify.log.error({ err: disposeError, chatId }, 'Failed to dispose session after prompt failure');
-        }
+        disposeQuietly(session, fastify, { chatId, logLabel: 'Failed to dispose session after prompt failure' });
         throw error;
       }
     }
