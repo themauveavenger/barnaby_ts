@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { createBriefingService, registerBriefingJob } from '../../src/services/briefing.js';
 import { getTimeOfDay, formatMemoryList, formatResolvedList, buildMemoryContext, createAgentAndDeliver, MissingChatIdError, EmptyResponseError } from '../../src/services/telegram-utils.js';
+import { runAgentSession, ALL_TOOLS, BRIEFING_READONLY_TOOLS, EmptyResponseError as RunnerEmptyResponseError } from '../../src/agent/session-runner.js';
 import type { Memory, ResolvedMemory } from '../../src/plugins/repository.js';
+import { clearSessionStore, getSession } from '../../src/services/telegram/session-store.js';
 
 vi.mock('@earendil-works/pi-coding-agent', () => ({
   createAgentSession: vi.fn(),
@@ -22,7 +24,15 @@ vi.mock('../../src/agent/prompt-builder.js', () => ({
   }
 }));
 
-import { createAgentSession } from '@earendil-works/pi-coding-agent';
+import { createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
+
+vi.mock('../../src/agent/session-runner.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/agent/session-runner.js')>();
+  return {
+    ...actual,
+    runAgentSession: vi.fn()
+  };
+});
 
 function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -30,6 +40,7 @@ function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
     getLastAssistantText: vi.fn().mockReturnValue('Good morning! You have 2 events today.'),
     dispose: vi.fn(),
     setAutoRetryEnabled: vi.fn(),
+    setActiveToolsByName: vi.fn(),
     abort: vi.fn().mockResolvedValue(undefined),
     ...overrides
   };
@@ -410,6 +421,28 @@ describe('briefing service', () => {
   beforeEach(() => {
     process.env.TELEGRAM_CHAT_ID = '12345';
     process.env.BRIEFING_CRON = '0 7 * * *';
+    clearSessionStore();
+    (runAgentSession as any).mockImplementation(async (options: { model: unknown; modelRuntime: unknown; resourceLoader: unknown; tools: readonly string[]; activeTools?: readonly string[]; prompt: string; signal?: AbortSignal }) => {
+      const { session } = await (createAgentSession as any)({
+        model: options.model,
+        modelRuntime: options.modelRuntime,
+        resourceLoader: options.resourceLoader,
+        sessionManager: SessionManager.inMemory(),
+        tools: [...options.tools]
+      });
+      session.setActiveToolsByName([...(options.activeTools ?? options.tools)]);
+      session.setAutoRetryEnabled(false);
+      if (options.signal?.aborted) {
+        await session.abort();
+        throw new Error('Session aborted');
+      }
+      await session.prompt(options.prompt);
+      const text = session.getLastAssistantText()?.trim();
+      if (!text) {
+        throw new RunnerEmptyResponseError();
+      }
+      return { text, session };
+    });
   });
 
   afterEach(() => {
@@ -421,7 +454,7 @@ describe('briefing service', () => {
       return vi.mocked(promptBuilder.briefing).mock.calls[0][0];
     }
 
-    it('creates agent session with correct tools and sends result to Telegram', async () => {
+    it('runs the briefing with the full registry and read-only active tools', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -429,9 +462,10 @@ describe('briefing service', () => {
       const service = createBriefingService(fastify);
       await service.sendBriefing();
 
-      expect(createAgentSession).toHaveBeenCalledWith(
+      expect(runAgentSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          tools: ['calendar_list', 'get_weather_forecast']
+          tools: ALL_TOOLS,
+          activeTools: BRIEFING_READONLY_TOOLS
         })
       );
 
@@ -458,8 +492,9 @@ describe('briefing service', () => {
       expect(context).not.toHaveProperty('weatherLatitude');
       expect(context).not.toHaveProperty('previousBriefing');
 
-      // The agent session receives whatever PromptBuilder produced.
-      expect(mockSession.prompt).toHaveBeenCalledWith('MOCK PROMPT');
+      expect(runAgentSession).toHaveBeenCalledWith(
+        expect.objectContaining({ prompt: 'MOCK PROMPT' })
+      );
 
       expect(fastify.telegramClient.sendMessage).toHaveBeenCalledWith(
         12345,
@@ -471,7 +506,7 @@ describe('briefing service', () => {
         triggerType: 'scheduled'
       });
 
-      expect(mockSession.dispose).toHaveBeenCalled();
+      expect(mockSession.dispose).not.toHaveBeenCalled();
     });
 
     it('passes weather location to PromptBuilder when configured', async () => {
@@ -494,7 +529,7 @@ describe('briefing service', () => {
       }
     });
 
-    it('disables auto-retry on the agent session', async () => {
+    it('caches the live session after delivering the briefing', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -502,7 +537,7 @@ describe('briefing service', () => {
       const service = createBriefingService(fastify);
       await service.sendBriefing();
 
-      expect(mockSession.setAutoRetryEnabled).toHaveBeenCalledWith(false);
+      expect(getSession(12345)).toBe(mockSession);
     });
 
     it('passes core memories (as memory context) to PromptBuilder when they exist', async () => {
@@ -601,7 +636,7 @@ describe('briefing service', () => {
     });
 
     it('propagates agent session creation failures', async () => {
-      (createAgentSession as any).mockRejectedValue(new Error('LLM API down'));
+      (runAgentSession as any).mockRejectedValue(new Error('LLM API down'));
 
       const fastify = createMockFastify();
       const service = createBriefingService(fastify);
@@ -676,7 +711,7 @@ describe('briefing service', () => {
 
       const fastify = createMockFastify();
       const service = createBriefingService(fastify);
-      await expect(service.sendBriefing()).rejects.toThrow(EmptyResponseError);
+      await expect(service.sendBriefing()).rejects.toThrow(RunnerEmptyResponseError);
       expect(fastify.telegramClient.sendMessage).not.toHaveBeenCalled();
       expect(fastify.briefingRepository.create).not.toHaveBeenCalled();
     });

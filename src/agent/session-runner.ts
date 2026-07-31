@@ -12,6 +12,7 @@ export const SESSION_TIMEOUT_MS = 45_000;
  */
 export const ALL_TOOLS = [
   'calendar_list',
+  'get_weather_forecast',
   'memory_list',
   'memory_resolve',
   'memory_create',
@@ -20,6 +21,17 @@ export const ALL_TOOLS = [
   'wolfram_alpha',
   'kagi_search',
   'kagi_extract'
+] as const;
+
+/** Tools active during the initial automated morning briefing prompt. */
+export const BRIEFING_READONLY_TOOLS = [
+  'calendar_list',
+  'get_weather_forecast'
+] as const;
+
+/** Tools active during the initial automated afternoon update prompt. */
+export const AFTERNOON_UPDATE_READONLY_TOOLS = [
+  'calendar_list'
 ] as const;
 
 /** Tools used by the /remember command. */

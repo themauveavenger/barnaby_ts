@@ -90,7 +90,7 @@ describe('handleChat', () => {
 
     expect(runAgentSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        tools: ['calendar_list', 'memory_list', 'memory_resolve', 'memory_create', 'drive_read_doc', 'drive_list_docs', 'wolfram_alpha', 'kagi_search', 'kagi_extract']
+        tools: ['calendar_list', 'get_weather_forecast', 'memory_list', 'memory_resolve', 'memory_create', 'drive_read_doc', 'drive_list_docs', 'wolfram_alpha', 'kagi_search', 'kagi_extract']
       })
     );
   });
@@ -306,7 +306,7 @@ describe('handleChat', () => {
     await handleChat(createMockContext('tell me more', chatId), fastify);
 
     expect(mockSession.setActiveToolsByName).toHaveBeenCalledWith(
-      ['calendar_list', 'memory_list', 'memory_resolve', 'memory_create', 'drive_read_doc', 'drive_list_docs', 'wolfram_alpha', 'kagi_search', 'kagi_extract']
+      ['calendar_list', 'get_weather_forecast', 'memory_list', 'memory_resolve', 'memory_create', 'drive_read_doc', 'drive_list_docs', 'wolfram_alpha', 'kagi_search', 'kagi_extract']
     );
   });
 
