@@ -1,17 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { createBriefingService, registerBriefingJob } from '../../src/services/briefing.js';
-import { getTimeOfDay, formatMemoryList, formatResolvedList, buildMemoryContext, createAgentAndDeliver, MissingChatIdError, EmptyResponseError } from '../../src/services/telegram-utils.js';
+import { getTimeOfDay, formatMemoryList, formatResolvedList, buildMemoryContext, MissingChatIdError } from '../../src/services/telegram-utils.js';
 import { runAgentSession, ALL_TOOLS, BRIEFING_READONLY_TOOLS, EmptyResponseError as RunnerEmptyResponseError } from '../../src/agent/session-runner.js';
 import type { Memory, ResolvedMemory } from '../../src/plugins/repository.js';
 import { clearSessionStore, getSession } from '../../src/services/telegram/session-store.js';
-
-vi.mock('@earendil-works/pi-coding-agent', () => ({
-  createAgentSession: vi.fn(),
-  SessionManager: {
-    inMemory: vi.fn(() => ({}))
-  }
-}));
 
 import { promptBuilder } from '../../src/agent/prompt-builder.js';
 import type { BriefingContext } from '../../src/agent/prompt-builder.js';
@@ -23,8 +16,6 @@ vi.mock('../../src/agent/prompt-builder.js', () => ({
     afternoonUpdate: vi.fn().mockReturnValue('MOCK PROMPT')
   }
 }));
-
-import { createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
 
 vi.mock('../../src/agent/session-runner.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/agent/session-runner.js')>();
@@ -44,6 +35,13 @@ function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
     abort: vi.fn().mockResolvedValue(undefined),
     ...overrides
   };
+}
+
+function mockRunAgentSession(session: ReturnType<typeof createMockSession>): void {
+  (runAgentSession as any).mockResolvedValue({
+    text: session.getLastAssistantText()?.trim(),
+    session
+  });
 }
 
 function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyInstance {
@@ -219,202 +217,6 @@ describe('briefing helpers', () => {
       expect(result).toContain('Tasks already completed or dismissed');
     });
   });
-
-  describe('createAgentAndDeliver', () => {
-    beforeEach(() => {
-      process.env.TELEGRAM_CHAT_ID = '12345';
-    });
-
-    afterEach(() => {
-      vi.clearAllMocks();
-    });
-
-    it('sends message and saves to repo when saveToRepo is provided', async () => {
-      const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
-
-      const fastify = createMockFastify();
-      await createAgentAndDeliver({
-        fastify,
-        tools: ['calendar_list', 'get_weather_forecast'],
-        prompt: 'Test prompt',
-        saveToRepo: { triggerType: 'scheduled' }
-      });
-
-      expect(createAgentSession).toHaveBeenCalledWith(
-        expect.objectContaining({ tools: ['calendar_list', 'get_weather_forecast'] })
-      );
-      expect(fastify.telegramClient.sendMessage).toHaveBeenCalledWith(12345, 'Good morning! You have 2 events today.');
-      expect(fastify.briefingRepository.create).toHaveBeenCalledWith({
-        content: 'Good morning! You have 2 events today.',
-        triggerType: 'scheduled'
-      });
-      expect(mockSession.dispose).toHaveBeenCalled();
-    });
-
-    it('sends message without saving when saveToRepo is omitted', async () => {
-      const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
-
-      const fastify = createMockFastify();
-      await createAgentAndDeliver({
-        fastify,
-        tools: ['calendar_list'],
-        prompt: 'Test prompt'
-      });
-
-      expect(fastify.telegramClient.sendMessage).toHaveBeenCalled();
-      expect(fastify.briefingRepository.create).not.toHaveBeenCalled();
-    });
-
-    it('throws MissingChatIdError when TELEGRAM_CHAT_ID is not set', async () => {
-      delete process.env.TELEGRAM_CHAT_ID;
-
-      const fastify = createMockFastify();
-      await expect(createAgentAndDeliver({
-        fastify,
-        tools: ['calendar_list'],
-        prompt: 'Test prompt'
-      })).rejects.toThrow(MissingChatIdError);
-
-      expect(createAgentSession).not.toHaveBeenCalled();
-    });
-
-    it('throws EmptyResponseError when agent returns empty response', async () => {
-      const mockSession = createMockSession({
-        getLastAssistantText: vi.fn().mockReturnValue('')
-      });
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
-
-      const fastify = createMockFastify();
-      await expect(createAgentAndDeliver({
-        fastify,
-        tools: ['calendar_list'],
-        prompt: 'Test prompt'
-      })).rejects.toThrow(EmptyResponseError);
-
-      expect(fastify.telegramClient.sendMessage).not.toHaveBeenCalled();
-      expect(fastify.briefingRepository.create).not.toHaveBeenCalled();
-      expect(mockSession.dispose).toHaveBeenCalled();
-    });
-
-    it('throws EmptyResponseError when agent returns null response', async () => {
-      const mockSession = createMockSession({
-        getLastAssistantText: vi.fn().mockReturnValue(null)
-      });
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
-
-      const fastify = createMockFastify();
-      await expect(createAgentAndDeliver({
-        fastify,
-        tools: ['calendar_list'],
-        prompt: 'Test prompt'
-      })).rejects.toThrow(EmptyResponseError);
-
-      expect(mockSession.dispose).toHaveBeenCalled();
-    });
-
-    it('throws EmptyResponseError when agent returns whitespace-only response', async () => {
-      const mockSession = createMockSession({
-        getLastAssistantText: vi.fn().mockReturnValue('   ')
-      });
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
-
-      const fastify = createMockFastify();
-      await expect(createAgentAndDeliver({
-        fastify,
-        tools: ['calendar_list'],
-        prompt: 'Test prompt'
-      })).rejects.toThrow(EmptyResponseError);
-
-      expect(fastify.telegramClient.sendMessage).not.toHaveBeenCalled();
-    });
-
-    it('propagates session creation errors', async () => {
-      (createAgentSession as any).mockRejectedValue(new Error('LLM API down'));
-
-      const fastify = createMockFastify();
-      await expect(createAgentAndDeliver({
-        fastify,
-        tools: ['calendar_list'],
-        prompt: 'Test prompt'
-      })).rejects.toThrow('LLM API down');
-
-      expect(fastify.telegramClient.sendMessage).not.toHaveBeenCalled();
-    });
-
-    it('propagates telegram send errors and does not save to repo', async () => {
-      const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
-
-      const fastify = createMockFastify({
-        telegramClient: {
-          sendMessage: vi.fn().mockRejectedValue(new Error('Telegram API down'))
-        }
-      });
-
-      await expect(createAgentAndDeliver({
-        fastify,
-        tools: ['calendar_list'],
-        prompt: 'Test prompt',
-        saveToRepo: { triggerType: 'scheduled' }
-      })).rejects.toThrow('Telegram API down');
-
-      expect(fastify.briefingRepository.create).not.toHaveBeenCalled();
-      expect(mockSession.dispose).toHaveBeenCalled();
-    });
-
-    it('disposes session on abort signal', async () => {
-      const mockSession = createMockSession({
-        prompt: vi.fn().mockImplementation(async () => {
-          await new Promise(resolve => setTimeout(resolve, 50));
-        })
-      });
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
-
-      const fastify = createMockFastify();
-      const controller = new AbortController();
-      controller.abort();
-
-      try {
-        await createAgentAndDeliver({
-          fastify,
-          tools: ['calendar_list'],
-          prompt: 'Test prompt',
-          signal: controller.signal
-        });
-      } catch {
-        // Expected to fail when aborted
-      }
-
-      expect(mockSession.abort).toHaveBeenCalled();
-      expect(mockSession.dispose).toHaveBeenCalled();
-    });
-
-    it('does not save to repo when saveToRepo is provided but send fails', async () => {
-      const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
-
-      const fastify = createMockFastify({
-        telegramClient: {
-          sendMessage: vi.fn().mockRejectedValue(new Error('Telegram down'))
-        }
-      });
-
-      try {
-        await createAgentAndDeliver({
-          fastify,
-          tools: ['calendar_list'],
-          prompt: 'Test prompt',
-          saveToRepo: { triggerType: 'manual' }
-        });
-      } catch {
-        // Expected
-      }
-
-      expect(fastify.briefingRepository.create).not.toHaveBeenCalled();
-    });
-  });
 });
 
 describe('briefing service', () => {
@@ -422,26 +224,9 @@ describe('briefing service', () => {
     process.env.TELEGRAM_CHAT_ID = '12345';
     process.env.BRIEFING_CRON = '0 7 * * *';
     clearSessionStore();
-    (runAgentSession as any).mockImplementation(async (options: { model: unknown; modelRuntime: unknown; resourceLoader: unknown; tools: readonly string[]; activeTools?: readonly string[]; prompt: string; signal?: AbortSignal }) => {
-      const { session } = await (createAgentSession as any)({
-        model: options.model,
-        modelRuntime: options.modelRuntime,
-        resourceLoader: options.resourceLoader,
-        sessionManager: SessionManager.inMemory(),
-        tools: [...options.tools]
-      });
-      session.setActiveToolsByName([...(options.activeTools ?? options.tools)]);
-      session.setAutoRetryEnabled(false);
-      if (options.signal?.aborted) {
-        await session.abort();
-        throw new Error('Session aborted');
-      }
-      await session.prompt(options.prompt);
-      const text = session.getLastAssistantText()?.trim();
-      if (!text) {
-        throw new RunnerEmptyResponseError();
-      }
-      return { text, session };
+    (runAgentSession as any).mockResolvedValue({
+      text: 'Good morning! You have 2 events today.',
+      session: createMockSession()
     });
   });
 
@@ -456,7 +241,7 @@ describe('briefing service', () => {
 
     it('runs the briefing with the full registry and read-only active tools', async () => {
       const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       const fastify = createMockFastify();
       const service = createBriefingService(fastify);
@@ -511,7 +296,7 @@ describe('briefing service', () => {
 
     it('passes weather location to PromptBuilder when configured', async () => {
       const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       vi.stubEnv('WEATHER_LATITUDE', '40.7');
       vi.stubEnv('WEATHER_LONGITUDE', '-74.0');
@@ -531,7 +316,7 @@ describe('briefing service', () => {
 
     it('caches the live session after delivering the briefing', async () => {
       const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       const fastify = createMockFastify();
       const service = createBriefingService(fastify);
@@ -542,7 +327,7 @@ describe('briefing service', () => {
 
     it('passes core memories (as memory context) to PromptBuilder when they exist', async () => {
       const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       const fastify = createMockFastify({
         memoryRepository: {
@@ -567,7 +352,7 @@ describe('briefing service', () => {
 
     it('passes recent memories (as memory context) to PromptBuilder when they exist', async () => {
       const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       const fastify = createMockFastify({
         memoryRepository: {
@@ -592,7 +377,7 @@ describe('briefing service', () => {
 
     it('passes an empty memory context when no memories exist', async () => {
       const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       const fastify = createMockFastify();
       const service = createBriefingService(fastify);
@@ -603,7 +388,7 @@ describe('briefing service', () => {
 
     it('passes resolved (completed/dismissed) memories as memory context', async () => {
       const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       const fastify = createMockFastify({
         memoryRepository: {
@@ -632,7 +417,7 @@ describe('briefing service', () => {
       const fastify = createMockFastify();
       const service = createBriefingService(fastify);
       await expect(service.sendBriefing()).rejects.toThrow(MissingChatIdError);
-      expect(createAgentSession).not.toHaveBeenCalled();
+      expect(runAgentSession).not.toHaveBeenCalled();
     });
 
     it('propagates agent session creation failures', async () => {
@@ -646,7 +431,7 @@ describe('briefing service', () => {
 
     it('propagates telegram send failures', async () => {
       const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       const fastify = createMockFastify({
         telegramClient: {
@@ -660,7 +445,7 @@ describe('briefing service', () => {
 
     it('passes the previous briefing (raw content + triggeredAt) to PromptBuilder when one exists', async () => {
       const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       const previousBriefing = {
         id: 'prev-1',
@@ -691,7 +476,7 @@ describe('briefing service', () => {
       const mockSession = createMockSession({
         getLastAssistantText: vi.fn().mockReturnValue('Manual briefing')
       });
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       const fastify = createMockFastify();
       const service = createBriefingService(fastify);
@@ -704,10 +489,7 @@ describe('briefing service', () => {
     });
 
     it('propagates EmptyResponseError when agent returns empty', async () => {
-      const mockSession = createMockSession({
-        getLastAssistantText: vi.fn().mockReturnValue('')
-      });
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      (runAgentSession as any).mockRejectedValue(new RunnerEmptyResponseError());
 
       const fastify = createMockFastify();
       const service = createBriefingService(fastify);

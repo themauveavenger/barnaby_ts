@@ -7,6 +7,7 @@ const mockSession = {
   getLastAssistantText: vi.fn(() => 'Manual briefing content'),
   dispose: vi.fn(),
   setAutoRetryEnabled: vi.fn(),
+  setActiveToolsByName: vi.fn(),
   abort: vi.fn().mockResolvedValue(undefined)
 };
 

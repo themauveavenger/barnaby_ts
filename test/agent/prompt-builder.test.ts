@@ -164,7 +164,7 @@ describe('PromptBuilder.briefing', () => {
 });
 
 const CHAT_ORCHESTRATION = 'Answer concisely and naturally. '
-  + 'Use the memory_list, calendar_list, drive_read_doc, drive_list_docs, and wolfram_alpha tools to search for relevant information or computations if needed. '
+  + 'Use the memory_list, calendar_list, drive_read_doc, drive_list_docs, wolfram_alpha, kagi_search, and kagi_extract tools to search for relevant information or computations if needed. '
   + 'Your tools only have read-only access to data. You cannot create any new memories, calendar events, or Google documents. '
   + 'If you find relevant memories, calendar events, or text in a Google document, reference them directly by name. '
   + 'If nothing relevant comes up, say so honestly rather than making things up.';
@@ -226,6 +226,8 @@ describe('PromptBuilder.chat', () => {
     // Chat-specific orchestration text is preserved.
     expect(prompt).toContain('Answer concisely and naturally');
     expect(prompt).toContain('You cannot create any new memories');
+    expect(prompt).toContain('kagi_search');
+    expect(prompt).toContain('kagi_extract');
   });
 });
 

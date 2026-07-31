@@ -4,13 +4,6 @@ import { createAfternoonUpdateService, registerAfternoonUpdateJob } from '../../
 import { runAgentSession, ALL_TOOLS, AFTERNOON_UPDATE_READONLY_TOOLS } from '../../src/agent/session-runner.js';
 import { clearSessionStore, getSession } from '../../src/services/telegram/session-store.js';
 
-vi.mock('@earendil-works/pi-coding-agent', () => ({
-  createAgentSession: vi.fn(),
-  SessionManager: {
-    inMemory: vi.fn(() => ({}))
-  }
-}));
-
 vi.mock('../../src/agent/prompt-builder.js', () => ({
   promptBuilder: {
     briefing: vi.fn().mockReturnValue('MOCK PROMPT'),
@@ -19,7 +12,6 @@ vi.mock('../../src/agent/prompt-builder.js', () => ({
   }
 }));
 
-import { createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
 import { promptBuilder } from '../../src/agent/prompt-builder.js';
 
 vi.mock('../../src/agent/session-runner.js', async (importOriginal) => {
@@ -41,6 +33,13 @@ function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
     abort: vi.fn().mockResolvedValue(undefined),
     ...overrides
   };
+}
+
+function mockRunAgentSession(session: ReturnType<typeof createMockSession>): void {
+  (runAgentSession as any).mockResolvedValue({
+    text: session.getLastAssistantText()?.trim(),
+    session
+  });
 }
 
 function createMockFastify(overrides: Partial<FastifyInstance> = {}): FastifyInstance {
@@ -95,26 +94,9 @@ describe('afternoon update service', () => {
     process.env.TELEGRAM_CHAT_ID = '12345';
     process.env.AFTERNOON_UPDATE_CRON = '0 14 * * *';
     clearSessionStore();
-    (runAgentSession as any).mockImplementation(async (options: { model: unknown; modelRuntime: unknown; resourceLoader: unknown; tools: readonly string[]; activeTools?: readonly string[]; prompt: string; signal?: AbortSignal }) => {
-      const { session } = await (createAgentSession as any)({
-        model: options.model,
-        modelRuntime: options.modelRuntime,
-        resourceLoader: options.resourceLoader,
-        sessionManager: SessionManager.inMemory(),
-        tools: [...options.tools]
-      });
-      session.setActiveToolsByName([...(options.activeTools ?? options.tools)]);
-      session.setAutoRetryEnabled(false);
-      if (options.signal?.aborted) {
-        await session.abort();
-        throw new Error('Session aborted');
-      }
-      await session.prompt(options.prompt);
-      const text = session.getLastAssistantText()?.trim();
-      if (!text) {
-        throw new Error('Agent returned an empty response');
-      }
-      return { text, session };
+    (runAgentSession as any).mockResolvedValue({
+      text: 'Good afternoon! You have a meeting at 3pm.',
+      session: createMockSession()
     });
   });
 
@@ -129,7 +111,7 @@ describe('afternoon update service', () => {
 
     it('runs with the full registry and calendar-only active tools', async () => {
       const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       const fastify = createMockFastify();
       const service = createAfternoonUpdateService(fastify);
@@ -175,7 +157,7 @@ describe('afternoon update service', () => {
 
     it('passes the computed two-range dateRanges (no yesterday range) to PromptBuilder', async () => {
       const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       const fastify = createMockFastify();
       const service = createAfternoonUpdateService(fastify);
@@ -189,7 +171,7 @@ describe('afternoon update service', () => {
 
     it('passes the previous briefing to PromptBuilder when one exists (preamble present)', async () => {
       const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       const previousBriefing = {
         id: 'prev-1',
@@ -218,7 +200,7 @@ describe('afternoon update service', () => {
 
     it('does not pass a previous briefing to PromptBuilder when none exists (preamble absent)', async () => {
       const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       const fastify = createMockFastify();
       const service = createAfternoonUpdateService(fastify);
@@ -229,7 +211,7 @@ describe('afternoon update service', () => {
 
     it('passes the memory context string from buildMemoryContext to PromptBuilder', async () => {
       const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       const fastify = createMockFastify({
         memoryRepository: {
@@ -252,7 +234,7 @@ describe('afternoon update service', () => {
 
     it('passes abort signal through to SessionRunner', async () => {
       const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       const fastify = createMockFastify();
       const service = createAfternoonUpdateService(fastify);
@@ -267,13 +249,14 @@ describe('afternoon update service', () => {
         // May throw due to abort
       }
 
-      expect(mockSession.abort).toHaveBeenCalled();
-      expect(mockSession.dispose).not.toHaveBeenCalled();
+      expect(runAgentSession).toHaveBeenCalledWith(
+        expect.objectContaining({ signal: controller.signal })
+      );
     });
 
     it('caches the live session after delivering the update', async () => {
       const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       const fastify = createMockFastify();
       const service = createAfternoonUpdateService(fastify);
@@ -285,7 +268,7 @@ describe('afternoon update service', () => {
 
     it('passes timezone information to PromptBuilder', async () => {
       const mockSession = createMockSession();
-      (createAgentSession as any).mockResolvedValue({ session: mockSession });
+      mockRunAgentSession(mockSession);
 
       const fastify = createMockFastify();
       const service = createAfternoonUpdateService(fastify);

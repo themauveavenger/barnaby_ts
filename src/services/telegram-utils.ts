@@ -1,5 +1,4 @@
 import type { FastifyInstance } from 'fastify';
-import { createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
 import type { Memory, ResolvedMemory } from '../plugins/repository.js';
 
 export function getTimeOfDay(hour: number): string {
@@ -40,79 +39,9 @@ export function buildMemoryContext(fastify: FastifyInstance): string {
   return [coreContext, recentContext, resolvedContext].filter(Boolean).join('\n\n');
 }
 
-export interface DeliverOptions {
-  fastify: FastifyInstance;
-  tools: string[];
-  prompt: string;
-  signal?: AbortSignal;
-  saveToRepo?: { triggerType: 'scheduled' | 'manual' };
-}
-
-export class EmptyResponseError extends Error {
-  constructor() {
-    super('Agent returned an empty response');
-    this.name = 'EmptyResponseError';
-  }
-}
-
 export class MissingChatIdError extends Error {
   constructor() {
     super('TELEGRAM_CHAT_ID is not set');
     this.name = 'MissingChatIdError';
-  }
-}
-
-export async function createAgentAndDeliver(options: DeliverOptions): Promise<string> {
-  const { fastify, tools, prompt, signal, saveToRepo } = options;
-
-  const chatIdEnv = process.env.TELEGRAM_CHAT_ID;
-  if (!chatIdEnv) {
-    throw new MissingChatIdError();
-  }
-
-  const chatId = Number(chatIdEnv);
-  const { modelRuntime, model, resourceLoader } = fastify.agent;
-
-  const { session } = await createAgentSession({
-    model,
-    modelRuntime,
-    resourceLoader,
-    sessionManager: SessionManager.inMemory(),
-    tools
-  });
-
-  session.setAutoRetryEnabled(false);
-
-  const onAbort = () => {
-    session.abort().catch(() => {
-      void 0;
-    });
-  };
-  signal?.addEventListener('abort', onAbort);
-  if (signal?.aborted) {
-    onAbort();
-  }
-
-  try {
-    await session.prompt(prompt);
-    const responseText = session.getLastAssistantText()?.trim();
-
-    if (!responseText) {
-      throw new EmptyResponseError();
-    }
-
-    await fastify.telegramClient.sendMessage(chatId, responseText);
-
-    if (saveToRepo) {
-      fastify.briefingRepository.create({
-        content: responseText,
-        triggerType: saveToRepo.triggerType
-      });
-    }
-
-    return responseText;
-  } finally {
-    signal?.removeEventListener('abort', onAbort);
-    session.dispose();
   }
 }
