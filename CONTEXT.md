@@ -49,6 +49,10 @@ An LLM-generated daily summary delivered via Telegram each morning. Covers upcom
 
 A lighter follow-up to the Briefing, delivered later in the day. Surfaces things needing attention and anything added since the morning Briefing.
 
+## Session
+
+A live agent conversation thread giving Barnaby conversational continuity across Telegram messages. Cached per chat for 15 minutes. Replies to a **Briefing** or **Afternoon Update** within that window reuse the session that generated the message, so follow-ups (e.g. "move that to Monday") have full context. Chat-initiated conversations reuse sessions the same way.
+
 ## Telegram
 
 The primary interface for interacting with Barnaby. Regular messages are conversational with read-only access to memories, calendar events, and Google Docs (Barnaby can search and resolve memories, list upcoming calendar events, and read documents from Drive). Slash commands (`/remember`, future `/ynab`, etc.) are focused interactions scoped to a specific domain.
