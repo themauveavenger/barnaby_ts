@@ -441,6 +441,8 @@ describe('briefing service', () => {
 
       const service = createBriefingService(fastify);
       await expect(service.sendBriefing()).rejects.toThrow('Telegram API down');
+      expect(mockSession.dispose).toHaveBeenCalled();
+      expect(getSession(12345)).toBeUndefined();
     });
 
     it('passes the previous briefing (raw content + triggeredAt) to PromptBuilder when one exists', async () => {

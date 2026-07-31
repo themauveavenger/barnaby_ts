@@ -8,7 +8,7 @@ vi.mock('@earendil-works/pi-coding-agent', () => ({
 }));
 
 import { createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
-import type { ModelRuntime, ResourceLoader } from '@earendil-works/pi-coding-agent';
+import type { AgentSession, ModelRuntime, ResourceLoader } from '@earendil-works/pi-coding-agent';
 import type { Api, Model } from '@earendil-works/pi-ai';
 import {
   runAgentSession,
@@ -163,6 +163,45 @@ describe('runAgentSession', () => {
     ).rejects.toBeInstanceOf(EmptyResponseError);
   });
 
+  it('disposes the created session when the prompt fails', async () => {
+    const session = createMockSession();
+    (createAgentSession as any).mockResolvedValue({ session });
+    session.prompt.mockRejectedValue(new Error('LLM API down'));
+
+    await expect(
+      runAgentSession({ ...agent, tools: MEMORY_TOOLS, prompt: 'test' })
+    ).rejects.toThrow('LLM API down');
+
+    expect(session.dispose).toHaveBeenCalled();
+  });
+
+  it('disposes the created session when the response is empty', async () => {
+    const session = createMockSession(null);
+    (createAgentSession as any).mockResolvedValue({ session });
+
+    await expect(
+      runAgentSession({ ...agent, tools: MEMORY_TOOLS, prompt: 'test' })
+    ).rejects.toBeInstanceOf(EmptyResponseError);
+
+    expect(session.dispose).toHaveBeenCalled();
+  });
+
+  it('does not dispose a reused session when the prompt fails', async () => {
+    const session = createMockSession();
+    session.prompt.mockRejectedValue(new Error('LLM API down'));
+
+    await expect(
+      runAgentSession({
+        ...agent,
+        tools: MEMORY_TOOLS,
+        prompt: 'test',
+        _session: session as unknown as AgentSession
+      })
+    ).rejects.toThrow('LLM API down');
+
+    expect(session.dispose).not.toHaveBeenCalled();
+  });
+
   it('uses the default 45 second timeout', async () => {
     const session = createMockSession();
     (createAgentSession as any).mockResolvedValue({ session });
@@ -185,6 +224,7 @@ describe('runAgentSession', () => {
 
     await expect(promise).rejects.toBeInstanceOf(SessionTimeoutError);
     expect(session.abort).toHaveBeenCalled();
+    expect(session.dispose).toHaveBeenCalled();
   });
 
   it('aborts the session when the external signal fires', async () => {

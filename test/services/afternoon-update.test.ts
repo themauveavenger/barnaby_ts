@@ -266,6 +266,22 @@ describe('afternoon update service', () => {
       expect(getSession(12345)).toBe(mockSession);
     });
 
+    it('disposes the session and caches nothing when delivery fails', async () => {
+      const mockSession = createMockSession();
+      mockRunAgentSession(mockSession);
+
+      const fastify = createMockFastify({
+        telegramClient: {
+          sendMessage: vi.fn().mockRejectedValue(new Error('Telegram API down'))
+        }
+      });
+
+      const service = createAfternoonUpdateService(fastify);
+      await expect(service.sendUpdate()).rejects.toThrow('Telegram API down');
+      expect(mockSession.dispose).toHaveBeenCalled();
+      expect(getSession(12345)).toBeUndefined();
+    });
+
     it('passes timezone information to PromptBuilder', async () => {
       const mockSession = createMockSession();
       mockRunAgentSession(mockSession);

@@ -94,6 +94,11 @@ export async function runAgentSession(
   const { modelRuntime, model, resourceLoader, tools, activeTools, prompt, signal, _timeoutMs, _session } = options;
 
   let session: AgentSession;
+  // The session created here (never _session). The caller only receives a
+  // session when runAgentSession returns normally, so any failure must
+  // dispose what we created or it leaks. Declared separately so the catch
+  // can reference it without tripping definite-assignment analysis.
+  let createdSession: AgentSession | undefined;
   let timeoutFired = false;
 
   // Set up the timeout before any await so fake-timer tests can intercept it.
@@ -128,6 +133,7 @@ export async function runAgentSession(
         sessionManager: SessionManager.inMemory(),
         tools: [...tools]
       }));
+      createdSession = session;
     }
 
     session.setActiveToolsByName([...(activeTools ?? tools)]);
@@ -135,6 +141,7 @@ export async function runAgentSession(
 
     await session.prompt(prompt);
   } catch (error) {
+    createdSession?.dispose();
     if (timeoutFired) {
       throw new SessionTimeoutError();
     }
@@ -146,6 +153,7 @@ export async function runAgentSession(
 
   const text = session.getLastAssistantText()?.trim();
   if (!text) {
+    createdSession?.dispose();
     throw new EmptyResponseError();
   }
 
