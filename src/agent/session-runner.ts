@@ -23,23 +23,26 @@ export const ALL_TOOLS = [
   'kagi_extract'
 ] as const;
 
+/** A tool name valid in the full registry. */
+export type AgentToolName = (typeof ALL_TOOLS)[number];
+
 /** Tools active during the initial automated morning briefing prompt. */
 export const BRIEFING_READONLY_TOOLS = [
   'calendar_list',
   'get_weather_forecast'
-] as const;
+] as const satisfies readonly AgentToolName[];
 
 /** Tools active during the initial automated afternoon update prompt. */
 export const AFTERNOON_UPDATE_READONLY_TOOLS = [
   'calendar_list'
-] as const;
+] as const satisfies readonly AgentToolName[];
 
 /** Tools used by the /remember command. */
 export const MEMORY_TOOLS = [
   'memory_create',
   'memory_list',
   'memory_resolve'
-] as const;
+] as const satisfies readonly AgentToolName[];
 
 /** Thrown when the assistant produces no text response. */
 export class EmptyResponseError extends Error {

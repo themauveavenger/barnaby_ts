@@ -2,10 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { AsyncTask, CronJob } from 'toad-scheduler';
 import { TZDate, tzName } from '@date-fns/tz';
 import { add, format } from 'date-fns';
-import { getTimeOfDay, buildMemoryContext, MissingChatIdError } from './telegram-utils.js';
-import { ALL_TOOLS, AFTERNOON_UPDATE_READONLY_TOOLS, runAgentSession } from '../agent/session-runner.js';
+import { getTimeOfDay, buildMemoryContext, deliverScheduledMessage } from './telegram-utils.js';
+import { AFTERNOON_UPDATE_READONLY_TOOLS } from '../agent/session-runner.js';
 import { promptBuilder } from '../agent/prompt-builder.js';
-import { setSession } from './telegram/session-store.js';
 
 export interface AfternoonUpdateService {
   sendUpdate(signal?: AbortSignal): Promise<void>;
@@ -53,30 +52,12 @@ export function createAfternoonUpdateService(fastify: FastifyInstance): Afternoo
 
       fastify.log.debug({ prompt }, 'Built afternoon update prompt');
 
-      const chatIdEnv = process.env.TELEGRAM_CHAT_ID;
-      if (!chatIdEnv) {
-        throw new MissingChatIdError();
-      }
-
-      const chatId = Number(chatIdEnv);
-      const { modelRuntime, model, resourceLoader } = fastify.agent;
-      const { text, session } = await runAgentSession({
-        modelRuntime,
-        model,
-        resourceLoader,
-        tools: ALL_TOOLS,
+      await deliverScheduledMessage({
+        fastify,
         activeTools: AFTERNOON_UPDATE_READONLY_TOOLS,
         prompt,
         signal
       });
-
-      try {
-        await fastify.telegramClient.sendMessage(chatId, text);
-        setSession(chatId, session);
-      } catch (error) {
-        session.dispose();
-        throw error;
-      }
     }
   };
 }

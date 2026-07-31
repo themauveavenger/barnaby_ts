@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { createBriefingService, registerBriefingJob } from '../../src/services/briefing.js';
 import { getTimeOfDay, formatMemoryList, formatResolvedList, buildMemoryContext, MissingChatIdError } from '../../src/services/telegram-utils.js';
 import { runAgentSession, ALL_TOOLS, BRIEFING_READONLY_TOOLS, EmptyResponseError as RunnerEmptyResponseError } from '../../src/agent/session-runner.js';
+import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import type { Memory, ResolvedMemory } from '../../src/plugins/repository.js';
 import { clearSessionStore, getSession } from '../../src/services/telegram/session-store.js';
 
@@ -25,7 +26,7 @@ vi.mock('../../src/agent/session-runner.js', async (importOriginal) => {
   };
 });
 
-function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
+function createMockSession(overrides: Partial<Record<string, unknown>> = {}): AgentSession {
   return {
     prompt: vi.fn().mockResolvedValue(undefined),
     getLastAssistantText: vi.fn().mockReturnValue('Good morning! You have 2 events today.'),
@@ -34,12 +35,12 @@ function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
     setActiveToolsByName: vi.fn(),
     abort: vi.fn().mockResolvedValue(undefined),
     ...overrides
-  };
+  } as unknown as AgentSession;
 }
 
-function mockRunAgentSession(session: ReturnType<typeof createMockSession>): void {
-  (runAgentSession as any).mockResolvedValue({
-    text: session.getLastAssistantText()?.trim(),
+function mockRunAgentSession(session: AgentSession): void {
+  vi.mocked(runAgentSession).mockResolvedValue({
+    text: (session.getLastAssistantText() ?? '').trim(),
     session
   });
 }
@@ -224,7 +225,7 @@ describe('briefing service', () => {
     process.env.TELEGRAM_CHAT_ID = '12345';
     process.env.BRIEFING_CRON = '0 7 * * *';
     clearSessionStore();
-    (runAgentSession as any).mockResolvedValue({
+    vi.mocked(runAgentSession).mockResolvedValue({
       text: 'Good morning! You have 2 events today.',
       session: createMockSession()
     });
@@ -421,7 +422,7 @@ describe('briefing service', () => {
     });
 
     it('propagates agent session creation failures', async () => {
-      (runAgentSession as any).mockRejectedValue(new Error('LLM API down'));
+      vi.mocked(runAgentSession).mockRejectedValue(new Error('LLM API down'));
 
       const fastify = createMockFastify();
       const service = createBriefingService(fastify);
@@ -491,7 +492,7 @@ describe('briefing service', () => {
     });
 
     it('propagates EmptyResponseError when agent returns empty', async () => {
-      (runAgentSession as any).mockRejectedValue(new RunnerEmptyResponseError());
+      vi.mocked(runAgentSession).mockRejectedValue(new RunnerEmptyResponseError());
 
       const fastify = createMockFastify();
       const service = createBriefingService(fastify);

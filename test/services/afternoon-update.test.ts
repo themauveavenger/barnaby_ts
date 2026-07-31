@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { createAfternoonUpdateService, registerAfternoonUpdateJob } from '../../src/services/afternoon-update.js';
 import { runAgentSession, ALL_TOOLS, AFTERNOON_UPDATE_READONLY_TOOLS } from '../../src/agent/session-runner.js';
+import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import { clearSessionStore, getSession } from '../../src/services/telegram/session-store.js';
 
 vi.mock('../../src/agent/prompt-builder.js', () => ({
@@ -23,7 +24,7 @@ vi.mock('../../src/agent/session-runner.js', async (importOriginal) => {
 });
 import type { AfternoonUpdateContext } from '../../src/agent/prompt-builder.js';
 
-function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
+function createMockSession(overrides: Partial<Record<string, unknown>> = {}): AgentSession {
   return {
     prompt: vi.fn().mockResolvedValue(undefined),
     getLastAssistantText: vi.fn().mockReturnValue('Good afternoon! You have a meeting at 3pm.'),
@@ -32,12 +33,12 @@ function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
     setActiveToolsByName: vi.fn(),
     abort: vi.fn().mockResolvedValue(undefined),
     ...overrides
-  };
+  } as unknown as AgentSession;
 }
 
-function mockRunAgentSession(session: ReturnType<typeof createMockSession>): void {
-  (runAgentSession as any).mockResolvedValue({
-    text: session.getLastAssistantText()?.trim(),
+function mockRunAgentSession(session: AgentSession): void {
+  vi.mocked(runAgentSession).mockResolvedValue({
+    text: (session.getLastAssistantText() ?? '').trim(),
     session
   });
 }
@@ -94,7 +95,7 @@ describe('afternoon update service', () => {
     process.env.TELEGRAM_CHAT_ID = '12345';
     process.env.AFTERNOON_UPDATE_CRON = '0 14 * * *';
     clearSessionStore();
-    (runAgentSession as any).mockResolvedValue({
+    vi.mocked(runAgentSession).mockResolvedValue({
       text: 'Good afternoon! You have a meeting at 3pm.',
       session: createMockSession()
     });

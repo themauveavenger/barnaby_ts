@@ -2,10 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { AsyncTask, CronJob } from 'toad-scheduler';
 import { TZDate, tzName } from '@date-fns/tz';
 import { add, format, sub } from 'date-fns';
-import { getTimeOfDay, buildMemoryContext, MissingChatIdError } from './telegram-utils.js';
-import { ALL_TOOLS, BRIEFING_READONLY_TOOLS, runAgentSession } from '../agent/session-runner.js';
+import { getTimeOfDay, buildMemoryContext, deliverScheduledMessage } from './telegram-utils.js';
+import { BRIEFING_READONLY_TOOLS } from '../agent/session-runner.js';
 import { promptBuilder } from '../agent/prompt-builder.js';
-import { setSession } from './telegram/session-store.js';
 
 export interface BriefingService {
   sendBriefing(options?: { triggerType?: 'scheduled' | 'manual' }, signal?: AbortSignal): Promise<void>;
@@ -65,34 +64,13 @@ export function createBriefingService(fastify: FastifyInstance): BriefingService
 
       fastify.log.debug({ prompt }, 'Built briefing prompt');
 
-      const chatIdEnv = process.env.TELEGRAM_CHAT_ID;
-      if (!chatIdEnv) {
-        throw new MissingChatIdError();
-      }
-
-      const chatId = Number(chatIdEnv);
-      const { modelRuntime, model, resourceLoader } = fastify.agent;
-      const { text, session } = await runAgentSession({
-        modelRuntime,
-        model,
-        resourceLoader,
-        tools: ALL_TOOLS,
+      await deliverScheduledMessage({
+        fastify,
         activeTools: BRIEFING_READONLY_TOOLS,
         prompt,
-        signal
+        signal,
+        saveToRepo: { triggerType }
       });
-
-      try {
-        await fastify.telegramClient.sendMessage(chatId, text);
-        fastify.briefingRepository.create({
-          content: text,
-          triggerType
-        });
-        setSession(chatId, session);
-      } catch (error) {
-        session.dispose();
-        throw error;
-      }
     }
   };
 }
