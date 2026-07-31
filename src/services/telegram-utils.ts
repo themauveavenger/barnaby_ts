@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { Memory, ResolvedMemory } from '../plugins/repository.js';
+import { createSession } from '../agent/session-factory.js';
 import { ALL_TOOLS, runAgentSession } from '../agent/session-runner.js';
 import { setSession } from './telegram/session-store.js';
 
@@ -67,18 +68,20 @@ export async function deliverScheduledMessage(options: DeliverScheduledMessageOp
 
   const chatId = Number(chatIdEnv);
   const { modelRuntime, model, resourceLoader } = fastify.agent;
-
-  const { text, session } = await runAgentSession({
+  const session = await createSession({
     modelRuntime,
     model,
     resourceLoader,
-    tools: ALL_TOOLS,
-    activeTools,
-    prompt,
-    signal
+    tools: ALL_TOOLS
   });
-
   try {
+    session.setActiveToolsByName([...activeTools]);
+    const { text } = await runAgentSession({
+      _session: session,
+      prompt,
+      signal
+    });
+
     await fastify.telegramClient.sendMessage(chatId, text);
     if (saveToRepo) {
       fastify.briefingRepository.create({

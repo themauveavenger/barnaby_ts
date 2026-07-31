@@ -1,6 +1,7 @@
 import type { Context } from 'grammy';
 import type { FastifyInstance } from 'fastify';
 import { buildMemoryContext } from '../telegram-utils.js';
+import { createSession } from '../../agent/session-factory.js';
 import { ALL_TOOLS, EmptyResponseError, runAgentSession, SessionTimeoutError } from '../../agent/session-runner.js';
 import { promptBuilder } from '../../agent/prompt-builder.js';
 import { isAllowedChat } from './shared.js';
@@ -24,17 +25,12 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
 
   try {
     const cachedSession = getSession(chatId);
-    const { modelRuntime, model, resourceLoader } = fastify.agent;
 
     if (cachedSession) {
       cachedSession.setActiveToolsByName([...ALL_TOOLS]);
       fastify.log.debug({ chatId }, 'Reusing existing session');
 
       const { text: responseText } = await runAgentSession({
-        modelRuntime,
-        model,
-        resourceLoader,
-        tools: ALL_TOOLS,
         _session: cachedSession,
         prompt: text
       });
@@ -47,19 +43,27 @@ export async function handleChat(ctx: Context, fastify: FastifyInstance): Promis
         memoryContext,
         calendarIds: fastify.calendarIds
       });
-
-      const { text: responseText, session } = await runAgentSession({
+      const { modelRuntime, model, resourceLoader } = fastify.agent;
+      const session = await createSession({
         modelRuntime,
         model,
         resourceLoader,
-        tools: ALL_TOOLS,
-        prompt
+        tools: ALL_TOOLS
       });
+      try {
+        session.setActiveToolsByName([...ALL_TOOLS]);
+        const { text: responseText, session: promptedSession } = await runAgentSession({
+          _session: session,
+          prompt
+        });
 
-      setSession(chatId, session);
-      fastify.log.debug({ chatId }, 'Created new session');
-
-      await ctx.reply(responseText);
+        await ctx.reply(responseText);
+        setSession(chatId, promptedSession);
+        fastify.log.debug({ chatId }, 'Created new session');
+      } catch (error) {
+        session.dispose();
+        throw error;
+      }
     }
   } catch (error) {
     fastify.log.error({ err: error, chatId, text }, 'Failed to process Telegram chat message');

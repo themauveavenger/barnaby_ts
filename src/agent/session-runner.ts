@@ -1,6 +1,4 @@
-import { createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
-import type { AgentSession, ModelRuntime, ResourceLoader } from '@earendil-works/pi-coding-agent';
-import type { Api, Model } from '@earendil-works/pi-ai';
+import type { AgentSession } from '@earendil-works/pi-coding-agent';
 
 /** Maximum time (in milliseconds) allowed for a single agent prompt. */
 export const SESSION_TIMEOUT_MS = 45_000;
@@ -61,11 +59,8 @@ export class SessionTimeoutError extends Error {
 }
 
 export interface RunAgentSessionOptions {
-  modelRuntime: ModelRuntime;
-  model: Model<Api>;
-  resourceLoader: ResourceLoader;
-  tools: readonly string[] | string[];
-  activeTools?: readonly string[] | string[];
+  /** The caller-created session to prompt. The runner never disposes it. */
+  _session: AgentSession;
   prompt: string;
   signal?: AbortSignal;
   /**
@@ -73,11 +68,6 @@ export interface RunAgentSessionOptions {
    * may pass a shorter value to avoid real waits.
    */
   _timeoutMs?: number;
-  /**
-   * An existing session to reuse instead of creating a new one. When provided,
-   * the tools are only used to set active tools via setActiveToolsByName.
-   */
-  _session?: AgentSession;
 }
 
 export interface RunAgentSessionResult {
@@ -86,36 +76,29 @@ export interface RunAgentSessionResult {
 }
 
 /**
- * Creates a fresh agent session, runs a single prompt with timeout and abort
- * protection, and returns both the response text and the live session.
- *
- * Callers are responsible for caching the returned session or disposing it.
+ * Runs one prompt on a caller-provided session with timeout and abort
+ * protection. It never creates or disposes a session.
  */
 export async function runAgentSession(
   options: RunAgentSessionOptions
 ): Promise<RunAgentSessionResult> {
-  const { modelRuntime, model, resourceLoader, tools, activeTools, prompt, signal, _timeoutMs, _session } = options;
-
-  let session: AgentSession;
-  // The session created here (never _session). The caller only receives a
-  // session when runAgentSession returns normally, so any failure must
-  // dispose what we created or it leaks. Declared separately so the catch
-  // can reference it without tripping definite-assignment analysis.
-  let createdSession: AgentSession | undefined;
+  const { _session: session, prompt, signal, _timeoutMs } = options;
   let timeoutFired = false;
+
+  const abortSession = (): void => {
+    session.abort().catch(() => {
+      void 0;
+    });
+  };
 
   // Set up the timeout before any await so fake-timer tests can intercept it.
   const timeoutId = setTimeout(() => {
     timeoutFired = true;
-    session?.abort().catch(() => {
-      void 0;
-    });
+    abortSession();
   }, _timeoutMs ?? SESSION_TIMEOUT_MS);
 
   const onExternalAbort = () => {
-    session?.abort().catch(() => {
-      void 0;
-    });
+    abortSession();
   };
 
   signal?.addEventListener('abort', onExternalAbort);
@@ -126,25 +109,9 @@ export async function runAgentSession(
   }
 
   try {
-    if (_session) {
-      session = _session;
-    } else {
-      ({ session } = await createAgentSession({
-        model,
-        modelRuntime,
-        resourceLoader,
-        sessionManager: SessionManager.inMemory(),
-        tools: [...tools]
-      }));
-      createdSession = session;
-    }
-
-    session.setActiveToolsByName([...(activeTools ?? tools)]);
     session.setAutoRetryEnabled(false);
-
     await session.prompt(prompt);
   } catch (error) {
-    createdSession?.dispose();
     if (timeoutFired) {
       throw new SessionTimeoutError();
     }
@@ -156,7 +123,6 @@ export async function runAgentSession(
 
   const text = session.getLastAssistantText()?.trim();
   if (!text) {
-    createdSession?.dispose();
     throw new EmptyResponseError();
   }
 

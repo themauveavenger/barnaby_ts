@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { createBriefingService, registerBriefingJob } from '../../src/services/briefing.js';
 import { getTimeOfDay, formatMemoryList, formatResolvedList, buildMemoryContext, MissingChatIdError } from '../../src/services/telegram-utils.js';
-import { runAgentSession, ALL_TOOLS, BRIEFING_READONLY_TOOLS, EmptyResponseError as RunnerEmptyResponseError } from '../../src/agent/session-runner.js';
+import { createSession } from '../../src/agent/session-factory.js';
+import { runAgentSession, BRIEFING_READONLY_TOOLS, EmptyResponseError as RunnerEmptyResponseError } from '../../src/agent/session-runner.js';
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import type { Memory, ResolvedMemory } from '../../src/plugins/repository.js';
 import { clearSessionStore, getSession } from '../../src/services/telegram/session-store.js';
@@ -16,6 +17,10 @@ vi.mock('../../src/agent/prompt-builder.js', () => ({
     chat: vi.fn().mockReturnValue('MOCK PROMPT'),
     afternoonUpdate: vi.fn().mockReturnValue('MOCK PROMPT')
   }
+}));
+
+vi.mock('../../src/agent/session-factory.js', () => ({
+  createSession: vi.fn()
 }));
 
 vi.mock('../../src/agent/session-runner.js', async (importOriginal) => {
@@ -39,6 +44,7 @@ function createMockSession(overrides: Partial<Record<string, unknown>> = {}): Ag
 }
 
 function mockRunAgentSession(session: AgentSession): void {
+  vi.mocked(createSession).mockResolvedValue(session);
   vi.mocked(runAgentSession).mockResolvedValue({
     text: (session.getLastAssistantText() ?? '').trim(),
     session
@@ -225,9 +231,11 @@ describe('briefing service', () => {
     process.env.TELEGRAM_CHAT_ID = '12345';
     process.env.BRIEFING_CRON = '0 7 * * *';
     clearSessionStore();
+    const session = createMockSession();
+    vi.mocked(createSession).mockResolvedValue(session);
     vi.mocked(runAgentSession).mockResolvedValue({
       text: 'Good morning! You have 2 events today.',
-      session: createMockSession()
+      session
     });
   });
 
@@ -250,9 +258,12 @@ describe('briefing service', () => {
 
       expect(runAgentSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          tools: ALL_TOOLS,
-          activeTools: BRIEFING_READONLY_TOOLS
+          _session: mockSession,
+          prompt: 'MOCK PROMPT'
         })
+      );
+      expect(mockSession.setActiveToolsByName).toHaveBeenCalledWith(
+        BRIEFING_READONLY_TOOLS
       );
 
       expect(fastify.memoryRepository.findByTags).toHaveBeenCalledWith(['core'], { permanentOnly: true });

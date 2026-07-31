@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+vi.mock('../../../src/agent/session-factory.js', () => ({
+  createSession: vi.fn()
+}));
+
 vi.mock('../../../src/agent/session-runner.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../src/agent/session-runner.js')>();
   return {
@@ -15,6 +19,7 @@ vi.mock('../../../src/agent/session-runner.js', async (importOriginal) => {
 });
 
 import type { Context } from 'grammy';
+import { createSession } from '../../../src/agent/session-factory.js';
 import { runAgentSession, SessionTimeoutError } from '../../../src/agent/session-runner.js';
 import { handleRemember } from '../../../src/services/telegram/remember.js';
 
@@ -24,8 +29,14 @@ function createMockSession() {
     getLastAssistantText: vi.fn().mockReturnValue('Created todo: "Call the dentist"'),
     dispose: vi.fn(),
     setAutoRetryEnabled: vi.fn(),
+    setActiveToolsByName: vi.fn(),
     abort: vi.fn().mockResolvedValue(undefined)
   };
+}
+
+function mockRunAgentSession(session: ReturnType<typeof createMockSession>, text = 'Created todo: "Call the dentist"'): void {
+  vi.mocked(createSession).mockResolvedValue(session as never);
+  vi.mocked(runAgentSession).mockResolvedValue({ text, session: session as never });
 }
 
 function createMockContext(overrides: Partial<{ chatId: number; match: string | undefined }> = {}) {
@@ -62,6 +73,7 @@ describe('handleRemember', () => {
   beforeEach(() => {
     process.env.TELEGRAM_CHAT_ID = '12345';
     fastify = createMockFastify();
+    vi.mocked(createSession).mockResolvedValue(createMockSession() as never);
   });
 
   afterEach(() => {
@@ -70,17 +82,14 @@ describe('handleRemember', () => {
 
   it('calls SessionRunner with memory tools and reacts with checkmark on success', async () => {
     const mockSession = createMockSession();
-    (runAgentSession as any).mockResolvedValue({ text: 'Created todo: "Call the dentist"', session: mockSession });
+    mockRunAgentSession(mockSession);
 
     const ctx = createMockContext({ match: 'call the dentist on Friday' });
     await handleRemember(ctx, fastify);
 
     expect(runAgentSession).toHaveBeenCalledWith(
       expect.objectContaining({
-        tools: ['memory_create', 'memory_list', 'memory_resolve'],
-        model: fastify.agent.model,
-        modelRuntime: fastify.agent.modelRuntime,
-        resourceLoader: fastify.agent.resourceLoader
+        _session: mockSession
       })
     );
 
@@ -134,7 +143,7 @@ describe('handleRemember', () => {
 
   it('disposes session even when SessionRunner fails after session creation', async () => {
     const mockSession = createMockSession();
-    (runAgentSession as any).mockResolvedValue({ text: '', session: mockSession });
+    mockRunAgentSession(mockSession, '');
 
     const ctx = createMockContext({ match: 'something to remember' });
     await handleRemember(ctx, fastify);
@@ -144,7 +153,7 @@ describe('handleRemember', () => {
 
   it('includes categorization guidelines in prompt', async () => {
     const mockSession = createMockSession();
-    (runAgentSession as any).mockResolvedValue({ text: 'Created note', session: mockSession });
+    mockRunAgentSession(mockSession, 'Created note');
 
     const ctx = createMockContext({ match: 'shellfish allergy' });
     await handleRemember(ctx, fastify);

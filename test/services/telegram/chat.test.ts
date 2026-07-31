@@ -8,6 +8,10 @@ vi.mock('../../../src/agent/prompt-builder.js', () => ({
   }
 }));
 
+vi.mock('../../../src/agent/session-factory.js', () => ({
+  createSession: vi.fn()
+}));
+
 vi.mock('../../../src/agent/session-runner.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../src/agent/session-runner.js')>();
   return {
@@ -17,6 +21,7 @@ vi.mock('../../../src/agent/session-runner.js', async (importOriginal) => {
 });
 
 import type { Context } from 'grammy';
+import { createSession } from '../../../src/agent/session-factory.js';
 import { runAgentSession, EmptyResponseError, SessionTimeoutError } from '../../../src/agent/session-runner.js';
 import { promptBuilder } from '../../../src/agent/prompt-builder.js';
 import { handleChat } from '../../../src/services/telegram/chat.js';
@@ -75,6 +80,7 @@ describe('handleChat', () => {
     fastify = createMockFastify();
     clearSessionStore();
     vi.clearAllMocks();
+    vi.mocked(createSession).mockResolvedValue(createMockSession() as never);
   });
 
   afterEach(() => {
@@ -88,9 +94,14 @@ describe('handleChat', () => {
     const ctx = createMockContext();
     await handleChat(ctx, fastify);
 
-    expect(runAgentSession).toHaveBeenCalledWith(
+    expect(createSession).toHaveBeenCalledWith(
       expect.objectContaining({
         tools: ['calendar_list', 'get_weather_forecast', 'memory_list', 'memory_resolve', 'memory_create', 'drive_read_doc', 'drive_list_docs', 'wolfram_alpha', 'kagi_search', 'kagi_extract']
+      })
+    );
+    expect(runAgentSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: 'MOCK PROMPT'
       })
     );
   });

@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { createAfternoonUpdateService, registerAfternoonUpdateJob } from '../../src/services/afternoon-update.js';
-import { runAgentSession, ALL_TOOLS, AFTERNOON_UPDATE_READONLY_TOOLS } from '../../src/agent/session-runner.js';
+import { createSession } from '../../src/agent/session-factory.js';
+import { runAgentSession, AFTERNOON_UPDATE_READONLY_TOOLS } from '../../src/agent/session-runner.js';
 import type { AgentSession } from '@earendil-works/pi-coding-agent';
 import { clearSessionStore, getSession } from '../../src/services/telegram/session-store.js';
 
@@ -14,6 +15,10 @@ vi.mock('../../src/agent/prompt-builder.js', () => ({
 }));
 
 import { promptBuilder } from '../../src/agent/prompt-builder.js';
+
+vi.mock('../../src/agent/session-factory.js', () => ({
+  createSession: vi.fn()
+}));
 
 vi.mock('../../src/agent/session-runner.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/agent/session-runner.js')>();
@@ -37,6 +42,7 @@ function createMockSession(overrides: Partial<Record<string, unknown>> = {}): Ag
 }
 
 function mockRunAgentSession(session: AgentSession): void {
+  vi.mocked(createSession).mockResolvedValue(session);
   vi.mocked(runAgentSession).mockResolvedValue({
     text: (session.getLastAssistantText() ?? '').trim(),
     session
@@ -95,9 +101,11 @@ describe('afternoon update service', () => {
     process.env.TELEGRAM_CHAT_ID = '12345';
     process.env.AFTERNOON_UPDATE_CRON = '0 14 * * *';
     clearSessionStore();
+    const session = createMockSession();
+    vi.mocked(createSession).mockResolvedValue(session);
     vi.mocked(runAgentSession).mockResolvedValue({
       text: 'Good afternoon! You have a meeting at 3pm.',
-      session: createMockSession()
+      session
     });
   });
 
@@ -120,9 +128,12 @@ describe('afternoon update service', () => {
 
       expect(runAgentSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          tools: ALL_TOOLS,
-          activeTools: AFTERNOON_UPDATE_READONLY_TOOLS
+          _session: mockSession,
+          prompt: 'MOCK PROMPT'
         })
+      );
+      expect(mockSession.setActiveToolsByName).toHaveBeenCalledWith(
+        AFTERNOON_UPDATE_READONLY_TOOLS
       );
 
       // Caller delegates prompt assembly to PromptBuilder with the computed

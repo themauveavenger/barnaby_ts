@@ -1,6 +1,7 @@
 import type { Context } from 'grammy';
 import type { FastifyInstance } from 'fastify';
 import { MEMORY_CATEGORIZATION_GUIDELINES } from '../../agent/memory-guidelines.js';
+import { createSession } from '../../agent/session-factory.js';
 import { MEMORY_TOOLS, runAgentSession, SessionTimeoutError } from '../../agent/session-runner.js';
 import { isAllowedChat } from './shared.js';
 
@@ -26,16 +27,19 @@ export async function handleRemember(ctx: Context, fastify: FastifyInstance): Pr
 
   try {
     const { modelRuntime, model, resourceLoader } = fastify.agent;
-
-    const { session } = await runAgentSession({
+    const session = await createSession({
       modelRuntime,
       model,
       resourceLoader,
-      tools: MEMORY_TOOLS,
-      prompt
+      tools: MEMORY_TOOLS
     });
 
     try {
+      session.setActiveToolsByName([...MEMORY_TOOLS]);
+      await runAgentSession({
+        _session: session,
+        prompt
+      });
       await ctx.react('👍');
     } finally {
       session.dispose();
