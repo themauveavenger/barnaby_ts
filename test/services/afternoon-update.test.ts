@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { createAfternoonUpdateService, registerAfternoonUpdateJob } from '../../src/services/afternoon-update.js';
+import { runAgentSession, ALL_TOOLS, AFTERNOON_UPDATE_READONLY_TOOLS } from '../../src/agent/session-runner.js';
+import { clearSessionStore, getSession } from '../../src/services/telegram/session-store.js';
 
 vi.mock('@earendil-works/pi-coding-agent', () => ({
   createAgentSession: vi.fn(),
@@ -17,8 +19,16 @@ vi.mock('../../src/agent/prompt-builder.js', () => ({
   }
 }));
 
-import { createAgentSession } from '@earendil-works/pi-coding-agent';
+import { createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent';
 import { promptBuilder } from '../../src/agent/prompt-builder.js';
+
+vi.mock('../../src/agent/session-runner.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/agent/session-runner.js')>();
+  return {
+    ...actual,
+    runAgentSession: vi.fn()
+  };
+});
 import type { AfternoonUpdateContext } from '../../src/agent/prompt-builder.js';
 
 function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
@@ -27,6 +37,7 @@ function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
     getLastAssistantText: vi.fn().mockReturnValue('Good afternoon! You have a meeting at 3pm.'),
     dispose: vi.fn(),
     setAutoRetryEnabled: vi.fn(),
+    setActiveToolsByName: vi.fn(),
     abort: vi.fn().mockResolvedValue(undefined),
     ...overrides
   };
@@ -83,6 +94,28 @@ describe('afternoon update service', () => {
   beforeEach(() => {
     process.env.TELEGRAM_CHAT_ID = '12345';
     process.env.AFTERNOON_UPDATE_CRON = '0 14 * * *';
+    clearSessionStore();
+    (runAgentSession as any).mockImplementation(async (options: { model: unknown; modelRuntime: unknown; resourceLoader: unknown; tools: readonly string[]; activeTools?: readonly string[]; prompt: string; signal?: AbortSignal }) => {
+      const { session } = await (createAgentSession as any)({
+        model: options.model,
+        modelRuntime: options.modelRuntime,
+        resourceLoader: options.resourceLoader,
+        sessionManager: SessionManager.inMemory(),
+        tools: [...options.tools]
+      });
+      session.setActiveToolsByName([...(options.activeTools ?? options.tools)]);
+      session.setAutoRetryEnabled(false);
+      if (options.signal?.aborted) {
+        await session.abort();
+        throw new Error('Session aborted');
+      }
+      await session.prompt(options.prompt);
+      const text = session.getLastAssistantText()?.trim();
+      if (!text) {
+        throw new Error('Agent returned an empty response');
+      }
+      return { text, session };
+    });
   });
 
   afterEach(() => {
@@ -94,7 +127,7 @@ describe('afternoon update service', () => {
       return vi.mocked(promptBuilder.afternoonUpdate).mock.calls[0][0];
     }
 
-    it('creates agent session with calendar_list only and sends result', async () => {
+    it('runs with the full registry and calendar-only active tools', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -102,15 +135,12 @@ describe('afternoon update service', () => {
       const service = createAfternoonUpdateService(fastify);
       await service.sendUpdate();
 
-      expect(createAgentSession).toHaveBeenCalledWith(
+      expect(runAgentSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          tools: ['calendar_list']
+          tools: ALL_TOOLS,
+          activeTools: AFTERNOON_UPDATE_READONLY_TOOLS
         })
       );
-
-      // Should NOT include weather tool
-      const toolsArg = (createAgentSession as any).mock.calls[0][0].tools;
-      expect(toolsArg).not.toContain('get_weather_forecast');
 
       // Caller delegates prompt assembly to PromptBuilder with the computed
       // context (two date ranges only, calendar IDs).
@@ -129,7 +159,9 @@ describe('afternoon update service', () => {
       }));
       expect(context.dateRanges).not.toHaveProperty('yesterdayStart');
       expect(context).not.toHaveProperty('previousBriefing');
-      expect(mockSession.prompt).toHaveBeenCalledWith('MOCK PROMPT');
+      expect(runAgentSession).toHaveBeenCalledWith(
+        expect.objectContaining({ prompt: 'MOCK PROMPT' })
+      );
 
       expect(fastify.telegramClient.sendMessage).toHaveBeenCalledWith(
         12345,
@@ -138,7 +170,7 @@ describe('afternoon update service', () => {
 
       // Afternoon updates should NOT be saved to repo
       expect(fastify.briefingRepository.create).not.toHaveBeenCalled();
-      expect(mockSession.dispose).toHaveBeenCalled();
+      expect(mockSession.dispose).not.toHaveBeenCalled();
     });
 
     it('passes the computed two-range dateRanges (no yesterday range) to PromptBuilder', async () => {
@@ -218,7 +250,7 @@ describe('afternoon update service', () => {
       expect(memoryContext).toContain('- Pick up dry cleaning');
     });
 
-    it('passes abort signal through to createAgentAndDeliver', async () => {
+    it('passes abort signal through to SessionRunner', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -236,10 +268,10 @@ describe('afternoon update service', () => {
       }
 
       expect(mockSession.abort).toHaveBeenCalled();
-      expect(mockSession.dispose).toHaveBeenCalled();
+      expect(mockSession.dispose).not.toHaveBeenCalled();
     });
 
-    it('does not save to briefing repository even on success', async () => {
+    it('caches the live session after delivering the update', async () => {
       const mockSession = createMockSession();
       (createAgentSession as any).mockResolvedValue({ session: mockSession });
 
@@ -248,6 +280,7 @@ describe('afternoon update service', () => {
       await service.sendUpdate();
 
       expect(fastify.briefingRepository.create).not.toHaveBeenCalled();
+      expect(getSession(12345)).toBe(mockSession);
     });
 
     it('passes timezone information to PromptBuilder', async () => {
