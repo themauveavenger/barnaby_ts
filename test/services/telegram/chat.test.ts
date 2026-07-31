@@ -267,6 +267,22 @@ describe('handleChat', () => {
     expect(ctx.reply).toHaveBeenCalledWith('That took too long — please try again.');
   });
 
+  it('reports the original error when disposing a failed session also fails', async () => {
+    const mockSession = createMockSession();
+    mockSession.dispose = vi.fn(() => {
+      throw new Error('dispose failed');
+    });
+    (runAgentSession as any).mockRejectedValue(new SessionTimeoutError());
+    vi.mocked(createSession).mockResolvedValue(mockSession as never);
+
+    const ctx = createMockContext();
+    await handleChat(ctx, fastify);
+
+    // The timeout is reported, not the dispose error, and the handler does
+    // not throw out of the failure report.
+    expect(ctx.reply).toHaveBeenCalledWith('That took too long — please try again.');
+  });
+
   it('stores session in session store after first message', async () => {
     const mockSession = createMockSession();
     (runAgentSession as any).mockResolvedValue({ text: 'Hello', session: mockSession });

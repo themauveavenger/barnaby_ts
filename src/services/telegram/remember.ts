@@ -2,8 +2,8 @@ import type { Context } from 'grammy';
 import type { FastifyInstance } from 'fastify';
 import { MEMORY_CATEGORIZATION_GUIDELINES } from '../../agent/memory-guidelines.js';
 import { createSession } from '../../agent/session-factory.js';
-import { MEMORY_TOOLS, runAgentSession, SessionTimeoutError } from '../../agent/session-runner.js';
-import { isAllowedChat } from './shared.js';
+import { MEMORY_TOOLS, runAgentSession } from '../../agent/session-runner.js';
+import { defaultErrorMessage, isAllowedChat, reportTelegramError } from './shared.js';
 
 export async function handleRemember(ctx: Context, fastify: FastifyInstance): Promise<void> {
   const chatId = ctx.chat?.id;
@@ -25,6 +25,10 @@ export async function handleRemember(ctx: Context, fastify: FastifyInstance): Pr
   const guidelines = MEMORY_CATEGORIZATION_GUIDELINES.join('\n');
   const prompt = `${guidelines}\n\nUser says: "${text}"`;
 
+  // Run first: this is the only step whose failure means the memory was not
+  // saved. Disposal is guarded so a dispose failure can never mask the run
+  // error or escape the handler — grammy's default error handler would stop
+  // the bot (no bot.catch is installed).
   try {
     const { modelRuntime, model, resourceLoader } = fastify.agent;
     const session = await createSession({
@@ -40,18 +44,24 @@ export async function handleRemember(ctx: Context, fastify: FastifyInstance): Pr
         _session: session,
         prompt
       });
-      await ctx.react('👍');
     } finally {
-      session.dispose();
+      try {
+        session.dispose();
+      } catch (disposeError) {
+        fastify.log.error({ err: disposeError, chatId }, 'Failed to dispose /remember session');
+      }
     }
   } catch (error) {
     fastify.log.error({ err: error, prompt, text }, 'Failed to process /remember command');
-    await ctx.react('🤷');
+    await reportTelegramError(ctx, fastify, { chatId, replyText: defaultErrorMessage(error) });
+    return;
+  }
 
-    if (error instanceof SessionTimeoutError) {
-      await ctx.reply('That took too long — please try again.');
-    } else {
-      await ctx.reply('Something went wrong — please try again.');
-    }
+  // Confirm: if this fails the memory was already saved, so report nothing — a
+  // failure reply would claim the save failed when it succeeded.
+  try {
+    await ctx.react('👍');
+  } catch (error) {
+    fastify.log.error({ err: error, chatId }, 'Failed to confirm /remember success');
   }
 }

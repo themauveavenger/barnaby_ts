@@ -130,6 +130,25 @@ describe('handleRemember', () => {
     expect(runAgentSession).not.toHaveBeenCalled();
   });
 
+  it('logs but stays silent when the confirmation reaction fails after a successful run', async () => {
+    const mockSession = createMockSession();
+    mockRunAgentSession(mockSession);
+
+    const ctx = createMockContext({ match: 'call the dentist on Friday' });
+    vi.mocked(ctx.react).mockRejectedValue(new Error('API unreachable'));
+    await handleRemember(ctx, fastify);
+
+    // The memory was saved; only the confirmation failed, so no failure reply.
+    expect(ctx.react).toHaveBeenCalledTimes(1);
+    expect(ctx.react).toHaveBeenCalledWith('👍');
+    expect(ctx.reply).not.toHaveBeenCalled();
+    expect(mockSession.dispose).toHaveBeenCalled();
+    expect(fastify.log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ err: expect.any(Error) }),
+      'Failed to confirm /remember success'
+    );
+  });
+
   it('reacts with shrug and sends generic error message when SessionRunner fails', async () => {
     (runAgentSession as any).mockRejectedValue(new Error('LLM API down'));
 

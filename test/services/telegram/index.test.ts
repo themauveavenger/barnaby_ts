@@ -25,6 +25,15 @@ describe('registerHandlers', () => {
     expect(bot.command).toHaveBeenCalledWith('remember', expect.any(Function));
   });
 
+  it('registers /kill_sessions command handler', () => {
+    const bot = createMockBot();
+    const fastify = createMockFastify(bot);
+
+    registerHandlers(fastify);
+
+    expect(bot.command).toHaveBeenCalledWith('kill_sessions', expect.any(Function));
+  });
+
   it('registers message:text handler', () => {
     const bot = createMockBot();
     const fastify = createMockFastify(bot);
