@@ -31,6 +31,9 @@ Barnaby can deploy to a Raspberry Pi on your home network, served behind nginx.
    CONTEXT_WINDOW_DAYS=30
    TIMEZONE=America/New_York
    OPENCODE_API_KEY=your_key
+   # Optional: agent provider/model (defaults shown). Override before restarting the service.
+   AGENT_PROVIDER=opencode-go
+   AGENT_MODEL=kimi-k2.6
    GOOGLE_CLIENT_ID=your_google_client_id
    GOOGLE_CLIENT_SECRET=your_google_client_secret
    GOOGLE_REFRESH_TOKEN=your_google_refresh_token

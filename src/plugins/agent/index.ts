@@ -12,6 +12,17 @@ import createGoogleDriveExtension from './extensions/google-drive.js';
 import createWolframAlphaExtension from './extensions/wolfram-alpha.js';
 import createKagiExtension from './extensions/kagi.js';
 
+const DEFAULT_AGENT_PROVIDER = 'opencode-go';
+const DEFAULT_AGENT_MODEL = 'kimi-k2.6';
+
+/** Thrown at startup when the configured provider/model pair cannot be resolved. */
+export class ConfiguredModelUnavailableError extends Error {
+  constructor(provider: string, modelId: string) {
+    super(`Configured model ${provider}/${modelId} is not available`);
+    this.name = 'ConfiguredModelUnavailableError';
+  }
+}
+
 export interface AgentServices {
   modelRuntime: ModelRuntime;
   model: Model<Api>;
@@ -20,9 +31,11 @@ export interface AgentServices {
 
 export default fp(async function agentPlugin(fastify: FastifyInstance) {
   const modelRuntime = await ModelRuntime.create({});
-  const model = modelRuntime.getModel('opencode-go', 'kimi-k2.6');
+  const provider = process.env.AGENT_PROVIDER || DEFAULT_AGENT_PROVIDER;
+  const modelId = process.env.AGENT_MODEL || DEFAULT_AGENT_MODEL;
+  const model = modelRuntime.getModel(provider, modelId);
   if (!model) {
-    throw new Error('Default model opencode-go/kimi-k2.6 is not available');
+    throw new ConfiguredModelUnavailableError(provider, modelId);
   }
 
   const resourceLoader = new DefaultResourceLoader({

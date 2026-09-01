@@ -7,7 +7,7 @@ A personal digital assistant. Barnaby remembers things, manages calendar events,
 - **Runtime:** Node.js 24 LTS with TypeScript (ESM, no build step via `tsx`)
 - **Server:** Fastify with `@fastify/basic-auth` (global auth on all routes)
 - **Database:** SQLite via `better-sqlite3`
-- **LLM:** `@earendil-works/pi-coding-agent` SDK with OpenCode Go provider (`kimi-k2.6`)
+- **LLM:** `@earendil-works/pi-coding-agent` SDK with a configurable provider/model (default: OpenCode Go `kimi-k2.6`)
 - **Templating:** Handlebars with PicoCSS (CDN) for the memories page
 - **Telegram:** `grammy` with `@grammyjs/auto-retry`
 - **Testing:** Vitest (run with `npm run test:minimal`)
@@ -16,7 +16,9 @@ A personal digital assistant. Barnaby remembers things, manages calendar events,
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `OPENCODE_API_KEY` | Yes | OpenCode Go API key (from [opencode.ai](https://opencode.ai/auth)) |
+| `OPENCODE_API_KEY` | No¹ | OpenCode Go API key (from [opencode.ai](https://opencode.ai/auth)); required when using the default `opencode-go` provider |
+| `AGENT_PROVIDER` | No | Agent model provider (default: `opencode-go`); must exist in the pi model catalog |
+| `AGENT_MODEL` | No | Agent model ID (default: `kimi-k2.6`); must exist in the pi model catalog |
 | `BASIC_AUTH_USERNAME` | Yes | HTTP Basic Auth username |
 | `BASIC_AUTH_PASSWORD` | Yes | HTTP Basic Auth password |
 | `GOOGLE_CLIENT_ID` | Yes | Google OAuth 2.0 client ID (for Calendar API) |
@@ -35,7 +37,10 @@ A personal digital assistant. Barnaby remembers things, manages calendar events,
 | `PORT` | No | Server port (default: `3000`) |
 | `LOG_LEVEL` | No | Pino log level (default: `info`) |
 
+¹ `OPENCODE_API_KEY` is only required when using the default `opencode-go` provider; other providers use their own credentials.
 ² YNAB tools are implemented but not yet exposed through any user-facing endpoint.
+
+The agent provider and model are selected once at startup from `AGENT_PROVIDER` and `AGENT_MODEL` (default `opencode-go`/`kimi-k2.6`). The selected model must exist in the pi model catalog and authenticate using that provider's normal credentials — `OPENCODE_API_KEY` only applies to the default `opencode-go` provider. Changing either variable requires restarting the application; an explicitly configured pair that is not available fails startup.
 
 ## API Endpoints
 

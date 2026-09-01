@@ -60,3 +60,7 @@ The primary interface for interacting with Barnaby. Regular messages are convers
 ## Admin UI
 
 A secondary interface — server-rendered HTML pages for directly managing memories (browsing, filtering, creating, editing, resolving).
+
+## Agent Provider and Model
+
+The pi-coding-agent provider and model used for every agent session, selected at startup from `AGENT_PROVIDER` and `AGENT_MODEL` (default `opencode-go`/`kimi-k2.6`). The setting is environment-only: values are read once during application startup, so changing them requires a process restart. The `/config` page and the SQLite `config` table remain personality-only and do not affect provider/model selection. The selected pair must exist in the pi model catalog and authenticate with that provider's normal credentials.
